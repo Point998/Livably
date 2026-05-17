@@ -92,56 +92,43 @@ async function getDriveTime(originLatLng, destinationLatLng) {
 }
 
 async function findNearestGrocery(originLatLng) {
-  const groceryExclusions = [
-    'dollar',
-    'gas station',
-    'convenience store',
-    'sheetz',
-    'circle k',
-    '7-eleven',
-    'family dollar',
-    'dollar general',
-    'dollar tree',
-  ];
+  const excludedTypes = new Set(['gas_station', 'convenience_store', 'lodging']);
 
-  let placesResponse = await googleMapsClient.textSearch({
+  const placesResponse = await googleMapsClient.textSearch({
     params: {
       key: googleMapsApiKey,
-      query: 'full-service grocery store',
+      query: 'grocery store',
       location: originLatLng,
-      radius: 25000,
+      radius: 8000,
     },
   });
 
-  let placeResults = (placesResponse.data.results || []).filter(
-    (place) => !isExcludedPlaceName(place.name, groceryExclusions),
+  const placeResults = (placesResponse.data.results || []).filter((place) => {
+    const types = place.types || [];
+    return !types.some((type) => excludedTypes.has(type));
+  });
+
+  if (!placeResults.length) {
+    throw new Error('No eligible grocery stores found near that address.');
+  }
+
+  const topResults = placeResults.slice(0, 8);
+
+  const candidatesWithDriveTimes = await Promise.all(
+    topResults.map(async (place) => {
+      const driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location);
+      return {
+        name: place.name,
+        address: place.formatted_address || place.vicinity || place.name,
+        location: place.geometry.location,
+        driveTimeMinutes,
+      };
+    }),
   );
 
-  if (!placeResults.length) {
-    placesResponse = await googleMapsClient.textSearch({
-      params: {
-        key: googleMapsApiKey,
-        query: 'grocery store',
-        location: originLatLng,
-        radius: 25000,
-      },
-    });
-    placeResults = (placesResponse.data.results || []).filter(
-      (place) => !isExcludedPlaceName(place.name, groceryExclusions),
-    );
-  }
+  candidatesWithDriveTimes.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
 
-  if (!placeResults.length) {
-    throw new Error('No full-service grocery store found near that address.');
-  }
-
-  const bestStore = placeResults[0];
-  return {
-    name: bestStore.name,
-    address: bestStore.formatted_address || bestStore.vicinity || bestStore.name,
-    location: bestStore.geometry.location,
-    driveTimeMinutes: await getDriveTime(originLatLng, bestStore.geometry.location),
-  };
+  return candidatesWithDriveTimes.slice(0, 3);
 }
 
 async function findNearestPharmacy(originLatLng) {
@@ -227,12 +214,12 @@ async function findNearestHospital(originLatLng) {
 }
 
 async function findNearestUrgentCare(originLatLng) {
-  let placesResponse = await googleMapsClient.textSearch({
+  let placesResponse = await googleMapsClient.placesNearby({
     params: {
       key: googleMapsApiKey,
-      query: 'urgent care clinic',
       location: originLatLng,
-      radius: 50000,
+      rankby: 'distance',
+      keyword: 'urgent care',
     },
   });
 
@@ -243,13 +230,14 @@ async function findNearestUrgentCare(originLatLng) {
         key: googleMapsApiKey,
         location: originLatLng,
         rankby: 'distance',
-        keyword: 'urgent care',
+        keyword: 'urgent care clinic',
       },
     });
     placeResults = placesResponse.data.results || [];
   }
 
-  const place = placeResults[0];
+  const retailClinicTerms = ['little clinic', 'minute clinic', 'cvs health', 'walgreens health'];
+  const place = placeResults.find((p) => !isExcludedPlaceName(p.name, retailClinicTerms));
   if (!place) {
     throw new Error('No urgent care clinic found near that address.');
   }
@@ -262,7 +250,16 @@ async function findNearestUrgentCare(originLatLng) {
   };
 }
 
+function highwayAppearsInAddress(text, highway) {
+  const normalized = (text || '').toUpperCase();
+  const highwayPattern = highway.replace('-', '[- ]?').toUpperCase();
+  const regex = new RegExp(`\\b${highwayPattern}\\b`);
+  return regex.test(normalized) || normalized.includes(`INTERSTATE ${highway.slice(2)}`);
+}
+
 async function findNearestHighwayOnRamp(originLatLng) {
+  const [originLat, originLng] = originLatLng.split(',').map(Number);
+
   // Step 1: Reverse geocode the origin to get city and state
   const reverseGeoResponse = await googleMapsClient.reverseGeocode({
     params: {
@@ -284,6 +281,14 @@ async function findNearestHighwayOnRamp(originLatLng) {
     'I-77', 'I-78', 'I-81', 'I-83', 'I-87', 'I-93', 'I-94', 'I-96',
   ];
 
+  // Bounding box ~55 km around the origin — biases Google toward a local highway segment
+  // rather than a statewide geometric center (e.g. "I-64, Kentucky, USA" far from origin).
+  const biasDelta = 0.5;
+  const bounds = {
+    southwest: { lat: originLat - biasDelta, lng: originLng - biasDelta },
+    northeast: { lat: originLat + biasDelta, lng: originLng + biasDelta },
+  };
+
   // Step 3: Geocode each interstate near the address location
   const geocodeResults = await Promise.all(
     interstates.map(async (highway) => {
@@ -292,14 +297,24 @@ async function findNearestHighwayOnRamp(originLatLng) {
           params: {
             key: googleMapsApiKey,
             address: `${highway} near ${locationLabel}`,
+            bounds,
           },
         });
         const result = response.data.results?.[0];
         if (!result) return null;
+        const formattedAddress = result.formatted_address || '';
+        const { lat, lng } = result.geometry.location;
+
+        const tooFar = Math.abs(lat - originLat) > biasDelta || Math.abs(lng - originLng) > biasDelta;
+        const passesName = highwayAppearsInAddress(formattedAddress, highway);
+        const status = !passesName ? 'FILTERED (name)' : tooFar ? 'FILTERED (too far)' : 'PASS';
+        console.log(`[highway] ${highway}: "${formattedAddress}" [${lat.toFixed(3)},${lng.toFixed(3)}] — ${status}`);
+
+        if (!passesName || tooFar) return null;
         return {
           highway,
           location: result.geometry.location,
-          address: result.formatted_address,
+          address: formattedAddress,
         };
       } catch {
         return null;
@@ -402,6 +417,21 @@ function renderDestinationSection(title, result) {
     return `<section><h2>${title}</h2><p>Not available.</p></section>`;
   }
 
+  if (Array.isArray(result)) {
+    const itemHtml = result.map((store) => `
+      <div style="margin-bottom: 1rem;">
+        <p><strong>${store.name}</strong></p>
+        <p>${store.address}</p>
+        <p>${store.driveTimeMinutes} minutes</p>
+      </div>
+    `).join('');
+
+    return `<section>
+  <h2>${title}</h2>
+  ${itemHtml}
+</section>`;
+  }
+
   return `<section>
   <h2>${title}</h2>
   <p><strong>${result.name}</strong></p>
@@ -476,7 +506,7 @@ app.get('/report', async (req, res) => {
 <body style="font-family: system-ui, sans-serif; padding: 2rem; max-width: 640px; margin: auto;">
   <h1>Livably Daily Reachability Report</h1>
   <p>Drive times are door-to-door for 8am Tuesday departure.</p>
-  ${renderDestinationSection('1. Nearest full-service grocery (fresh produce, meat, dairy)', grocery)}
+  ${renderDestinationSection('1. Nearest grocery stores', grocery)}
   ${renderDestinationSection('2. Nearest pharmacy', pharmacy)}
   ${renderDestinationSection('3. Nearest hospital with a full emergency department', hospital)}
   ${renderDestinationSection('4. Nearest urgent care clinic', urgentCare)}
