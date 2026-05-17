@@ -313,14 +313,71 @@ async function findNearestHighwayOnRamp(originLatLng) {
     }),
   );
 
-  const nearby = withDriveTimes
-    .filter(Boolean)
+  const allValid = withDriveTimes.filter(Boolean);
+
+  // Google's geocoder returns a representative midpoint for a highway in the state,
+  // not the nearest on-ramp. "I-64 near Georgetown, KY" gives a point 35 min away,
+  // but the I-64/I-75 interchange in Lexington is only 14 min away. For interstates
+  // whose geocoded point is >20 min but ≤50 min, try the junction with the nearest
+  // already-validated within-20 interstate to find the real closest access.
+  const primary20 = allValid
+    .filter((r) => r.driveTimeMinutes <= 20)
+    .sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
+
+  if (primary20.length && state) {
+    const nearestHwy = primary20[0];
+    const borderline = allValid.filter((r) => r.driveTimeMinutes > 20 && r.driveTimeMinutes <= 50);
+
+    const interchangeResults = await Promise.all(
+      borderline.map(async (farHwy) => {
+        try {
+          const response = await googleMapsClient.geocode({
+            params: {
+              key: googleMapsApiKey,
+              address: `${farHwy.highway}/${nearestHwy.highway} ${state}`,
+            },
+          });
+          const result = response.data.results?.[0];
+          if (!result) return null;
+
+          const returned = (result.formatted_address || '').toUpperCase();
+          const num = farHwy.highway.replace('I-', '');
+          const isReal =
+            returned.includes(farHwy.highway.toUpperCase()) ||
+            returned.includes(`INTERSTATE ${num}`) ||
+            returned.includes(`I-${num}`) ||
+            returned.includes(`I ${num}`);
+          if (!isReal) return null;
+
+          const driveTimeMinutes = await getDriveTime(originLatLng, result.geometry.location);
+          if (driveTimeMinutes > 20) return null;
+
+          return {
+            highway: farHwy.highway,
+            location: result.geometry.location,
+            address: result.formatted_address,
+            driveTimeMinutes,
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    for (const r of interchangeResults) {
+      if (r && !allValid.some((v) => v.highway === r.highway && v.driveTimeMinutes <= 20)) {
+        allValid.push(r);
+      }
+    }
+  }
+
+  const nearby = allValid
     .filter((r) => r.driveTimeMinutes <= 20)
     .sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
 
   const candidates = nearby.length
     ? nearby
-    : withDriveTimes.filter(Boolean).sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes).slice(0, 1);
+    : allValid.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes).slice(0, 1);
 
   if (!candidates.length) {
     throw new Error('Unable to calculate drive times to nearby interstate highways.');
