@@ -183,3 +183,59 @@ body {
   text-decoration: none;
 }
 .back-link:hover { color: var(--ink); }
+
+/* Address form page */
+.form-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.form-container {
+  width: 100%;
+  padding: 2rem 1.5rem;
+}
+.form-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 2.5rem;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+}
+.form-tagline {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 2rem;
+  max-width: 280px;
+}
+.address-form input[type="text"] {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1.5px solid var(--divider);
+  border-radius: 8px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--white);
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.address-form input[type="text"]::placeholder { color: var(--muted); }
+.address-form input[type="text"]:focus { border-color: var(--gold); }
+.address-form button[type="submit"] {
+  margin-top: 0.75rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--white);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+.address-form button[type="submit"]:hover { background: #a07a20; }
