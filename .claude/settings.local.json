@@ -15,7 +15,9 @@
       "Bash(curl -s \"http://localhost:3000/report?address=456+Rural+Route+1%2C+Harlan%2C+KY+40831\")",
       "Bash(curl -s \"http://localhost:3000/report?address=123+Main+St%2C+Louisville%2C+KY+40202\")",
       "Bash(curl -s \"http://localhost:3000/report\")",
-      "Bash(pkill -f \"node src/app.js\")"
+      "Bash(pkill -f \"node src/app.js\")",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(node *)"
     ]
   }
 }
