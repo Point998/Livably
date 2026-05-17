@@ -263,40 +263,95 @@ async function findNearestUrgentCare(originLatLng) {
 }
 
 async function findNearestHighwayOnRamp(originLatLng) {
-  let placesResponse = await googleMapsClient.textSearch({
+  // Step 1: Reverse geocode the origin to get city and state
+  const reverseGeoResponse = await googleMapsClient.reverseGeocode({
     params: {
       key: googleMapsApiKey,
-      query: 'highway on ramp',
-      location: originLatLng,
-      radius: 50000,
+      latlng: originLatLng,
     },
   });
 
-  let placeResults = placesResponse.data.results || [];
-  if (!placeResults.length) {
-    placesResponse = await googleMapsClient.textSearch({
-      params: {
-        key: googleMapsApiKey,
-        query: 'interstate on ramp',
-        location: originLatLng,
-        radius: 50000,
-      },
-    });
-    placeResults = placesResponse.data.results || [];
+  const geoComponents = reverseGeoResponse.data.results?.[0]?.address_components || [];
+  const city = geoComponents.find((c) => c.types.includes('locality'))?.long_name || '';
+  const state = geoComponents.find((c) => c.types.includes('administrative_area_level_1'))?.short_name || '';
+  const locationLabel = city && state ? `${city}, ${state}` : originLatLng;
+
+  // Step 2: Common US interstates to check — Google geocodes these locally
+  // so "I-75 near Georgetown, KY" returns a nearby point, not one 3 states away
+  const interstates = [
+    'I-75', 'I-64', 'I-65', 'I-71', 'I-70', 'I-40', 'I-80', 'I-90',
+    'I-95', 'I-85', 'I-10', 'I-20', 'I-25', 'I-35', 'I-55', 'I-57',
+    'I-77', 'I-78', 'I-81', 'I-83', 'I-87', 'I-93', 'I-94', 'I-96',
+  ];
+
+  // Step 3: Geocode each interstate near the address location
+  const geocodeResults = await Promise.all(
+    interstates.map(async (highway) => {
+      try {
+        const response = await googleMapsClient.geocode({
+          params: {
+            key: googleMapsApiKey,
+            address: `${highway} near ${locationLabel}`,
+          },
+        });
+        const result = response.data.results?.[0];
+        if (!result) return null;
+        return {
+          highway,
+          location: result.geometry.location,
+          address: result.formatted_address,
+        };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const validGeoResults = geocodeResults.filter(Boolean);
+  if (!validGeoResults.length) {
+    throw new Error('No interstate highways found near that address.');
   }
 
-  const place = placeResults[0];
-  if (!place) {
-    throw new Error('No highway on-ramp found near that address.');
+  // Step 4: Calculate drive time to each geocoded interstate point
+  const withDriveTimes = await Promise.all(
+    validGeoResults.map(async (result) => {
+      try {
+        const driveTimeMinutes = await getDriveTime(originLatLng, result.location);
+        return { ...result, driveTimeMinutes };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  // Step 5: Keep only interstates reachable within 20 minutes
+  const nearby = withDriveTimes
+    .filter(Boolean)
+    .filter((r) => r.driveTimeMinutes <= 20)
+    .sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
+
+  // If nothing is within 20 min, fall back to the single closest one
+  const candidates = nearby.length
+    ? nearby
+    : withDriveTimes.filter(Boolean).sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes).slice(0, 1);
+
+  if (!candidates.length) {
+    throw new Error('Unable to calculate drive times to nearby interstate highways.');
   }
 
-  const rampNote = parseHighwayRampInfo(place);
+  // Step 6: Return the closest one as the primary result,
+  // with a note listing all within 20 minutes if there are multiple
+  const primary = candidates[0];
+  const othersNote = candidates.length > 1
+    ? `Also within 20 minutes: ${candidates.slice(1).map((c) => `${c.highway} (${c.driveTimeMinutes} min)`).join(', ')}`
+    : null;
+
   return {
-    name: place.name,
-    address: place.formatted_address || place.vicinity || place.name,
-    location: place.geometry.location,
-    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
-    note: rampNote ? `Interstate and direction: ${rampNote}` : null,
+    name: primary.highway,
+    address: primary.address,
+    location: primary.location,
+    driveTimeMinutes: primary.driveTimeMinutes,
+    note: othersNote,
   };
 }
 
