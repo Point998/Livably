@@ -5,7 +5,17 @@
       "Bash(npx kill-port *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Borde\\\\livably\\\\src\" -Recurse | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Borde\\\\livably\\\\\", \"\"\\) })",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Borde\\\\livably\\\\public\" -Recurse | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Borde\\\\livably\\\\\", \"\"\\) })",
+      "Bash(node --check src/app.js)",
+      "Bash(node src/app.js)",
+      "Bash(curl -s \"http://localhost:3000/report?address=100+Wishing+Well+Path+Unit+2306+Georgetown+KY+40324\")",
+      "Bash(curl -s \"http://localhost:3000/report?address=100+Wishing+Well+Path+Unit+2306%2C+Georgetown%2C+KY+40324\")",
+      "Bash(curl -s \"http://localhost:3000/report?address=456+Rural+Route+1%2C+Harlan%2C+KY+40831\")",
+      "Bash(curl -s \"http://localhost:3000/report?address=123+Main+St%2C+Louisville%2C+KY+40202\")",
+      "Bash(curl -s \"http://localhost:3000/report\")",
+      "Bash(pkill -f \"node src/app.js\")"
     ]
   }
 }
