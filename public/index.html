@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Livably</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f7;
+      color: #111;
+    }
+    main {
+      max-width: 640px;
+      margin: 3rem auto;
+      padding: 1.5rem;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.06);
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    input {
+      width: 100%;
+      padding: 0.85rem;
+      border: 1px solid #d6d6d6;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1.25rem;
+      padding: 0.95rem 1.35rem;
+      border: none;
+      border-radius: 8px;
+      background: #1a73e8;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1667c1;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Livably</h1>
+    <p>Enter a street address to begin generating an address intelligence report.</p>
+    <form action="/report" method="get">
+      <label for="address">Street address</label>
+      <input type="text" id="address" name="address" placeholder="123 Main St, Anytown, USA" required>
+      <button type="submit">Generate report</button>
+    </form>
+  </main>
+</body>
+</html>

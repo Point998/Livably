@@ -1,0 +1,15 @@
+{
+  "name": "livably",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Residential address intelligence report prototype for homebuyers.",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js"
+  },
+  "dependencies": {
+    "@googlemaps/google-maps-services-js": "^3.4.2",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2"
+  }
+}
