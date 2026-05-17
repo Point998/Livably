@@ -569,45 +569,155 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
 </html>`;
 }
 
-function buildSimpleHTML(message) {
+function classifyError(error) {
+  const msg = (error.message || '').toLowerCase();
+  const status = error.response?.status;
+  if (msg.includes('unable to geocode')) {
+    return { type: 'ADDRESS_NOT_FOUND', title: "We couldn't find that address", message: 'Check the spelling and try again.' };
+  }
+  if (status === 429 || msg.includes('quota') || msg.includes('rate limit')) {
+    return { type: 'RATE_LIMIT', title: 'High demand right now', message: 'Please try again in a moment.' };
+  }
+  return { type: 'SERVER_ERROR', title: 'Something went wrong', message: 'An error occurred generating your report.' };
+}
+
+function buildErrorHTML(type, title, message, address) {
+  const tryAgainLink = address
+    ? `\n    <a href="/?address=${encodeURIComponent(address)}" class="btn-retry">Try again</a>`
+    : '';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="livably-error" content="${escapeHtml(type)}">
   <title>Livably</title>
   <link rel="stylesheet" href="/report.css">
 </head>
-<body>
-  <header class="header">
-    <div class="logo">Liv<span class="logo-gold">ably</span></div>
-  </header>
-  <div class="hero">
-    <p class="simple-message">${escapeHtml(message)}</p>
+<body class="error-page">
+  <div class="error-container">
+    <div class="error-icon">⚠️</div>
+    <h1 class="error-title">${escapeHtml(title)}</h1>
+    <p class="error-message">${escapeHtml(message)}</p>${tryAgainLink}
+    <a href="/" class="back-link">Try a different address</a>
   </div>
-  <footer class="footer">
-    <a href="/" class="back-link">← Back to address form</a>
-  </footer>
+</body>
+</html>`;
+}
+
+function buildLoadingHTML(address) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Livably — Loading…</title>
+  <link rel="stylesheet" href="/report.css">
+</head>
+<body class="loading-page" data-address="${escapeHtml(address)}">
+  <div class="loading-container">
+    <div class="loading-logo">Liv<span class="logo-gold">ably</span></div>
+    <div class="loading-spinner"></div>
+    <p class="loading-message" id="loading-msg">Finding your address...</p>
+  </div>
+  <script>
+    (function () {
+      var messages = [
+        'Finding your address...',
+        'Locating nearby services...',
+        'Calculating drive times...',
+        'Generating your report...'
+      ];
+      var msgEl = document.getElementById('loading-msg');
+      var idx = 0;
+      var address = document.body.dataset.address;
+
+      var cycleInterval = setInterval(function () {
+        msgEl.style.opacity = '0';
+        setTimeout(function () {
+          idx = (idx + 1) % messages.length;
+          msgEl.textContent = messages[idx];
+          msgEl.style.opacity = '1';
+        }, 300);
+      }, 2500);
+
+      setTimeout(function () {
+        clearInterval(cycleInterval);
+        msgEl.style.opacity = '0';
+        setTimeout(function () {
+          msgEl.textContent = 'This is taking longer than usual…';
+          msgEl.style.opacity = '1';
+        }, 300);
+      }, 15000);
+
+      function startCountdown(retryFn) {
+        var secs = 30;
+        msgEl.textContent = 'Too many requests. Retrying in ' + secs + 's…';
+        var timer = setInterval(function () {
+          secs--;
+          if (secs <= 0) {
+            clearInterval(timer);
+            retryFn();
+          } else {
+            msgEl.textContent = 'Too many requests. Retrying in ' + secs + 's…';
+          }
+        }, 1000);
+      }
+
+      function doFetch() {
+        fetch('/report?address=' + encodeURIComponent(address) + '&fetch=1')
+          .then(function (res) { return res.text(); })
+          .then(function (html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            var errorMeta = doc.querySelector('meta[name="livably-error"]');
+            if (errorMeta && errorMeta.getAttribute('content') === 'RATE_LIMIT') {
+              clearInterval(cycleInterval);
+              startCountdown(doFetch);
+              return;
+            }
+            document.head.innerHTML = doc.head.innerHTML;
+            document.body.className = doc.body.className;
+            document.body.innerHTML = doc.body.innerHTML;
+          })
+          .catch(function () {
+            clearInterval(cycleInterval);
+            msgEl.style.opacity = '0';
+            setTimeout(function () {
+              msgEl.innerHTML = 'Connection issue. <a href="/report?address=' + encodeURIComponent(address) + '">Try again</a>';
+              msgEl.style.opacity = '1';
+            }, 300);
+          });
+      }
+
+      doFetch();
+    })();
+  <\/script>
 </body>
 </html>`;
 }
 
 app.get('/report', async (req, res) => {
   const address = req.query.address;
+  const isFetch = req.query.fetch === '1';
 
   if (!address) {
-    return res.send(buildSimpleHTML('No address provided.'));
+    return res.send(buildErrorHTML('SERVER_ERROR', 'No address provided', 'Please go back and enter an address.', null));
   }
 
   if (!googleMapsApiKey) {
-    return res.send(buildSimpleHTML('Missing GOOGLE_MAPS_API_KEY in .env.'));
+    return res.send(buildErrorHTML('SERVER_ERROR', 'Configuration error', 'The server is missing required API credentials.', null));
+  }
+
+  if (!isFetch) {
+    return res.send(buildLoadingHTML(address));
   }
 
   try {
     const origin = await geocodeAddress(address);
     const originLatLng = `${origin.lat},${origin.lng}`;
 
-    const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school] = await Promise.all([
+    const results = await Promise.allSettled([
       findNearestGrocery(originLatLng),
       findNearestPharmacy(originLatLng),
       findNearestHospital(originLatLng),
@@ -616,10 +726,13 @@ app.get('/report', async (req, res) => {
       findNearestSchool(originLatLng),
     ]);
 
+    const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school] =
+      results.map((r) => (r.status === 'fulfilled' ? r.value : null));
+
     return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school }));
   } catch (error) {
-    const message = error?.response?.data?.error_message || error.message || 'An error occurred while building the report.';
-    return res.send(buildSimpleHTML(message));
+    const { type, title, message } = classifyError(error);
+    return res.send(buildErrorHTML(type, title, message, address));
   }
 });
 

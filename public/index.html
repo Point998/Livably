@@ -15,5 +15,9 @@
       <button type="submit">Generate report</button>
     </form>
   </div>
+  <script>
+    var p = new URLSearchParams(location.search).get('address');
+    if (p) document.querySelector('input[name="address"]').value = p;
+  </script>
 </body>
 </html>
