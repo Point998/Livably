@@ -53,25 +53,6 @@ function isExcludedPlaceName(name, excludeTerms) {
   return excludeTerms.some((term) => normalized.includes(term));
 }
 
-function parseHighwayRampInfo(place) {
-  const text = `${place.name || ''} ${place.formatted_address || ''} ${place.vicinity || ''}`.toUpperCase();
-  const interstateMatch = text.match(/\b(I-[0-9]+|US-[0-9]+|SR[0-9]+|STATE ROUTE [0-9]+)\b/);
-  const directionMatch = text.match(/\b(NORTH|SOUTH|EAST|WEST|NB|SB|EB|WB)\b/);
-
-  const interstate = interstateMatch ? interstateMatch[1].replace('STATE ROUTE ', 'SR') : '';
-  let direction = directionMatch ? directionMatch[1] : '';
-  if (direction === 'NB') direction = 'North';
-  if (direction === 'SB') direction = 'South';
-  if (direction === 'EB') direction = 'East';
-  if (direction === 'WB') direction = 'West';
-
-  if (interstate) {
-    return `${interstate}${direction ? ` ${direction}` : ''}`;
-  }
-
-  return null;
-}
-
 async function getDriveTime(originLatLng, destinationLatLng) {
   const distanceResponse = await googleMapsClient.distancematrix({
     params: {
@@ -91,9 +72,10 @@ async function getDriveTime(originLatLng, destinationLatLng) {
   return Math.round((element.duration_in_traffic?.value ?? element.duration?.value) / 60);
 }
 
+// Returns top 3 nearest grocery stores by drive time.
+// Uses textSearch with tight radius so Google relevance is overridden by actual drive time.
+// Excludes gas stations, convenience stores, and dollar stores by place type.
 async function findNearestGrocery(originLatLng) {
-  const excludedTypes = new Set(['gas_station', 'convenience_store', 'lodging']);
-
   const placesResponse = await googleMapsClient.textSearch({
     params: {
       key: googleMapsApiKey,
@@ -105,30 +87,36 @@ async function findNearestGrocery(originLatLng) {
 
   const placeResults = (placesResponse.data.results || []).filter((place) => {
     const types = place.types || [];
-    return !types.some((type) => excludedTypes.has(type));
+    return !types.includes('gas_station') &&
+           !types.includes('convenience_store') &&
+           !types.includes('lodging');
   });
 
   if (!placeResults.length) {
-    throw new Error('No eligible grocery stores found near that address.');
+    throw new Error('No grocery stores found near that address.');
   }
 
-  const topResults = placeResults.slice(0, 8);
-
-  const candidatesWithDriveTimes = await Promise.all(
-    topResults.map(async (place) => {
-      const driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location);
-      return {
-        name: place.name,
-        address: place.formatted_address || place.vicinity || place.name,
-        location: place.geometry.location,
-        driveTimeMinutes,
-      };
+  // Calculate drive times for top 8 candidates, return 3 fastest
+  const candidates = placeResults.slice(0, 8);
+  const withDriveTimes = await Promise.all(
+    candidates.map(async (place) => {
+      try {
+        const driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location);
+        return {
+          name: place.name,
+          address: place.formatted_address || place.vicinity || place.name,
+          location: place.geometry.location,
+          driveTimeMinutes,
+        };
+      } catch {
+        return null;
+      }
     }),
   );
 
-  candidatesWithDriveTimes.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
-
-  return candidatesWithDriveTimes.slice(0, 3);
+  const valid = withDriveTimes.filter(Boolean);
+  valid.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
+  return valid.slice(0, 3);
 }
 
 async function findNearestPharmacy(originLatLng) {
@@ -154,7 +142,7 @@ async function findNearestPharmacy(originLatLng) {
   };
 }
 
-// FIXED: Gets top 5 hospital results, calculates actual drive time to each,
+// Gets top 5 hospital results, calculates actual drive time to each,
 // and returns the one with the shortest drive time — not just Google's first result.
 async function findNearestHospital(originLatLng) {
   let placesResponse = await googleMapsClient.textSearch({
@@ -184,10 +172,8 @@ async function findNearestHospital(originLatLng) {
     throw new Error('No hospital found near that address.');
   }
 
-  // Check drive time for up to the top 5 candidates
   const candidates = placeResults.slice(0, 5);
-
-  const candidatesWithDriveTimes = await Promise.all(
+  const withDriveTimes = await Promise.all(
     candidates.map(async (place) => {
       try {
         const driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location);
@@ -203,8 +189,7 @@ async function findNearestHospital(originLatLng) {
     }),
   );
 
-  // Filter out any that failed and pick the one with the shortest drive time
-  const valid = candidatesWithDriveTimes.filter(Boolean);
+  const valid = withDriveTimes.filter(Boolean);
   if (!valid.length) {
     throw new Error('Unable to calculate drive times to nearby hospitals.');
   }
@@ -213,7 +198,10 @@ async function findNearestHospital(originLatLng) {
   return valid[0];
 }
 
+// Excludes retail health clinics (Little Clinic, MinuteClinic) that are not true urgent care.
 async function findNearestUrgentCare(originLatLng) {
+  const retailClinicExclusions = ['little clinic', 'minuteclinic', 'minute clinic', 'cvs health', 'walgreens health'];
+
   let placesResponse = await googleMapsClient.placesNearby({
     params: {
       key: googleMapsApiKey,
@@ -223,21 +211,25 @@ async function findNearestUrgentCare(originLatLng) {
     },
   });
 
-  let placeResults = placesResponse.data.results || [];
+  let placeResults = (placesResponse.data.results || []).filter(
+    (place) => !isExcludedPlaceName(place.name, retailClinicExclusions),
+  );
+
   if (!placeResults.length) {
-    placesResponse = await googleMapsClient.placesNearby({
+    placesResponse = await googleMapsClient.textSearch({
       params: {
         key: googleMapsApiKey,
+        query: 'urgent care clinic',
         location: originLatLng,
-        rankby: 'distance',
-        keyword: 'urgent care clinic',
+        radius: 50000,
       },
     });
-    placeResults = placesResponse.data.results || [];
+    placeResults = (placesResponse.data.results || []).filter(
+      (place) => !isExcludedPlaceName(place.name, retailClinicExclusions),
+    );
   }
 
-  const retailClinicTerms = ['little clinic', 'minute clinic', 'cvs health', 'walgreens health'];
-  const place = placeResults.find((p) => !isExcludedPlaceName(p.name, retailClinicTerms));
+  const place = placeResults[0];
   if (!place) {
     throw new Error('No urgent care clinic found near that address.');
   }
@@ -250,17 +242,10 @@ async function findNearestUrgentCare(originLatLng) {
   };
 }
 
-function highwayAppearsInAddress(text, highway) {
-  const normalized = (text || '').toUpperCase();
-  const highwayPattern = highway.replace('-', '[- ]?').toUpperCase();
-  const regex = new RegExp(`\\b${highwayPattern}\\b`);
-  return regex.test(normalized) || normalized.includes(`INTERSTATE ${highway.slice(2)}`);
-}
-
+// Finds nearby interstates by geocoding each highway name near the address city/state.
+// Validates the returned result actually mentions the highway to filter out false matches.
+// Shows the closest as primary, lists others within 20 minutes in the note.
 async function findNearestHighwayOnRamp(originLatLng) {
-  const [originLat, originLng] = originLatLng.split(',').map(Number);
-
-  // Step 1: Reverse geocode the origin to get city and state
   const reverseGeoResponse = await googleMapsClient.reverseGeocode({
     params: {
       key: googleMapsApiKey,
@@ -273,23 +258,12 @@ async function findNearestHighwayOnRamp(originLatLng) {
   const state = geoComponents.find((c) => c.types.includes('administrative_area_level_1'))?.short_name || '';
   const locationLabel = city && state ? `${city}, ${state}` : originLatLng;
 
-  // Step 2: Common US interstates to check — Google geocodes these locally
-  // so "I-75 near Georgetown, KY" returns a nearby point, not one 3 states away
   const interstates = [
     'I-75', 'I-64', 'I-65', 'I-71', 'I-70', 'I-40', 'I-80', 'I-90',
     'I-95', 'I-85', 'I-10', 'I-20', 'I-25', 'I-35', 'I-55', 'I-57',
     'I-77', 'I-78', 'I-81', 'I-83', 'I-87', 'I-93', 'I-94', 'I-96',
   ];
 
-  // Bounding box ~55 km around the origin — biases Google toward a local highway segment
-  // rather than a statewide geometric center (e.g. "I-64, Kentucky, USA" far from origin).
-  const biasDelta = 0.5;
-  const bounds = {
-    southwest: { lat: originLat - biasDelta, lng: originLng - biasDelta },
-    northeast: { lat: originLat + biasDelta, lng: originLng + biasDelta },
-  };
-
-  // Step 3: Geocode each interstate near the address location
   const geocodeResults = await Promise.all(
     interstates.map(async (highway) => {
       try {
@@ -297,24 +271,25 @@ async function findNearestHighwayOnRamp(originLatLng) {
           params: {
             key: googleMapsApiKey,
             address: `${highway} near ${locationLabel}`,
-            bounds,
           },
         });
         const result = response.data.results?.[0];
         if (!result) return null;
-        const formattedAddress = result.formatted_address || '';
-        const { lat, lng } = result.geometry.location;
 
-        const tooFar = Math.abs(lat - originLat) > biasDelta || Math.abs(lng - originLng) > biasDelta;
-        const passesName = highwayAppearsInAddress(formattedAddress, highway);
-        const status = !passesName ? 'FILTERED (name)' : tooFar ? 'FILTERED (too far)' : 'PASS';
-        console.log(`[highway] ${highway}: "${formattedAddress}" [${lat.toFixed(3)},${lng.toFixed(3)}] — ${status}`);
+        const returned = (result.formatted_address || '').toUpperCase();
+        const num = highway.replace('I-', '');
+        const isReal =
+          returned.includes(highway.toUpperCase()) ||
+          returned.includes(`INTERSTATE ${num}`) ||
+          returned.includes(`I-${num}`) ||
+          returned.includes(`I ${num}`);
 
-        if (!passesName || tooFar) return null;
+        if (!isReal) return null;
+
         return {
           highway,
           location: result.geometry.location,
-          address: formattedAddress,
+          address: result.formatted_address,
         };
       } catch {
         return null;
@@ -327,7 +302,6 @@ async function findNearestHighwayOnRamp(originLatLng) {
     throw new Error('No interstate highways found near that address.');
   }
 
-  // Step 4: Calculate drive time to each geocoded interstate point
   const withDriveTimes = await Promise.all(
     validGeoResults.map(async (result) => {
       try {
@@ -339,13 +313,11 @@ async function findNearestHighwayOnRamp(originLatLng) {
     }),
   );
 
-  // Step 5: Keep only interstates reachable within 20 minutes
   const nearby = withDriveTimes
     .filter(Boolean)
     .filter((r) => r.driveTimeMinutes <= 20)
     .sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
 
-  // If nothing is within 20 min, fall back to the single closest one
   const candidates = nearby.length
     ? nearby
     : withDriveTimes.filter(Boolean).sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes).slice(0, 1);
@@ -354,8 +326,6 @@ async function findNearestHighwayOnRamp(originLatLng) {
     throw new Error('Unable to calculate drive times to nearby interstate highways.');
   }
 
-  // Step 6: Return the closest one as the primary result,
-  // with a note listing all within 20 minutes if there are multiple
   const primary = candidates[0];
   const othersNote = candidates.length > 1
     ? `Also within 20 minutes: ${candidates.slice(1).map((c) => `${c.highway} (${c.driveTimeMinutes} min)`).join(', ')}`
@@ -370,10 +340,9 @@ async function findNearestHighwayOnRamp(originLatLng) {
   };
 }
 
-// NEW: Replaces gas station. Finds the nearest school.
-// Note: This returns the geographically nearest school, not the assigned school
-// for the parcel. Assigned school verification requires manual district lookup
-// and will be added in a future update.
+// Returns nearest school by distance.
+// Note: nearest by distance is not the assigned school for the parcel.
+// Assigned school requires verification with the school district.
 async function findNearestSchool(originLatLng) {
   let placesResponse = await googleMapsClient.placesNearby({
     params: {
@@ -408,28 +377,28 @@ async function findNearestSchool(originLatLng) {
     address: place.vicinity || place.formatted_address || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
-    note: 'Note: This is the nearest school by distance. Assigned school for this address requires verification directly with the school district.',
+    note: 'This is the nearest school by distance. Assigned school for this address requires verification directly with the school district.',
   };
+}
+
+function renderGrocerySection(stores) {
+  if (!stores || !stores.length) {
+    return `<section><h2>1. Nearest grocery stores</h2><p>Not available.</p></section>`;
+  }
+
+  const rows = stores.map((s) => `
+  <p><strong>${s.name}</strong><br>${s.address}<br>${s.driveTimeMinutes} minutes</p>
+  `).join('<hr style="border:none;border-top:1px solid #eee;margin:8px 0;">');
+
+  return `<section>
+  <h2>1. Nearest grocery stores</h2>
+  ${rows}
+</section>`;
 }
 
 function renderDestinationSection(title, result) {
   if (!result) {
     return `<section><h2>${title}</h2><p>Not available.</p></section>`;
-  }
-
-  if (Array.isArray(result)) {
-    const itemHtml = result.map((store) => `
-      <div style="margin-bottom: 1rem;">
-        <p><strong>${store.name}</strong></p>
-        <p>${store.address}</p>
-        <p>${store.driveTimeMinutes} minutes</p>
-      </div>
-    `).join('');
-
-    return `<section>
-  <h2>${title}</h2>
-  ${itemHtml}
-</section>`;
   }
 
   return `<section>
@@ -506,11 +475,11 @@ app.get('/report', async (req, res) => {
 <body style="font-family: system-ui, sans-serif; padding: 2rem; max-width: 640px; margin: auto;">
   <h1>Livably Daily Reachability Report</h1>
   <p>Drive times are door-to-door for 8am Tuesday departure.</p>
-  ${renderDestinationSection('1. Nearest grocery stores', grocery)}
+  ${renderGrocerySection(grocery)}
   ${renderDestinationSection('2. Nearest pharmacy', pharmacy)}
   ${renderDestinationSection('3. Nearest hospital with a full emergency department', hospital)}
   ${renderDestinationSection('4. Nearest urgent care clinic', urgentCare)}
-  ${renderDestinationSection('5. Nearest highway on-ramp', highwayRamp)}
+  ${renderDestinationSection('5. Nearest highway access', highwayRamp)}
   ${renderDestinationSection('6. Nearest school', school)}
   <p><a href="/">Back to address form</a></p>
 </body>
