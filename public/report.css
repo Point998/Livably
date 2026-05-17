@@ -1,0 +1,185 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=DM+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --ink: #1a1a1a;
+  --cream: #faf8f4;
+  --gold: #b8922a;
+  --white: #ffffff;
+  --muted: #6b6b6b;
+  --divider: #e8e4de;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  max-width: 480px;
+  margin: 0 auto;
+}
+.header {
+  background: var(--ink);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-family: 'Fraunces', serif;
+  font-size: 1.5rem;
+  color: var(--white);
+  letter-spacing: -0.02em;
+}
+.logo-gold { color: var(--gold); }
+.report-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 0.3rem 0.65rem;
+  border-radius: 4px;
+}
+.hero {
+  padding: 2rem 1.5rem 1.25rem;
+}
+.hero-street {
+  font-family: 'Fraunces', serif;
+  font-size: 1.65rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+.hero-city {
+  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.hero-date {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+.chapter-card {
+  background: var(--white);
+  margin: 0.5rem 1rem 1rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+.chapter-header {
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--divider);
+  border-left: 3px solid var(--gold);
+}
+.chapter-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.chapter-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+.chapter-body { padding: 0 1.25rem; }
+.dest-section {
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--divider);
+}
+.dest-section:last-child { border-bottom: none; }
+.dest-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+}
+.grocery-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.6rem 0;
+}
+.grocery-item + .grocery-item { border-top: 1px solid var(--divider); }
+.dest-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.dest-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.dest-address {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+.drive-time {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  margin-left: 0.75rem;
+  flex-shrink: 0;
+}
+.dest-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+.bucket-tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+.simple-message {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: 1rem;
+}
+.footer {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  border-top: 1px solid var(--divider);
+  margin-top: 0.5rem;
+}
+.footer-brand {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+}
+.footer-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+.footer-legal {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 0.75rem;
+  line-height: 1.6;
+}
+.back-link {
+  display: inline-block;
+  margin-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--ink); }
