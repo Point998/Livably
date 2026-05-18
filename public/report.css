@@ -326,3 +326,15 @@ body {
 }
 .btn-primary:hover,
 .btn-retry:hover { background: #a07a20; }
+
+/* Map section */
+.map-section {
+  padding: 0 1rem 0.5rem;
+}
+.report-map {
+  width: 100%;
+  height: 380px;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}

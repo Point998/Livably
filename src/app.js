@@ -519,7 +519,7 @@ function buildSchoolSection(school) {
     </div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -531,6 +531,89 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     buildDestSection('Highway Access', highwayRamp),
     buildSchoolSection(school),
   ].join('\n');
+
+  // Build map pin data from all non-null services
+  const mapServices = [];
+  if (grocery && grocery.length) {
+    grocery.forEach((s, i) => {
+      if (s?.location) mapServices.push({
+        name: s.name, address: s.address, driveTimeMinutes: s.driveTimeMinutes,
+        lat: s.location.lat, lng: s.location.lng,
+        label: i === 0 ? 'Grocery' : null,
+      });
+    });
+  }
+  [
+    { result: pharmacy,    label: 'Pharmacy' },
+    { result: hospital,    label: 'Hospital' },
+    { result: urgentCare,  label: 'Urgent Care' },
+    { result: highwayRamp, label: highwayRamp?.name || 'Highway' },
+    { result: school,      label: 'School' },
+  ].forEach(({ result, label }) => {
+    if (result?.location) mapServices.push({
+      name: result.name, address: result.address, driveTimeMinutes: result.driveTimeMinutes,
+      lat: result.location.lat, lng: result.location.lng, label,
+    });
+  });
+
+  const mapData = origin ? { home: { lat: origin.lat, lng: origin.lng }, services: mapServices } : null;
+  // Escape < so address/name strings can't contain </script> and break the JSON block
+  const safeMapJSON = mapData ? JSON.stringify(mapData).replace(/</g, '\\u003c') : null;
+
+  const mapSectionHTML = mapData ? `
+  <div class="map-section">
+    <div id="map" class="report-map"></div>
+  </div>` : '';
+
+  const mapScriptsHTML = mapData ? `
+  <script id="map-data" type="application/json">${safeMapJSON}<\/script>
+  <script>
+    window.initMap = function () {
+      try {
+        var data = JSON.parse(document.getElementById('map-data').textContent);
+        var home = { lat: data.home.lat, lng: data.home.lng };
+        var map = new google.maps.Map(document.getElementById('map'), {
+          center: home, zoom: 12,
+          mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+        });
+        var bounds = new google.maps.LatLngBounds();
+        bounds.extend(home);
+        new google.maps.Marker({
+          position: home, map: map, title: 'Your address', zIndex: 10,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: '#b8922a', fillOpacity: 1,
+            strokeColor: '#ffffff', strokeWeight: 2, scale: 10,
+          },
+        });
+        var infoWindow = new google.maps.InfoWindow();
+        data.services.forEach(function (svc) {
+          var pos = { lat: svc.lat, lng: svc.lng };
+          bounds.extend(pos);
+          var marker = new google.maps.Marker({ position: pos, map: map, title: svc.name });
+          marker.addListener('click', function () {
+            infoWindow.setContent(
+              '<div style="font-family:DM Sans,sans-serif;font-size:0.85rem;max-width:200px">' +
+              '<strong>' + svc.name + '</strong>' +
+              (svc.label ? '<br><span style="color:#6b6b6b;font-size:0.75rem">' + svc.label + '</span>' : '') +
+              '<br><span style="color:#6b6b6b">' + svc.address + '</span>' +
+              '<br><strong>' + svc.driveTimeMinutes + ' min</strong></div>'
+            );
+            infoWindow.open(map, marker);
+          });
+        });
+        map.fitBounds(bounds);
+        var listener = google.maps.event.addListener(map, 'idle', function () {
+          if (map.getZoom() > 15) map.setZoom(15);
+          google.maps.event.removeListener(listener);
+        });
+      } catch (e) {
+        var el = document.getElementById('map');
+        if (el) el.style.display = 'none';
+      }
+    };
+  <\/script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=${escapeHtml(googleMapsApiKey)}&callback=initMap" async defer><\/script>` : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -549,7 +632,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="hero-street">${escapeHtml(street)}</div>
     <div class="hero-city">${escapeHtml(cityState)}</div>
     <div class="hero-date">Research date: ${researchDate}</div>
-  </div>
+  </div>${mapSectionHTML}
   <div class="chapter-card">
     <div class="chapter-header">
       <div class="chapter-label">Chapter 03</div>
@@ -564,7 +647,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
     <div class="footer-legal">Drive times are estimates from Google Maps for 8am Tuesday departure. Assigned school requires verification with the local school district. For informational purposes only.</div>
     <a href="/" class="back-link">← Back to address form</a>
-  </footer>
+  </footer>${mapScriptsHTML}
 </body>
 </html>`;
 }
@@ -664,6 +747,17 @@ function buildLoadingHTML(address) {
         }, 1000);
       }
 
+      function reExecScripts(el) {
+        el.querySelectorAll('script').forEach(function (old) {
+          var s = document.createElement('script');
+          for (var i = 0; i < old.attributes.length; i++) {
+            s.setAttribute(old.attributes[i].name, old.attributes[i].value);
+          }
+          s.textContent = old.textContent;
+          old.parentNode.replaceChild(s, old);
+        });
+      }
+
       function doFetch() {
         fetch('/report?address=' + encodeURIComponent(address) + '&fetch=1')
           .then(function (res) { return res.text(); })
@@ -679,6 +773,8 @@ function buildLoadingHTML(address) {
             document.head.innerHTML = doc.head.innerHTML;
             document.body.className = doc.body.className;
             document.body.innerHTML = doc.body.innerHTML;
+            reExecScripts(document.head);
+            reExecScripts(document.body);
           })
           .catch(function () {
             clearInterval(cycleInterval);
@@ -729,7 +825,7 @@ app.get('/report', async (req, res) => {
     const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school] =
       results.map((r) => (r.status === 'fulfilled' ? r.value : null));
 
-    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school }));
+    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin }));
   } catch (error) {
     const { type, title, message } = classifyError(error);
     return res.send(buildErrorHTML(type, title, message, address));
