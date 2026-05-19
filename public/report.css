@@ -327,6 +327,36 @@ body {
 .btn-primary:hover,
 .btn-retry:hover { background: #a07a20; }
 
+/* Share section */
+.share-section {
+  margin-top: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.share-button {
+  background: transparent;
+  color: var(--gold);
+  border: 1.5px solid var(--gold);
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.share-button:hover {
+  background: var(--gold);
+  color: var(--white);
+}
+.share-toast {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.share-toast.hidden { display: none; }
+
 /* Map section */
 .map-section {
   padding: 0 1rem 0.5rem;

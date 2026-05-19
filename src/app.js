@@ -4,12 +4,54 @@ dotenv.config();
 
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const { Client } = require('@googlemaps/google-maps-services-js');
 
 const app = express();
 const port = process.env.PORT || 3000;
 const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
 const googleMapsClient = new Client({});
+
+const DATA_DIR = path.join(__dirname, '../data');
+const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
+
+function ensureReportsFile() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(REPORTS_FILE)) fs.writeFileSync(REPORTS_FILE, '{}', 'utf8');
+}
+
+function loadReports() {
+  try {
+    return JSON.parse(fs.readFileSync(REPORTS_FILE, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function saveReport(address) {
+  ensureReportsFile();
+  const reports = loadReports();
+  let id;
+  do { id = crypto.randomBytes(4).toString('hex'); } while (reports[id]);
+  const now = new Date().toISOString();
+  reports[id] = { address, createdAt: now, lastAccessed: now };
+  fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
+  return id;
+}
+
+function getReport(reportId) {
+  return loadReports()[reportId] || null;
+}
+
+function updateReportAccess(reportId) {
+  ensureReportsFile();
+  const reports = loadReports();
+  if (reports[reportId]) {
+    reports[reportId].lastAccessed = new Date().toISOString();
+    fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
+  }
+}
 
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -519,9 +561,33 @@ function buildSchoolSection(school) {
     </div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin, reportId }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
+
+  const shareSectionHTML = reportId ? `
+  <div class="share-section">
+    <button id="shareBtn" class="share-button">Share this report</button>
+    <span id="shareToast" class="share-toast hidden">Link copied!</span>
+  </div>
+  <script>
+    (function () {
+      var id = '${reportId}';
+      document.getElementById('shareBtn').addEventListener('click', function () {
+        var url = window.location.origin + '/r/' + id;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(showToast).catch(function () { prompt('Copy this link:', url); });
+        } else {
+          prompt('Copy this link:', url);
+        }
+      });
+      function showToast() {
+        var t = document.getElementById('shareToast');
+        t.classList.remove('hidden');
+        setTimeout(function () { t.classList.add('hidden'); }, 3000);
+      }
+    })();
+  <\/script>` : '';
 
   const sectionsHTML = [
     buildGrocerySection(grocery),
@@ -631,7 +697,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <div class="hero">
     <div class="hero-street">${escapeHtml(street)}</div>
     <div class="hero-city">${escapeHtml(cityState)}</div>
-    <div class="hero-date">Research date: ${researchDate}</div>
+    <div class="hero-date">Research date: ${researchDate}</div>${shareSectionHTML}
   </div>${mapSectionHTML}
   <div class="chapter-card">
     <div class="chapter-header">
@@ -825,13 +891,26 @@ app.get('/report', async (req, res) => {
     const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school] =
       results.map((r) => (r.status === 'fulfilled' ? r.value : null));
 
-    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin }));
+    let reportId = null;
+    try { reportId = saveReport(address); } catch {}
+
+    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin, reportId }));
   } catch (error) {
     const { type, title, message } = classifyError(error);
     return res.send(buildErrorHTML(type, title, message, address));
   }
 });
 
+app.get('/r/:reportId', (req, res) => {
+  const report = getReport(req.params.reportId);
+  if (!report) {
+    return res.status(404).send(buildErrorHTML('SERVER_ERROR', 'Report not found', 'This link may have expired or is invalid.', null));
+  }
+  try { updateReportAccess(req.params.reportId); } catch {}
+  return res.redirect(`/report?address=${encodeURIComponent(report.address)}`);
+});
+
+ensureReportsFile();
 app.listen(port, () => {
   console.log(`Livably app running at http://localhost:${port}`);
 });
