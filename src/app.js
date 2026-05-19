@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { Client } = require('@googlemaps/google-maps-services-js');
+const { geocodeCache, placesCache, driveTimeCache, cacheStats } = require('./cache');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -104,6 +105,10 @@ async function getTrafficVariations(originLatLng, destLocation) {
 
   const results = await Promise.allSettled(
     slots.map(async ({ label, display, ts }) => {
+      const cacheKey = `traffic:${originLatLng}:${destLatLng}:${label}`;
+      const cached = driveTimeCache.get(cacheKey);
+      if (cached !== null) { console.log('[CACHE HIT] traffic slot:', cacheKey); return cached; }
+
       const resp = await googleMapsClient.distancematrix({
         params: {
           key: googleMapsApiKey,
@@ -115,11 +120,13 @@ async function getTrafficVariations(originLatLng, destLocation) {
       });
       const el = resp.data.rows[0]?.elements?.[0];
       if (!el || el.status !== 'OK') throw new Error('no element');
-      return {
+      const result = {
         label,
         display,
         minutes: Math.round((el.duration_in_traffic?.value ?? el.duration?.value) / 60),
       };
+      driveTimeCache.set(cacheKey, result);
+      return result;
     }),
   );
 
@@ -135,6 +142,10 @@ async function getTrafficVariations(originLatLng, destLocation) {
 }
 
 async function geocodeAddress(address) {
+  const cacheKey = address.toLowerCase().trim();
+  const cached = geocodeCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] geocode:', cacheKey); return cached; }
+
   const geocodeResponse = await googleMapsClient.geocode({
     params: { address, key: googleMapsApiKey },
   });
@@ -144,7 +155,9 @@ async function geocodeAddress(address) {
     throw new Error('Unable to geocode the address.');
   }
 
-  return geoResults[0].geometry.location;
+  const location = geoResults[0].geometry.location;
+  geocodeCache.set(cacheKey, location);
+  return location;
 }
 
 function isExcludedPlaceName(name, excludeTerms) {
@@ -153,11 +166,16 @@ function isExcludedPlaceName(name, excludeTerms) {
 }
 
 async function getDriveTime(originLatLng, destinationLatLng) {
+  const destStr = `${destinationLatLng.lat},${destinationLatLng.lng}`;
+  const cacheKey = `${originLatLng}:${destStr}`;
+  const cached = driveTimeCache.get(cacheKey);
+  if (cached !== null) { console.log('[CACHE HIT] drivetime:', cacheKey); return cached; }
+
   const distanceResponse = await googleMapsClient.distancematrix({
     params: {
       key: googleMapsApiKey,
       origins: [originLatLng],
-      destinations: [`${destinationLatLng.lat},${destinationLatLng.lng}`],
+      destinations: [destStr],
       mode: 'driving',
       departure_time: getNextTuesday8am(),
     },
@@ -168,13 +186,19 @@ async function getDriveTime(originLatLng, destinationLatLng) {
     throw new Error('Unable to calculate drive time for the destination.');
   }
 
-  return Math.round((element.duration_in_traffic?.value ?? element.duration?.value) / 60);
+  const minutes = Math.round((element.duration_in_traffic?.value ?? element.duration?.value) / 60);
+  driveTimeCache.set(cacheKey, minutes);
+  return minutes;
 }
 
 // Returns top 3 nearest grocery stores by drive time.
 // Uses textSearch with tight radius so Google relevance is overridden by actual drive time.
 // Excludes gas stations, convenience stores, and dollar stores by place type.
 async function findNearestGrocery(originLatLng) {
+  const cacheKey = `grocery:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const placesResponse = await googleMapsClient.textSearch({
     params: {
       key: googleMapsApiKey,
@@ -215,10 +239,16 @@ async function findNearestGrocery(originLatLng) {
 
   const valid = withDriveTimes.filter(Boolean);
   valid.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
-  return valid.slice(0, 3);
+  const result = valid.slice(0, 3);
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 async function findNearestPharmacy(originLatLng) {
+  const cacheKey = `pharmacy:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const placesResponse = await googleMapsClient.placesNearby({
     params: {
       key: googleMapsApiKey,
@@ -233,17 +263,23 @@ async function findNearestPharmacy(originLatLng) {
     throw new Error('No pharmacy found near that address.');
   }
 
-  return {
+  const result = {
     name: place.name,
     address: place.vicinity || place.formatted_address || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 // Gets top 5 hospital results, calculates actual drive time to each,
 // and returns the one with the shortest drive time — not just Google's first result.
 async function findNearestHospital(originLatLng) {
+  const cacheKey = `hospital:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   let placesResponse = await googleMapsClient.textSearch({
     params: {
       key: googleMapsApiKey,
@@ -294,11 +330,17 @@ async function findNearestHospital(originLatLng) {
   }
 
   valid.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
-  return valid[0];
+  const result = valid[0];
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 // Excludes retail health clinics (Little Clinic, MinuteClinic) that are not true urgent care.
 async function findNearestUrgentCare(originLatLng) {
+  const cacheKey = `urgentcare:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const retailClinicExclusions = ['little clinic', 'minuteclinic', 'minute clinic', 'cvs health', 'walgreens health'];
 
   let placesResponse = await googleMapsClient.placesNearby({
@@ -333,18 +375,24 @@ async function findNearestUrgentCare(originLatLng) {
     throw new Error('No urgent care clinic found near that address.');
   }
 
-  return {
+  const result = {
     name: place.name,
     address: place.formatted_address || place.vicinity || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 // Finds nearby interstates by geocoding each highway name near the address city/state.
 // Validates the returned result actually mentions the highway to filter out false matches.
 // Shows the closest as primary, lists others within 20 minutes in the note.
 async function findNearestHighwayOnRamp(originLatLng) {
+  const cacheKey = `highway:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const reverseGeoResponse = await googleMapsClient.reverseGeocode({
     params: {
       key: googleMapsApiKey,
@@ -487,19 +535,25 @@ async function findNearestHighwayOnRamp(originLatLng) {
     ? `Also within 20 minutes: ${candidates.slice(1).map((c) => `${c.highway} (${c.driveTimeMinutes} min)`).join(', ')}`
     : null;
 
-  return {
+  const result = {
     name: primary.highway,
     address: primary.address,
     location: primary.location,
     driveTimeMinutes: primary.driveTimeMinutes,
     note: othersNote,
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 // Returns nearest school by distance.
 // Note: nearest by distance is not the assigned school for the parcel.
 // Assigned school requires verification with the school district.
 async function findNearestSchool(originLatLng) {
+  const cacheKey = `school:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   let placesResponse = await googleMapsClient.placesNearby({
     params: {
       key: googleMapsApiKey,
@@ -528,16 +582,22 @@ async function findNearestSchool(originLatLng) {
     throw new Error('No school found near that address.');
   }
 
-  return {
+  const result = {
     name: place.name,
     address: place.vicinity || place.formatted_address || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
     note: 'This is the nearest school by distance. Assigned school for this address requires verification directly with the school district.',
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 async function findNearestGasStation(originLatLng) {
+  const cacheKey = `gasstation:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const placesResponse = await googleMapsClient.placesNearby({
     params: {
       key: googleMapsApiKey,
@@ -548,15 +608,21 @@ async function findNearestGasStation(originLatLng) {
   });
   const place = (placesResponse.data.results || [])[0];
   if (!place) throw new Error('No gas station found near that address.');
-  return {
+  const result = {
     name: place.name,
     address: place.vicinity || place.formatted_address || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 async function findNearestPark(originLatLng) {
+  const cacheKey = `park:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const placesResponse = await googleMapsClient.placesNearby({
     params: {
       key: googleMapsApiKey,
@@ -567,15 +633,21 @@ async function findNearestPark(originLatLng) {
   });
   const place = (placesResponse.data.results || [])[0];
   if (!place) throw new Error('No park found near that address.');
-  return {
+  const result = {
     name: place.name,
     address: place.vicinity || place.formatted_address || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 async function findNearestCoffeeShop(originLatLng) {
+  const cacheKey = `coffeeshop:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const exclusions = ['sheetz', 'circle k', '7-eleven', '7 eleven', 'speedway', 'wawa', 'pilot', 'love\'s'];
   const placesResponse = await googleMapsClient.textSearch({
     params: {
@@ -589,15 +661,21 @@ async function findNearestCoffeeShop(originLatLng) {
     (p) => !isExcludedPlaceName(p.name, exclusions),
   )[0];
   if (!place) throw new Error('No coffee shop found near that address.');
-  return {
+  const result = {
     name: place.name,
     address: place.formatted_address || place.vicinity || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 async function findNearestElementarySchool(originLatLng) {
+  const cacheKey = `elementary:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+
   const exclusions = ['preschool', 'pre-school', 'daycare', 'day care', 'montessori', 'private'];
   const placesResponse = await googleMapsClient.textSearch({
     params: {
@@ -611,12 +689,14 @@ async function findNearestElementarySchool(originLatLng) {
     (p) => !isExcludedPlaceName(p.name, exclusions),
   )[0];
   if (!place) throw new Error('No elementary school found near that address.');
-  return {
+  const result = {
     name: place.name,
     address: place.formatted_address || place.vicinity || place.name,
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
   };
+  placesCache.set(cacheKey, result);
+  return result;
 }
 
 function escapeHtml(str) {
@@ -1598,6 +1678,17 @@ app.get('/r/:reportId', (req, res) => {
 
 app.get('/history', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/history.html'));
+});
+
+app.post('/admin/clear-cache', (req, res) => {
+  geocodeCache.clear();
+  placesCache.clear();
+  driveTimeCache.clear();
+  res.json({ success: true, message: 'All caches cleared' });
+});
+
+app.get('/admin/cache-stats', (req, res) => {
+  res.json(cacheStats());
 });
 
 ensureReportsFile();
