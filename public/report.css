@@ -752,6 +752,82 @@ body.compare-page {
   .compare-cols-3 { grid-template-columns: 1fr; }
 }
 
+/* FR-013 — Traffic patterns card */
+.traffic-body { padding-bottom: 0.75rem; }
+.traffic-intro {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.55;
+  padding: 0.85rem 0 0.25rem;
+}
+.traffic-dest-section { padding: 1rem 0 0.5rem; }
+.traffic-section-divider { border-top: 1px solid var(--divider); }
+.traffic-dest-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.65rem;
+}
+.traffic-row {
+  display: grid;
+  grid-template-columns: 68px 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+.traffic-slot {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+}
+.traffic-bar-track {
+  background: var(--divider);
+  border-radius: 4px;
+  height: 20px;
+  overflow: hidden;
+}
+.traffic-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.traffic-bar-best    { background: #3d9970; }
+.traffic-bar-good    { background: var(--gold); }
+.traffic-bar-mid     { background: #e07b39; }
+.traffic-bar-worst   { background: #c0392b; }
+.traffic-mins {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--ink);
+}
+.traffic-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}
+.traffic-tag-best  { background: rgba(61,153,112,0.15); color: #2d7a56; }
+.traffic-tag-worst { background: rgba(192,57,43,0.12);  color: #a93226; }
+.traffic-stat-row {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.35rem;
+  padding-bottom: 0.25rem;
+}
+.traffic-warning {
+  color: #e07b39;
+  font-weight: 600;
+}
+
 /* Map section */
 .map-section {
   padding: 0 1rem 0.5rem;

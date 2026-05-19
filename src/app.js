@@ -77,6 +77,63 @@ function getNextTuesday8am() {
   return Math.floor(nextTuesday.getTime() / 1000);
 }
 
+// Returns a Unix timestamp (seconds) for the next occurrence of targetDay at the given hour.
+// targetDay: 0=Sun … 6=Sat.  Always returns a future time (at least 30 min ahead).
+function getNextDayAt(targetDay, hour) {
+  const now = new Date();
+  const candidate = new Date(now);
+  let days = (targetDay - now.getDay() + 7) % 7;
+  if (days === 0) {
+    const todayAtHour = new Date(now);
+    todayAtHour.setHours(hour, 0, 0, 0);
+    if (now >= todayAtHour) days = 7;
+  }
+  candidate.setDate(candidate.getDate() + days);
+  candidate.setHours(hour, 0, 0, 0);
+  return Math.floor(candidate.getTime() / 1000);
+}
+
+async function getTrafficVariations(originLatLng, destLocation) {
+  const destLatLng = `${destLocation.lat},${destLocation.lng}`;
+  const slots = [
+    { label: 'morningRush', display: '8am Mon',  ts: getNextDayAt(1, 8)  },
+    { label: 'midday',      display: '12pm Mon', ts: getNextDayAt(1, 12) },
+    { label: 'eveningRush', display: '5pm Mon',  ts: getNextDayAt(1, 17) },
+    { label: 'weekend',     display: '10am Sat', ts: getNextDayAt(6, 10) },
+  ];
+
+  const results = await Promise.allSettled(
+    slots.map(async ({ label, display, ts }) => {
+      const resp = await googleMapsClient.distancematrix({
+        params: {
+          key: googleMapsApiKey,
+          origins: [originLatLng],
+          destinations: [destLatLng],
+          mode: 'driving',
+          departure_time: ts,
+        },
+      });
+      const el = resp.data.rows[0]?.elements?.[0];
+      if (!el || el.status !== 'OK') throw new Error('no element');
+      return {
+        label,
+        display,
+        minutes: Math.round((el.duration_in_traffic?.value ?? el.duration?.value) / 60),
+      };
+    }),
+  );
+
+  const variations = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+  if (!variations.length) return null;
+
+  const allMinutes = variations.map((v) => v.minutes);
+  const min = Math.min(...allMinutes);
+  const max = Math.max(...allMinutes);
+  const avg = Math.round(allMinutes.reduce((a, b) => a + b, 0) / allMinutes.length);
+
+  return { variations, stats: { min, max, avg, range: max - min } };
+}
+
 async function geocodeAddress(address) {
   const geocodeResponse = await googleMapsClient.geocode({
     params: { address, key: googleMapsApiKey },
@@ -851,7 +908,57 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
   </div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, origin, reportId }) {
+function buildTrafficItemHTML(name, traffic) {
+  const { variations, stats } = traffic;
+  const barsHTML = variations.map((v) => {
+    const widthPct = stats.max > 0 ? Math.round((v.minutes / stats.max) * 100) : 100;
+    const isBest = v.minutes === stats.min;
+    const isWorst = v.minutes === stats.max && stats.range > 0;
+    let barClass = 'traffic-bar-mid';
+    if (isBest) barClass = 'traffic-bar-best';
+    else if (isWorst) barClass = 'traffic-bar-worst';
+    else if (v.minutes < stats.avg) barClass = 'traffic-bar-good';
+    const tagHTML = isBest
+      ? ' <span class="traffic-tag traffic-tag-best">Best</span>'
+      : isWorst
+      ? ' <span class="traffic-tag traffic-tag-worst">Worst</span>'
+      : '';
+    return `
+      <div class="traffic-row">
+        <span class="traffic-slot">${escapeHtml(v.display)}</span>
+        <div class="traffic-bar-track"><div class="traffic-bar ${barClass}" style="width:${widthPct}%"></div></div>
+        <span class="traffic-mins">${v.minutes}&nbsp;min${tagHTML}</span>
+      </div>`;
+  }).join('');
+
+  const warningHTML = stats.range > 10 ? ' <span class="traffic-warning">High variation</span>' : '';
+  return `
+  <div class="traffic-dest-section">
+    <div class="traffic-dest-name">${escapeHtml(name)}</div>
+    ${barsHTML}
+    <div class="traffic-stat-row">Avg ${stats.avg} min &nbsp;·&nbsp; Range ${stats.min}–${stats.max} min${warningHTML}</div>
+  </div>`;
+}
+
+function buildTrafficCardHTML(trafficData) {
+  if (!trafficData || !trafficData.length) return '';
+  const sectionsHTML = trafficData
+    .map((t, i) => (i > 0 ? '<div class="traffic-section-divider"></div>' : '') + buildTrafficItemHTML(t.name, t.traffic))
+    .join('');
+  return `
+  <div class="chapter-card">
+    <div class="chapter-header">
+      <div class="chapter-label">Drive Times</div>
+      <div class="chapter-title">Traffic Patterns</div>
+    </div>
+    <div class="chapter-body traffic-body">
+      <p class="traffic-intro">How drive times shift across rush hour, midday, and weekend — so you can plan around congestion.</p>
+      ${sectionsHTML}
+    </div>
+  </div>`;
+}
+
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -929,6 +1036,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
+  const trafficCardHTML = buildTrafficCardHTML(trafficData);
 
   const safeAddrJS = JSON.stringify(address).replace(/</g, '\\u003c');
   const saveHistoryScriptHTML = `
@@ -1031,7 +1139,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="chapter-body">
       ${sectionsHTML}
     </div>
-  </div>${additionalServicesCardHTML}${customDestinationsCardHTML}
+  </div>${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}
   <footer class="footer">
     <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
     <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
@@ -1239,10 +1347,26 @@ app.get('/report', async (req, res) => {
       .filter((r) => r.status === 'fulfilled')
       .map((r) => r.value);
 
+    // Traffic analysis for grocery, hospital, and work-type custom destinations
+    const g0 = Array.isArray(grocery) ? grocery[0] : grocery;
+    const trafficTargets = [];
+    if (g0?.location) trafficTargets.push({ name: g0.name, location: g0.location });
+    if (hospital?.location) trafficTargets.push({ name: hospital.name, location: hospital.location });
+    customDestinations
+      .filter((d) => d.type === 'work' && d.location)
+      .forEach((d) => trafficTargets.push({ name: d.name, location: d.location }));
+
+    const trafficResults = await Promise.allSettled(
+      trafficTargets.map((t) => getTrafficVariations(originLatLng, t.location)),
+    );
+    const trafficData = trafficTargets
+      .map((t, i) => ({ ...t, traffic: trafficResults[i].status === 'fulfilled' ? trafficResults[i].value : null }))
+      .filter((t) => t.traffic !== null);
+
     let reportId = null;
     try { reportId = saveReport(address); } catch {}
 
-    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, origin, reportId }));
+    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId }));
   } catch (error) {
     const { type, title, message } = classifyError(error);
     return res.send(buildErrorHTML(type, title, message, address));
