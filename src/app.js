@@ -8,11 +8,22 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { Client } = require('@googlemaps/google-maps-services-js');
 const { geocodeCache, placesCache, driveTimeCache, cacheStats } = require('./cache');
+const { makeGoogleMapsRequest, QuotaExceededError, RateLimitError, getUsageStats } = require('./rateLimit');
 
 const app = express();
 const port = process.env.PORT || 3000;
 const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
-const googleMapsClient = new Client({});
+// Proxy-wrap the Maps client so every method call goes through the rate limiter + retry logic.
+const _rawMapsClient = new Client({});
+const googleMapsClient = new Proxy(_rawMapsClient, {
+  get(target, prop) {
+    const val = Reflect.get(target, prop);
+    if (typeof val === 'function') {
+      return (...args) => makeGoogleMapsRequest(() => Reflect.apply(val, target, args), prop);
+    }
+    return val;
+  },
+});
 
 const DATA_DIR = path.join(__dirname, '../data');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
@@ -1231,21 +1242,53 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
 }
 
 function classifyError(error) {
+  if (error instanceof QuotaExceededError) {
+    return { type: 'QUOTA_EXCEEDED', title: 'Quota limit reached', message: error.message, retryAfter: null };
+  }
+  if (error instanceof RateLimitError) {
+    return { type: 'RATE_LIMIT', title: "We're experiencing high demand", message: error.message, retryAfter: error.retryAfter || 30 };
+  }
   const msg = (error.message || '').toLowerCase();
   const status = error.response?.status;
   if (msg.includes('unable to geocode')) {
-    return { type: 'ADDRESS_NOT_FOUND', title: "We couldn't find that address", message: 'Check the spelling and try again.' };
+    return { type: 'ADDRESS_NOT_FOUND', title: "We couldn't find that address", message: 'Check the spelling and try again.', retryAfter: null };
   }
   if (status === 429 || msg.includes('quota') || msg.includes('rate limit')) {
-    return { type: 'RATE_LIMIT', title: 'High demand right now', message: 'Please try again in a moment.' };
+    return { type: 'RATE_LIMIT', title: 'High demand right now', message: 'Please try again in a moment.', retryAfter: 30 };
   }
-  return { type: 'SERVER_ERROR', title: 'Something went wrong', message: 'An error occurred generating your report.' };
+  return { type: 'SERVER_ERROR', title: 'Something went wrong', message: 'An error occurred generating your report.', retryAfter: null };
 }
 
-function buildErrorHTML(type, title, message, address) {
+const ERROR_ICONS = { ADDRESS_NOT_FOUND: '📍', RATE_LIMIT: '⏱️', QUOTA_EXCEEDED: '📊', SERVER_ERROR: '⚠️' };
+
+function buildErrorHTML(type, title, message, address, retryAfter) {
+  const icon = ERROR_ICONS[type] || '⚠️';
   const tryAgainLink = address
     ? `\n    <a href="/?address=${encodeURIComponent(address)}" class="btn-retry">Try again</a>`
     : '';
+
+  const retryButtonHTML = retryAfter
+    ? `<button id="retryBtn" class="btn-retry" disabled>Retry in <span id="countdown">${retryAfter}</span>s</button>`
+    : '';
+
+  const countdownScriptHTML = retryAfter ? `
+  <script>
+    (function () {
+      var secs = ${Number(retryAfter)};
+      var btn = document.getElementById('retryBtn');
+      var countEl = document.getElementById('countdown');
+      var iv = setInterval(function () {
+        secs--;
+        if (countEl) countEl.textContent = secs;
+        if (secs <= 0) {
+          clearInterval(iv);
+          if (btn) { btn.disabled = false; btn.textContent = 'Retry Now'; }
+        }
+      }, 1000);
+      if (btn) btn.addEventListener('click', function () { window.location.reload(); });
+    })();
+  <\/script>` : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1257,11 +1300,12 @@ function buildErrorHTML(type, title, message, address) {
 </head>
 <body class="error-page">
   <div class="error-container">
-    <div class="error-icon">⚠️</div>
+    <div class="error-icon">${icon}</div>
     <h1 class="error-title">${escapeHtml(title)}</h1>
-    <p class="error-message">${escapeHtml(message)}</p>${tryAgainLink}
+    <p class="error-message">${escapeHtml(message)}</p>
+    ${retryButtonHTML}${tryAgainLink}
     <a href="/" class="back-link">Try a different address</a>
-  </div>
+  </div>${countdownScriptHTML}
 </body>
 </html>`;
 }
@@ -1448,8 +1492,8 @@ app.get('/report', async (req, res) => {
 
     return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId }));
   } catch (error) {
-    const { type, title, message } = classifyError(error);
-    return res.send(buildErrorHTML(type, title, message, address));
+    const { type, title, message, retryAfter } = classifyError(error);
+    return res.send(buildErrorHTML(type, title, message, address, retryAfter));
   }
 });
 
@@ -1678,6 +1722,10 @@ app.get('/r/:reportId', (req, res) => {
 
 app.get('/history', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/history.html'));
+});
+
+app.get('/admin/api-usage', (req, res) => {
+  res.json(getUsageStats());
 });
 
 app.post('/admin/clear-cache', (req, res) => {
