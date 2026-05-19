@@ -184,6 +184,35 @@ body {
 }
 .back-link:hover { color: var(--ink); }
 
+/* FR-016 — PDF download button */
+.footer-actions {
+  margin-top: 1.25rem;
+}
+.btn-pdf {
+  display: inline-block;
+  padding: 0.6rem 1.25rem;
+  background: var(--gold);
+  color: var(--white);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 6px;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: background 0.15s;
+}
+.btn-pdf:hover { background: #a07a20; }
+
+/* Print / PDF — hide interactive elements, allow cards to break cleanly */
+@media print {
+  .no-print { display: none !important; }
+  body { max-width: 100%; }
+  .chapter-card,
+  .custom-dests-card,
+  .traffic-dest-section { page-break-inside: avoid; }
+  .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
 /* Address form page */
 .form-page {
   min-height: 100vh;

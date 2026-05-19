@@ -1054,7 +1054,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const researchDate = formatResearchDate();
 
   const shareSectionHTML = reportId ? `
-  <div class="share-section">
+  <div class="share-section no-print">
     <button id="shareBtn" class="share-button">Share this report</button>
     <span id="shareToast" class="share-toast hidden">Link copied!</span>
   </div>
@@ -1150,7 +1150,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const safeMapJSON = mapData ? JSON.stringify(mapData).replace(/</g, '\\u003c') : null;
 
   const mapSectionHTML = mapData ? `
-  <div class="map-section">
+  <div class="map-section no-print">
     <div id="map" class="report-map"></div>
   </div>` : '';
 
@@ -1235,7 +1235,10 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
     <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
     <div class="footer-legal">Drive times are estimates from Google Maps for 8am Tuesday departure. Assigned school requires verification with the local school district. For informational purposes only.</div>
-    <a href="/" class="back-link">← Back to address form</a>
+    <div class="footer-actions no-print">
+      <a id="pdfLink" href="#" class="btn-pdf" onclick="this.href='/report/pdf'+location.search.replace(/[?&]fetch=1/,'')">Download PDF</a>
+    </div>
+    <a href="/" class="back-link no-print">← Back to address form</a>
   </footer>${mapScriptsHTML}${saveHistoryScriptHTML}
 </body>
 </html>`;
@@ -1738,6 +1741,79 @@ app.post('/admin/clear-cache', (req, res) => {
 app.get('/admin/cache-stats', (req, res) => {
   res.json(cacheStats());
 });
+
+// ── PDF Export (FR-016) ──────────────────────────────────────────────────────
+
+function slugify(text) {
+  return String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 50);
+}
+
+function getDateSlug() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+let activePDFs = 0;
+const MAX_CONCURRENT_PDFS = 3;
+
+app.get('/report/pdf', async (req, res) => {
+  const address = req.query.address;
+  if (!address) return res.status(400).send('Address required');
+
+  while (activePDFs >= MAX_CONCURRENT_PDFS) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  activePDFs++;
+
+  let browser;
+  try {
+    // Build the internal URL for the fully-rendered report (all query params preserved, fetch=1 added)
+    const params = new URLSearchParams(req.query);
+    params.set('fetch', '1');
+    const reportUrl = `http://localhost:${port}/report?${params.toString()}`;
+
+    const puppeteer = require('puppeteer');
+    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const page = await browser.newPage();
+
+    // Block external font CDN requests — prevents large font embedding in PDF.
+    // The report falls back to system fonts (Georgia / system-ui) which are print-friendly.
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const url = req.url();
+      if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+
+    await page.emulateMediaType('print');
+    await page.goto(reportUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+
+    const pdf = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' },
+    });
+
+    const filename = `livably-report-${slugify(address)}-${getDateSlug()}.pdf`;
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': pdf.length,
+    });
+    res.send(pdf);
+  } catch (error) {
+    console.error('[PDF] generation error:', error.message);
+    res.status(500).send(buildErrorHTML('SERVER_ERROR', 'PDF generation failed', 'Unable to generate PDF. Please try again.', address));
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    activePDFs--;
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 
 ensureReportsFile();
 app.listen(port, () => {

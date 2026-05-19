@@ -10,6 +10,7 @@
   "dependencies": {
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "dotenv": "^17.4.2",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "puppeteer": "^25.0.4"
   }
 }
