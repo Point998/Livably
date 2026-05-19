@@ -480,6 +480,88 @@ async function findNearestSchool(originLatLng) {
   };
 }
 
+async function findNearestGasStation(originLatLng) {
+  const placesResponse = await googleMapsClient.placesNearby({
+    params: {
+      key: googleMapsApiKey,
+      location: originLatLng,
+      rankby: 'distance',
+      type: 'gas_station',
+    },
+  });
+  const place = (placesResponse.data.results || [])[0];
+  if (!place) throw new Error('No gas station found near that address.');
+  return {
+    name: place.name,
+    address: place.vicinity || place.formatted_address || place.name,
+    location: place.geometry.location,
+    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
+  };
+}
+
+async function findNearestPark(originLatLng) {
+  const placesResponse = await googleMapsClient.placesNearby({
+    params: {
+      key: googleMapsApiKey,
+      location: originLatLng,
+      rankby: 'distance',
+      type: 'park',
+    },
+  });
+  const place = (placesResponse.data.results || [])[0];
+  if (!place) throw new Error('No park found near that address.');
+  return {
+    name: place.name,
+    address: place.vicinity || place.formatted_address || place.name,
+    location: place.geometry.location,
+    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
+  };
+}
+
+async function findNearestCoffeeShop(originLatLng) {
+  const exclusions = ['sheetz', 'circle k', '7-eleven', '7 eleven', 'speedway', 'wawa', 'pilot', 'love\'s'];
+  const placesResponse = await googleMapsClient.textSearch({
+    params: {
+      key: googleMapsApiKey,
+      query: 'coffee shop',
+      location: originLatLng,
+      radius: 15000,
+    },
+  });
+  const place = (placesResponse.data.results || []).filter(
+    (p) => !isExcludedPlaceName(p.name, exclusions),
+  )[0];
+  if (!place) throw new Error('No coffee shop found near that address.');
+  return {
+    name: place.name,
+    address: place.formatted_address || place.vicinity || place.name,
+    location: place.geometry.location,
+    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
+  };
+}
+
+async function findNearestElementarySchool(originLatLng) {
+  const exclusions = ['preschool', 'pre-school', 'daycare', 'day care', 'montessori', 'private'];
+  const placesResponse = await googleMapsClient.textSearch({
+    params: {
+      key: googleMapsApiKey,
+      query: 'public elementary school',
+      location: originLatLng,
+      radius: 15000,
+    },
+  });
+  const place = (placesResponse.data.results || []).filter(
+    (p) => !isExcludedPlaceName(p.name, exclusions),
+  )[0];
+  if (!place) throw new Error('No elementary school found near that address.');
+  return {
+    name: place.name,
+    address: place.formatted_address || place.vicinity || place.name,
+    location: place.geometry.location,
+    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
+  };
+}
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -561,7 +643,184 @@ function buildSchoolSection(school) {
     </div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin, reportId }) {
+function generateDailyConveniencesNarrative(grocery, pharmacy, gasStation) {
+  const g = Array.isArray(grocery) ? grocery[0] : grocery;
+  const times = [g, pharmacy, gasStation].filter(Boolean).map((s) => s.driveTimeMinutes);
+  if (!times.length) return null;
+  const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+
+  let opening;
+  if (avg < 10) opening = 'Everything you need is right around the corner.';
+  else if (avg < 20) opening = 'A quick drive gets you to daily essentials.';
+  else if (avg < 30) opening = "Stock up when you're out—errands take a bit longer from here.";
+  else opening = "You'll want to plan your trips. Essential services are farther out.";
+
+  const parts = [];
+  if (g) parts.push(`Your nearest grocery store (${g.name}) is ${g.driveTimeMinutes} minutes away.`);
+  if (pharmacy) parts.push(`Pharmacy runs take about ${pharmacy.driveTimeMinutes} minutes.`);
+  if (gasStation) parts.push(`The nearest gas station is ${gasStation.driveTimeMinutes} minutes.`);
+
+  const items = [
+    g ? { label: 'Grocery', name: g.name, time: g.driveTimeMinutes } : null,
+    pharmacy ? { label: 'Pharmacy', name: pharmacy.name, time: pharmacy.driveTimeMinutes } : null,
+    gasStation ? { label: 'Gas', name: gasStation.name, time: gasStation.driveTimeMinutes } : null,
+  ].filter(Boolean);
+
+  return { opening, details: parts.join(' '), items };
+}
+
+function generatePeaceOfMindNarrative(hospital, urgentCare) {
+  if (!hospital) return null;
+
+  let opening;
+  if (hospital.driveTimeMinutes < 15) opening = 'Medical care is close by.';
+  else if (hospital.driveTimeMinutes < 25) opening = `The nearest hospital is ${hospital.driveTimeMinutes} minutes away—worth knowing for emergencies.`;
+  else opening = 'Hospital access takes time from here.';
+
+  let details = `${hospital.name} is ${hospital.driveTimeMinutes} minutes away.`;
+  if (urgentCare && urgentCare.driveTimeMinutes < hospital.driveTimeMinutes - 5) {
+    details += ` For non-emergencies, ${urgentCare.name} is closer at ${urgentCare.driveTimeMinutes} minutes.`;
+  }
+
+  const items = [
+    { label: 'Hospital', name: hospital.name, time: hospital.driveTimeMinutes },
+    urgentCare ? { label: 'Urgent Care', name: urgentCare.name, time: urgentCare.driveTimeMinutes } : null,
+  ].filter(Boolean);
+
+  return { opening, details, items };
+}
+
+function generateGettingAroundNarrative(highwayRamp) {
+  if (!highwayRamp) return null;
+
+  let opening;
+  if (highwayRamp.driveTimeMinutes < 5) opening = 'Quick highway access for commuting.';
+  else if (highwayRamp.driveTimeMinutes < 15) opening = `The highway is ${highwayRamp.driveTimeMinutes} minutes away.`;
+  else opening = `You're off the beaten path—highway access is ${highwayRamp.driveTimeMinutes} minutes.`;
+
+  return {
+    opening,
+    details: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} minutes from here.`,
+    items: [{ label: 'Highway Access', name: highwayRamp.name, time: highwayRamp.driveTimeMinutes }],
+  };
+}
+
+function generateCallouts(grocery, pharmacy, hospital) {
+  const g = Array.isArray(grocery) ? grocery[0] : grocery;
+  const callouts = [];
+
+  if (hospital && hospital.driveTimeMinutes > 30) {
+    callouts.push({
+      icon: '⚠️',
+      title: 'Worth Noting',
+      message: `The nearest hospital is ${hospital.driveTimeMinutes} minutes away. If immediate medical access is important to you, this is something to consider.`,
+    });
+  }
+
+  if (g && g.driveTimeMinutes > 30) {
+    callouts.push({
+      icon: '⚠️',
+      title: 'Worth Noting',
+      message: `Grocery shopping takes ${g.driveTimeMinutes} minutes each way. You'll want to plan larger shopping trips and keep a well-stocked pantry.`,
+    });
+  }
+
+  const avgTimes = [g, pharmacy, hospital].filter(Boolean).map((s) => s.driveTimeMinutes);
+  if (avgTimes.length === 3) {
+    const avg = Math.round(avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length);
+    if (avg > 40) {
+      callouts.push({
+        icon: 'ℹ️',
+        title: 'Heads Up',
+        message: "This is a remote location. You'll enjoy peace, space, and privacy—but services are farther out. Most errands will be 30–45+ minutes.",
+      });
+    }
+  }
+
+  return callouts;
+}
+
+function buildInsightItemsHTML(items) {
+  return items.map((item) => `
+        <div class="insight-item">
+          <span class="item-label">${escapeHtml(item.label)}</span>
+          <span class="item-place">${escapeHtml(item.name)}</span>
+          <span class="item-time">${item.time} min</span>
+        </div>`).join('');
+}
+
+function buildInsightSectionHTML(icon, title, subtitle, narrative) {
+  if (!narrative) return '';
+  return `
+    <div class="insight-section">
+      <div class="insight-header">
+        <span class="insight-icon">${icon}</span>
+        <div>
+          <div class="insight-title">${escapeHtml(title)}</div>
+          <div class="insight-subtitle">${escapeHtml(subtitle)}</div>
+        </div>
+      </div>
+      <p class="insight-opening">${escapeHtml(narrative.opening)}</p>
+      <p class="insight-details">${escapeHtml(narrative.details)}</p>
+      <div class="insight-breakdown">
+        ${buildInsightItemsHTML(narrative.items)}
+      </div>
+    </div>`;
+}
+
+function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation) {
+  const daily = generateDailyConveniencesNarrative(grocery, pharmacy, gasStation);
+  const peace = generatePeaceOfMindNarrative(hospital, urgentCare);
+  const getting = generateGettingAroundNarrative(highwayRamp);
+  const callouts = generateCallouts(grocery, pharmacy, hospital);
+
+  const sectionsHTML = [
+    buildInsightSectionHTML('🛒', 'Daily Conveniences', 'The errands and routines that shape your week', daily),
+    buildInsightSectionHTML('🏥', 'Peace of Mind', 'Healthcare access when it matters most', peace),
+    buildInsightSectionHTML('🛣️', 'Getting Around', 'Connectivity to work, family, and beyond', getting),
+  ].join('');
+
+  const calloutsHTML = callouts.map((c) => `
+    <div class="insight-callout">
+      <span class="callout-icon">${c.icon}</span>
+      <div class="callout-body">
+        <div class="callout-title">${escapeHtml(c.title)}</div>
+        <p class="callout-message">${escapeHtml(c.message)}</p>
+      </div>
+    </div>`).join('');
+
+  if (!sectionsHTML.trim() && !calloutsHTML.trim()) return '';
+
+  return `
+  <div class="chapter-card">
+    <div class="chapter-header">
+      <div class="chapter-label">Things to Know</div>
+      <div class="chapter-title">What Daily Life Looks Like Here</div>
+    </div>
+    <div class="chapter-body insights-body">
+      <p class="insights-intro">The stuff you'd only learn after living here for two years.</p>
+      ${sectionsHTML}${calloutsHTML}
+    </div>
+  </div>`;
+}
+
+function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
+  if (!elementarySchool && !park && !coffeeShop) return '';
+  return `
+  <div class="chapter-card">
+    <div class="chapter-header">
+      <div class="chapter-label">Additional Places</div>
+      <div class="chapter-title">More Nearby Destinations</div>
+    </div>
+    <div class="chapter-body">
+      ${buildDestSection('Elementary School', elementarySchool)}
+      ${buildDestSection('Park', park)}
+      ${buildDestSection('Coffee Shop', coffeeShop)}
+    </div>
+  </div>`;
+}
+
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, origin, reportId }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -595,6 +854,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     buildDestSection('Hospital — Full Emergency Department', hospital),
     buildDestSection('Urgent Care', urgentCare),
     buildDestSection('Highway Access', highwayRamp),
+    buildDestSection('Gas Station', gasStation),
     buildSchoolSection(school),
   ].join('\n');
 
@@ -610,17 +870,24 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     });
   }
   [
-    { result: pharmacy,    label: 'Pharmacy' },
-    { result: hospital,    label: 'Hospital' },
-    { result: urgentCare,  label: 'Urgent Care' },
-    { result: highwayRamp, label: highwayRamp?.name || 'Highway' },
-    { result: school,      label: 'School' },
+    { result: pharmacy,         label: 'Pharmacy' },
+    { result: hospital,         label: 'Hospital' },
+    { result: urgentCare,       label: 'Urgent Care' },
+    { result: highwayRamp,      label: highwayRamp?.name || 'Highway' },
+    { result: school,           label: 'School' },
+    { result: gasStation,       label: 'Gas Station' },
+    { result: park,             label: 'Park' },
+    { result: coffeeShop,       label: 'Coffee Shop' },
+    { result: elementarySchool, label: 'Elementary School' },
   ].forEach(({ result, label }) => {
     if (result?.location) mapServices.push({
       name: result.name, address: result.address, driveTimeMinutes: result.driveTimeMinutes,
       lat: result.location.lat, lng: result.location.lng, label,
     });
   });
+
+  const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
+  const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
 
   const mapData = origin ? { home: { lat: origin.lat, lng: origin.lng }, services: mapServices } : null;
   // Escape < so address/name strings can't contain </script> and break the JSON block
@@ -698,7 +965,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="hero-street">${escapeHtml(street)}</div>
     <div class="hero-city">${escapeHtml(cityState)}</div>
     <div class="hero-date">Research date: ${researchDate}</div>${shareSectionHTML}
-  </div>${mapSectionHTML}
+  </div>${mapSectionHTML}${insightsCardHTML}
   <div class="chapter-card">
     <div class="chapter-header">
       <div class="chapter-label">Chapter 03</div>
@@ -707,7 +974,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="chapter-body">
       ${sectionsHTML}
     </div>
-  </div>
+  </div>${additionalServicesCardHTML}
   <footer class="footer">
     <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
     <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
@@ -886,15 +1153,19 @@ app.get('/report', async (req, res) => {
       findNearestUrgentCare(originLatLng),
       findNearestHighwayOnRamp(originLatLng),
       findNearestSchool(originLatLng),
+      findNearestGasStation(originLatLng),
+      findNearestPark(originLatLng),
+      findNearestCoffeeShop(originLatLng),
+      findNearestElementarySchool(originLatLng),
     ]);
 
-    const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school] =
+    const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool] =
       results.map((r) => (r.status === 'fulfilled' ? r.value : null));
 
     let reportId = null;
     try { reportId = saveReport(address); } catch {}
 
-    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, origin, reportId }));
+    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, origin, reportId }));
   } catch (error) {
     const { type, title, message } = classifyError(error);
     return res.send(buildErrorHTML(type, title, message, address));
