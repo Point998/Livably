@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const { Client } = require('@googlemaps/google-maps-services-js');
 const { geocodeCache, placesCache, driveTimeCache, cacheStats } = require('./cache');
 const { makeGoogleMapsRequest, QuotaExceededError, RateLimitError, getUsageStats } = require('./rateLimit');
+const { getPremiumData, buildPremiumSectionsHTML } = require('./premium');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -1049,7 +1050,7 @@ function buildTrafficCardHTML(trafficData) {
   </div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -1128,6 +1129,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
+  const premiumSectionsHTML = buildPremiumSectionsHTML(premium || null);
 
   const safeAddrJS = JSON.stringify(address).replace(/</g, '\\u003c');
   const saveHistoryScriptHTML = `
@@ -1230,7 +1232,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="chapter-body">
       ${sectionsHTML}
     </div>
-  </div>${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}
+  </div>${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${premiumSectionsHTML}
   <footer class="footer">
     <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
     <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
@@ -1438,6 +1440,18 @@ app.get('/report', async (req, res) => {
     const origin = await geocodeAddress(address);
     const originLatLng = `${origin.lat},${origin.lng}`;
 
+    // Reverse geocode for city/state/county — used by crime data and property data
+    let locationInfo = null;
+    try {
+      const rgResp = await googleMapsClient.reverseGeocode({ params: { key: googleMapsApiKey, latlng: originLatLng } });
+      const comps = rgResp.data.results?.[0]?.address_components || [];
+      locationInfo = {
+        city:   comps.find((c) => c.types.includes('locality'))?.long_name || '',
+        state:  comps.find((c) => c.types.includes('administrative_area_level_1'))?.short_name || '',
+        county: comps.find((c) => c.types.includes('administrative_area_level_2'))?.long_name || '',
+      };
+    } catch {}
+
     const results = await Promise.allSettled([
       findNearestGrocery(originLatLng),
       findNearestPharmacy(originLatLng),
@@ -1490,10 +1504,27 @@ app.get('/report', async (req, res) => {
       .map((t, i) => ({ ...t, traffic: trafficResults[i].status === 'fulfilled' ? trafficResults[i].value : null }))
       .filter((t) => t.traffic !== null);
 
+    const highwayDriveMinutes = highwayRamp?.driveTimeMinutes ?? null;
+    let premium = null;
+    try {
+      premium = await getPremiumData({
+        lat: origin.lat,
+        lng: origin.lng,
+        originLatLng,
+        locationInfo,
+        googleMapsClient,
+        googleMapsApiKey,
+        getDriveTime,
+        highwayDriveMinutes,
+      });
+    } catch (premErr) {
+      console.error('[Premium] fetch error:', premErr.message);
+    }
+
     let reportId = null;
     try { reportId = saveReport(address); } catch {}
 
-    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId }));
+    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }));
   } catch (error) {
     const { type, title, message, retryAfter } = classifyError(error);
     return res.send(buildErrorHTML(type, title, message, address, retryAfter));
