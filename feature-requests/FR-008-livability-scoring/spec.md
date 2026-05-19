@@ -1,341 +1,522 @@
-# FR-008 — Livability Scoring System
+# FR-008 — Location Insights ("Things to Know")
 
 ## What
-Add an overall "Livability Score" to each report based on proximity and accessibility to essential services.
+Replace numeric livability scoring with narrative-driven "Things to Know" sections that give buyers honest, helpful context about daily life at this address.
 
-## Problem
-Currently:
-- Reports show individual drive times but no overall assessment
-- Users can't quickly compare multiple addresses
-- No single metric to answer "Is this a good location?"
-- Hard to understand at-a-glance if an address is well-situated
+## Philosophy
+Home buying is emotional. A score feels judgy ("You got a 67"). Instead, we provide **insider knowledge** — the stuff you'd only learn after living there for two years. We're honest about trade-offs without being alarmist. We celebrate what works well and flag what's worth considering, all in a tone that feels like a helpful friend, not a real estate agent.
+
+## Problem with Scoring (Why We're Not Doing It)
+- Numbers feel reductive: "78/100" doesn't capture nuance
+- Creates false comparisons: Rural isn't "worse" than urban—just different
+- Triggers buyer anxiety: "Did I pick a bad location?"
+- Misses the point: People don't want grades, they want to know what daily life is like
 
 ## Requirements
 
-### Livability Score
-- Single numeric score: **0-100**
-- Displayed prominently at top of report (hero section)
-- Visual representation: progress bar or circular gauge
-- Score breakdown showing how it was calculated
-- Color-coded: 
-  - 80-100: Excellent (green)
-  - 60-79: Good (gold)
-  - 40-59: Fair (orange)
-  - 0-39: Poor (red)
+### Three Core Sections
 
-### Scoring Algorithm
+**1. Daily Conveniences** 🛒
+*"The errands and routines that shape your week"*
 
-**Base scoring by drive time:**
-```javascript
-function calculateServiceScore(driveTimeMinutes) {
-  if (driveTimeMinutes <= 5) return 100;
-  if (driveTimeMinutes <= 10) return 90;
-  if (driveTimeMinutes <= 15) return 75;
-  if (driveTimeMinutes <= 20) return 60;
-  if (driveTimeMinutes <= 30) return 40;
-  if (driveTimeMinutes <= 45) return 20;
-  return 10; // 45+ minutes
-}
+**Includes:**
+- Grocery store
+- Pharmacy
+- Gas station
+- Coffee shop (if FR-009 complete)
+
+**Tone guidance:**
+- If all <10 min: "Everything you need is right around the corner"
+- If 10-20 min: "A quick drive gets you to essentials"
+- If 20-30 min: "Stock up when you're out—groceries are a 25-minute drive"
+- If >30 min: "You'll want to plan your trips. The nearest grocery store is 35 minutes away."
+
+**2. Peace of Mind** 🏥
+*"Healthcare access when it matters most"*
+
+**Includes:**
+- Hospital
+- Urgent care
+
+**Tone guidance:**
+- If hospital <15 min: "Medical care is close by"
+- If hospital 15-25 min: "The nearest hospital is [X] minutes away—worth knowing for emergencies"
+- If hospital >25 min: "Hospital access takes time from here. The nearest is [X] minutes away."
+- Always mention urgent care as closer alternative if relevant
+
+**3. Getting Around** 🛣️
+*"Connectivity to work, family, and beyond"*
+
+**Includes:**
+- Highway access
+- Traffic patterns (if FR-013 complete)
+- Custom destinations (if FR-012 complete)
+
+**Tone guidance:**
+- If highway <5 min: "Quick highway access for commuting"
+- If highway 5-15 min: "Highway is [X] minutes away"
+- If highway >15 min: "You're off the beaten path—highway access is [X] minutes"
+
+### Heads Up (Callouts for Important Considerations)
+
+When something genuinely matters, add a **"Worth Noting"** callout:
+
+```
+⚠️ Worth Noting
+The nearest hospital is 40 minutes away. If immediate medical access 
+is important to you, this is something to consider.
 ```
 
-**Weighted categories:**
-- Grocery: 25% (most frequent use)
-- Pharmacy: 15%
-- Hospital: 20% (critical but less frequent)
-- Urgent Care: 15%
-- Highway Access: 15%
-- Gas Station: 10%
+**When to use callouts:**
+- Hospital >30 minutes
+- Grocery >30 minutes
+- Any essential service >45 minutes
+- High traffic variation (if FR-013 complete): "Evening commutes can add 15+ minutes"
 
-**Overall score:**
-```javascript
-const score = 
-  (groceryScore * 0.25) +
-  (pharmacyScore * 0.15) +
-  (hospitalScore * 0.20) +
-  (urgentCareScore * 0.15) +
-  (highwayScore * 0.15) +
-  (gasScore * 0.10);
-```
+**Tone of callouts:**
+- Factual, not scary
+- "Worth noting" not "WARNING"
+- Acknowledges trade-offs: "You get space and quiet, but services are farther"
+- Always frames as "something to consider" not "deal-breaker"
 
-### Score Display
+### Optional 4th Section (if FR-009 complete)
 
-**Hero section addition:**
-```html
-<div class="hero-score">
-  <div class="score-value">78</div>
-  <div class="score-label">Livability Score</div>
-  <div class="score-rating">Good</div>
-</div>
-```
+**4. Quality of Life** ⛳
+*"What makes this place feel like home"*
 
-**Score breakdown section:**
-```html
-<section class="score-breakdown">
-  <h2>How we calculated your score</h2>
-  <div class="score-category">
-    <span class="category-name">Grocery Access</span>
-    <div class="score-bar">
-      <div class="score-fill" style="width: 90%"></div>
-    </div>
-    <span class="category-score">90/100</span>
-    <span class="category-time">5 min drive</span>
-  </div>
-  <!-- Repeat for each category -->
-</section>
-```
+**Includes:**
+- Parks
+- Schools
+- Libraries
+- Restaurants
 
-### Design Requirements
-- Score displayed with large typography (72px+ for number)
-- Color-coded based on score tier
-- Breakdown section uses same design system
-- Progress bars use gold accent for fill
-- Mobile-friendly layout
+**Tone:** Always positive. These are nice-to-haves, not essentials.
 
 ## Implementation Notes
 
-### Server-side Calculation (`src/app.js`)
+### Narrative Generation Logic
 
 ```javascript
-function calculateServiceScore(driveTimeMinutes) {
-  if (driveTimeMinutes <= 5) return 100;
-  if (driveTimeMinutes <= 10) return 90;
-  if (driveTimeMinutes <= 15) return 75;
-  if (driveTimeMinutes <= 20) return 60;
-  if (driveTimeMinutes <= 30) return 40;
-  if (driveTimeMinutes <= 45) return 20;
-  return 10;
-}
-
-function calculateLivabilityScore(services) {
-  const scores = {
-    grocery: calculateServiceScore(services.grocery.driveTimeMinutes),
-    pharmacy: calculateServiceScore(services.pharmacy.driveTimeMinutes),
-    hospital: calculateServiceScore(services.hospital.driveTimeMinutes),
-    urgentCare: calculateServiceScore(services.urgentCare.driveTimeMinutes),
-    highway: calculateServiceScore(services.highwayRamp.driveTimeMinutes),
-    gas: calculateServiceScore(services.gasStation.driveTimeMinutes)
+function generateLocationInsights(services) {
+  const insights = {
+    dailyConveniences: generateDailyConveniencesNarrative(services),
+    peaceOfMind: generatePeaceOfMindNarrative(services),
+    gettingAround: generateGettingAroundNarrative(services),
+    callouts: generateCallouts(services)
   };
   
-  const overallScore = Math.round(
-    (scores.grocery * 0.25) +
-    (scores.pharmacy * 0.15) +
-    (scores.hospital * 0.20) +
-    (scores.urgentCare * 0.15) +
-    (scores.highway * 0.15) +
-    (scores.gas * 0.10)
+  return insights;
+}
+
+function generateDailyConveniencesNarrative(services) {
+  const { grocery, pharmacy, gasStation } = services;
+  const avgTime = Math.round((grocery.driveTimeMinutes + pharmacy.driveTimeMinutes + gasStation.driveTimeMinutes) / 3);
+  
+  let opening, details;
+  
+  if (avgTime < 10) {
+    opening = "Everything you need is right around the corner.";
+  } else if (avgTime < 20) {
+    opening = "A quick drive gets you to daily essentials.";
+  } else if (avgTime < 30) {
+    opening = "Stock up when you're out—errands take a bit longer from here.";
+  } else {
+    opening = "You'll want to plan your trips. Essential services are farther out.";
+  }
+  
+  details = `Your nearest grocery store (${grocery.name}) is ${grocery.driveTimeMinutes} minutes away. ` +
+            `Pharmacy runs take about ${pharmacy.driveTimeMinutes} minutes, ` +
+            `and gas is ${gasStation.driveTimeMinutes} minutes.`;
+  
+  return { opening, details };
+}
+
+function generatePeaceOfMindNarrative(services) {
+  const { hospital, urgentCare } = services;
+  
+  let opening, details, tone;
+  
+  if (hospital.driveTimeMinutes < 15) {
+    opening = "Medical care is close by.";
+    tone = "reassuring";
+  } else if (hospital.driveTimeMinutes < 25) {
+    opening = `The nearest hospital is ${hospital.driveTimeMinutes} minutes away—worth knowing for emergencies.`;
+    tone = "neutral";
+  } else {
+    opening = `Hospital access takes time from here.`;
+    tone = "considerate";
+  }
+  
+  if (urgentCare.driveTimeMinutes < hospital.driveTimeMinutes - 5) {
+    details = `${hospital.name} is ${hospital.driveTimeMinutes} minutes away. ` +
+              `For non-emergencies, ${urgentCare.name} is closer at ${urgentCare.driveTimeMinutes} minutes.`;
+  } else {
+    details = `${hospital.name} is ${hospital.driveTimeMinutes} minutes away.`;
+  }
+  
+  return { opening, details, tone };
+}
+
+function generateGettingAroundNarrative(services) {
+  const { highwayRamp } = services;
+  
+  let opening, details;
+  
+  if (highwayRamp.driveTimeMinutes < 5) {
+    opening = "Quick highway access for commuting.";
+  } else if (highwayRamp.driveTimeMinutes < 15) {
+    opening = `The highway is ${highwayRamp.driveTimeMinutes} minutes away.`;
+  } else {
+    opening = `You're off the beaten path—highway access is ${highwayRamp.driveTimeMinutes} minutes.`;
+  }
+  
+  // Extract highway info from ramp name
+  const highwayMatch = highwayRamp.name.match(/I-?\d+|US-?\d+/i);
+  const highwayName = highwayMatch ? highwayMatch[0] : "the highway";
+  
+  details = `${highwayRamp.name} gets you to ${highwayName} in ${highwayRamp.driveTimeMinutes} minutes.`;
+  
+  return { opening, details };
+}
+
+function generateCallouts(services) {
+  const callouts = [];
+  
+  // Hospital callout
+  if (services.hospital.driveTimeMinutes > 30) {
+    callouts.push({
+      icon: '⚠️',
+      title: 'Worth Noting',
+      message: `The nearest hospital is ${services.hospital.driveTimeMinutes} minutes away. ` +
+               `If immediate medical access is important to you, this is something to consider.`
+    });
+  }
+  
+  // Grocery callout
+  if (services.grocery.driveTimeMinutes > 30) {
+    callouts.push({
+      icon: '⚠️',
+      title: 'Worth Noting',
+      message: `Grocery shopping takes ${services.grocery.driveTimeMinutes} minutes each way. ` +
+               `You'll want to plan larger shopping trips and keep a well-stocked pantry.`
+    });
+  }
+  
+  // Remote location (if everything is far)
+  const avgAll = Math.round(
+    (services.grocery.driveTimeMinutes + 
+     services.pharmacy.driveTimeMinutes + 
+     services.hospital.driveTimeMinutes) / 3
   );
   
-  return {
-    overall: overallScore,
-    rating: getRating(overallScore),
-    breakdown: scores
-  };
-}
-
-function getRating(score) {
-  if (score >= 80) return { label: 'Excellent', color: 'green' };
-  if (score >= 60) return { label: 'Good', color: 'gold' };
-  if (score >= 40) return { label: 'Fair', color: 'orange' };
-  return { label: 'Poor', color: 'red' };
-}
-```
-
-### HTML Template Updates
-
-**Hero section:**
-```html
-<div class="hero">
-  <div class="hero-address">
-    <div class="hero-street">100 Wishing Well Path</div>
-    <div class="hero-city">Georgetown, KY 40324</div>
-  </div>
+  if (avgAll > 40) {
+    callouts.push({
+      icon: 'ℹ️',
+      title: 'Heads Up',
+      message: `This is a remote location. You'll enjoy peace, space, and privacy—but services ` +
+               `are farther out. Most errands will be 30-45+ minutes.`
+    });
+  }
   
-  <div class="hero-score">
-    <div class="score-circle score-${rating.color}">
-      <div class="score-value">${overall}</div>
-    </div>
-    <div class="score-label">${rating.label}</div>
-  </div>
-</div>
+  return callouts;
+}
 ```
 
-**Breakdown section:**
+### HTML Template
+
 ```html
-<section class="score-breakdown">
-  <h2>How we calculated your score</h2>
-  <p class="breakdown-intro">
-    Your Livability Score is based on drive times to essential services,
-    weighted by how frequently you'll need them.
+<section class="location-insights">
+  <h2>Things to Know</h2>
+  <p class="insights-intro">
+    Here's what daily life looks like at this address—the things you'd only 
+    learn after living here for two years.
   </p>
   
-  <div class="breakdown-categories">
-    ${renderCategoryScore('Grocery', breakdown.grocery, services.grocery.driveTimeMinutes, 25)}
-    ${renderCategoryScore('Hospital', breakdown.hospital, services.hospital.driveTimeMinutes, 20)}
-    ${renderCategoryScore('Pharmacy', breakdown.pharmacy, services.pharmacy.driveTimeMinutes, 15)}
-    ${renderCategoryScore('Urgent Care', breakdown.urgentCare, services.urgentCare.driveTimeMinutes, 15)}
-    ${renderCategoryScore('Highway Access', breakdown.highway, services.highwayRamp.driveTimeMinutes, 15)}
-    ${renderCategoryScore('Gas Station', breakdown.gas, services.gasStation.driveTimeMinutes, 10)}
-  </div>
-</section>
-
-function renderCategoryScore(name, score, driveTime, weight) {
-  return `
-    <div class="category-row">
-      <div class="category-header">
-        <span class="category-name">${name}</span>
-        <span class="category-weight">${weight}% weight</span>
-      </div>
-      <div class="category-details">
-        <div class="score-bar-container">
-          <div class="score-bar-fill" style="width: ${score}%"></div>
+  <!-- Daily Conveniences -->
+  <div class="insight-section">
+    <div class="insight-header">
+      <span class="insight-icon">🛒</span>
+      <h3>Daily Conveniences</h3>
+      <p class="insight-subtitle">The errands and routines that shape your week</p>
+    </div>
+    
+    <div class="insight-content">
+      <p class="insight-opening">${dailyConveniences.opening}</p>
+      <p class="insight-details">${dailyConveniences.details}</p>
+      
+      <div class="insight-breakdown">
+        <div class="insight-item">
+          <span class="item-name">Grocery</span>
+          <span class="item-place">${grocery.name}</span>
+          <span class="item-time">${grocery.driveTimeMinutes} min</span>
         </div>
-        <span class="category-score">${score}/100</span>
-        <span class="category-time">${driveTime} min</span>
+        <div class="insight-item">
+          <span class="item-name">Pharmacy</span>
+          <span class="item-place">${pharmacy.name}</span>
+          <span class="item-time">${pharmacy.driveTimeMinutes} min</span>
+        </div>
+        <div class="insight-item">
+          <span class="item-name">Gas</span>
+          <span class="item-place">${gasStation.name}</span>
+          <span class="item-time">${gasStation.driveTimeMinutes} min</span>
+        </div>
       </div>
     </div>
-  `;
-}
+  </div>
+  
+  <!-- Peace of Mind -->
+  <div class="insight-section">
+    <div class="insight-header">
+      <span class="insight-icon">🏥</span>
+      <h3>Peace of Mind</h3>
+      <p class="insight-subtitle">Healthcare access when it matters most</p>
+    </div>
+    
+    <div class="insight-content">
+      <p class="insight-opening">${peaceOfMind.opening}</p>
+      <p class="insight-details">${peaceOfMind.details}</p>
+      
+      <div class="insight-breakdown">
+        <div class="insight-item">
+          <span class="item-name">Hospital</span>
+          <span class="item-place">${hospital.name}</span>
+          <span class="item-time">${hospital.driveTimeMinutes} min</span>
+        </div>
+        <div class="insight-item">
+          <span class="item-name">Urgent Care</span>
+          <span class="item-place">${urgentCare.name}</span>
+          <span class="item-time">${urgentCare.driveTimeMinutes} min</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Getting Around -->
+  <div class="insight-section">
+    <div class="insight-header">
+      <span class="insight-icon">🛣️</span>
+      <h3>Getting Around</h3>
+      <p class="insight-subtitle">Connectivity to work, family, and beyond</p>
+    </div>
+    
+    <div class="insight-content">
+      <p class="insight-opening">${gettingAround.opening}</p>
+      <p class="insight-details">${gettingAround.details}</p>
+      
+      <div class="insight-breakdown">
+        <div class="insight-item">
+          <span class="item-name">Highway Access</span>
+          <span class="item-place">${highwayRamp.name}</span>
+          <span class="item-time">${highwayRamp.driveTimeMinutes} min</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Callouts (Worth Noting) -->
+  ${callouts.map(callout => `
+    <div class="insight-callout">
+      <span class="callout-icon">${callout.icon}</span>
+      <div class="callout-content">
+        <h4>${callout.title}</h4>
+        <p>${callout.message}</p>
+      </div>
+    </div>
+  `).join('')}
+</section>
 ```
 
 ### CSS
 
 ```css
-/* Hero Score */
-.hero {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.hero-score {
-  text-align: center;
-}
-
-.score-circle {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 0.5rem;
-  border: 4px solid;
-}
-
-.score-circle.score-green { border-color: #28a745; color: #28a745; }
-.score-circle.score-gold { border-color: var(--gold); color: var(--gold); }
-.score-circle.score-orange { border-color: #fd7e14; color: #fd7e14; }
-.score-circle.score-red { border-color: #dc3545; color: #dc3545; }
-
-.score-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  font-family: var(--font-serif);
-}
-
-.score-label {
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-
-/* Score Breakdown */
-.score-breakdown {
+.location-insights {
   margin: 3rem 0;
 }
 
-.breakdown-intro {
+.insights-intro {
   color: var(--text-secondary);
   margin-bottom: 2rem;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
-.category-row {
+.insight-section {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.insight-header {
   margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 1rem;
 }
 
-.category-header {
-  display: flex;
-  justify-content: space-between;
+.insight-icon {
+  font-size: 2rem;
+  display: block;
   margin-bottom: 0.5rem;
 }
 
-.category-name {
-  font-weight: 600;
+.insight-header h3 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem;
 }
 
-.category-weight {
-  font-size: 0.85rem;
+.insight-subtitle {
   color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+  font-style: italic;
 }
 
-.category-details {
+.insight-content {
+  line-height: 1.7;
+}
+
+.insight-opening {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.insight-details {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.insight-breakdown {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.insight-item {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
   gap: 1rem;
-}
-
-.score-bar-container {
-  flex: 1;
-  height: 8px;
-  background: var(--border);
+  padding: 0.75rem;
+  background: var(--cream);
   border-radius: 4px;
-  overflow: hidden;
+  align-items: center;
 }
 
-.score-bar-fill {
-  height: 100%;
-  background: var(--gold);
-  transition: width 0.3s ease;
-}
-
-.category-score {
+.item-name {
   font-weight: 600;
-  min-width: 50px;
+  font-size: 0.9rem;
 }
 
-.category-time {
-  font-size: 0.85rem;
+.item-place {
   color: var(--text-secondary);
-  min-width: 60px;
+  font-size: 0.9rem;
+}
+
+.item-time {
+  font-weight: 600;
+  color: var(--gold);
+  font-size: 1rem;
+}
+
+/* Callouts */
+.insight-callout {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #fff9e6;
+  border-left: 4px solid #ffa500;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.callout-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.callout-content h4 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.callout-content p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .insight-section {
+    padding: 1.5rem;
+  }
+  
+  .insight-item {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  
+  .item-time {
+    margin-top: 0.25rem;
+  }
 }
 ```
 
 ## Acceptance Criteria
-- [ ] Overall score displays in hero section (0-100)
-- [ ] Score is color-coded by tier (green/gold/orange/red)
-- [ ] Score breakdown section shows all 6 categories
-- [ ] Each category shows: name, weight, score, drive time
-- [ ] Progress bars visually represent scores
-- [ ] Calculation is accurate based on algorithm
+- [ ] Three core sections: Daily Conveniences, Peace of Mind, Getting Around
+- [ ] Each section has: icon, title, subtitle, narrative opening, details, breakdown
+- [ ] Narrative tone adjusts based on drive times (close/moderate/far)
+- [ ] "Worth Noting" callouts appear when hospital >30 min, grocery >30 min, or location is very remote
+- [ ] No numeric score displayed anywhere
+- [ ] Language is helpful and honest, never alarmist
+- [ ] Reads naturally, like advice from a friend
+- [ ] Trade-offs acknowledged positively ("You get space and quiet, but...")
 - [ ] Design matches report aesthetic
-- [ ] Responsive on mobile (stacks hero elements vertically)
-- [ ] Tested with various addresses (high/medium/low scores)
+- [ ] Mobile responsive
+- [ ] Tested with urban, suburban, and rural addresses
 
-## Optional Enhancements (Future)
-- [ ] Animated score counter on page load
-- [ ] Tooltips explaining scoring methodology
-- [ ] Compare scores across multiple addresses
-- [ ] Customizable weights (user preferences)
-- [ ] Historical score tracking
-- [ ] Neighborhood average comparison
+## Writing Guidelines
+
+### DO:
+✅ "Everything you need is right around the corner"  
+✅ "Stock up when you're out—groceries are a 25-minute drive"  
+✅ "You'll enjoy peace and space, but services are farther out"  
+✅ "Worth knowing for emergencies"  
+✅ "Something to consider"  
+
+### DON'T:
+❌ "This location scores poorly"  
+❌ "WARNING: Hospital too far"  
+❌ "Major concern"  
+❌ "You'll regret this"  
+❌ "Bad location for medical emergencies"  
+
+### Framing Trade-offs:
+- Rural: "You get space, quiet, and privacy—but plan your trips"
+- Suburban: "A nice balance of accessibility and breathing room"
+- Urban: "Everything's walkable, but you'll trade space for convenience"
 
 ## Testing Scenarios
-1. **Urban address** (all services <10 min) → Score 85-95 (Excellent)
-2. **Suburban address** (services 10-20 min) → Score 60-75 (Good)
-3. **Rural address** (services 20-45 min) → Score 30-50 (Fair/Poor)
-4. **Edge case** (one service very far) → Score reflects weighted impact
-5. **Mobile viewport** → Hero score and breakdown render correctly
+1. **Urban address** (all <10 min) → Positive, celebratory tone
+2. **Suburban address** (10-20 min) → Balanced, practical tone
+3. **Rural address** (25-45 min) → Honest but not negative, emphasizes trade-offs
+4. **Very remote** (45+ min) → Clear callout but frames as lifestyle choice
+5. **Mixed** (some close, hospital far) → Balanced narrative with specific callout
 
 ## Dependencies
 - No new NPM packages required
-- Pure JavaScript calculation
-- CSS for visual elements
+- Reuses existing service data
+- Pure JavaScript for narrative generation
 
 ## Estimated Effort
 **Medium** — 3-4 hours
-- Scoring algorithm implementation
+- Narrative generation logic
+- Callout detection logic
 - HTML template updates
-- CSS for score display and breakdown
+- CSS styling for sections and callouts
+- Writing tone guidelines
 - Testing across address types
-- Responsive design adjustments
+- Iteration on language/tone

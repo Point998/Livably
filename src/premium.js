@@ -78,18 +78,18 @@ async function fetchCensusACS(fips, vars) {
 async function getDemographics(lat, lng, fips) {
   if (!fips) return null;
 
-  const vars = [
+  // Split into two batches — Census ACS limit is 50 variables per request
+  const varsBatch1 = [
     'B01001_001E', 'B01002_001E',
     'B19013_001E',
     'B25003_001E', 'B25003_002E', 'B25010_001E',
     'B15003_001E', 'B15003_017E', 'B15003_022E', 'B15003_023E', 'B15003_024E', 'B15003_025E',
-    // Male age groups: <5, 5-9, 10-14, 15-17, 18-19, 20, 21, 22-24, 25-29, 30-34,
-    //                  35-39, 40-44, 45-49, 50-54, 55-59, 60-61, 62-64, 65-66, 67-69, 70-74, 75-79, 80-84, 85+
     'B01001_003E','B01001_004E','B01001_005E','B01001_006E',
     'B01001_007E','B01001_008E','B01001_009E','B01001_010E','B01001_011E','B01001_012E',
     'B01001_013E','B01001_014E','B01001_015E','B01001_016E','B01001_017E','B01001_018E','B01001_019E',
     'B01001_020E','B01001_021E','B01001_022E','B01001_023E','B01001_024E','B01001_025E',
-    // Female age groups (same sequence as male, starting at index 027)
+  ];
+  const varsBatch2 = [
     'B01001_027E','B01001_028E','B01001_029E','B01001_030E',
     'B01001_031E','B01001_032E','B01001_033E','B01001_034E','B01001_035E','B01001_036E',
     'B01001_037E','B01001_038E','B01001_039E','B01001_040E','B01001_041E','B01001_042E','B01001_043E',
@@ -97,9 +97,12 @@ async function getDemographics(lat, lng, fips) {
   ];
 
   try {
-    const acs = await fetchCensusACS(fips, vars);
-    if (!acs) return null;
-    const { get } = acs;
+    const [acs1, acs2] = await Promise.all([
+      fetchCensusACS(fips, varsBatch1),
+      fetchCensusACS(fips, varsBatch2),
+    ]);
+    if (!acs1) return null;
+    const get = (name) => acs1.get(name) ?? (acs2 ? acs2.get(name) : undefined);
 
     const totalPop = safeInt(get('B01001_001E')) || 1;
     const medianAge = parseFloat(get('B01002_001E')) || null;
@@ -427,47 +430,49 @@ function getFloodRiskColor(risk) {
 }
 
 // ── FR-018: Crime Data ────────────────────────────────────────────────────────
+// Source: FBI Crime in the United States 2022 (UCR). Rates per 100,000 inhabitants.
+// [violent, property]
+const STATE_CRIME_RATES_2022 = {
+  AL:[619,2844], AK:[829,2990], AZ:[445,3099], AR:[618,2977], CA:[500,2286],
+  CO:[395,2922], CT:[218,1657], DE:[419,2265], DC:[891,3657], FL:[382,2558],
+  GA:[334,2727], HI:[265,2673], ID:[216,1744], IL:[411,2026], IN:[347,2417],
+  IA:[279,1886], KS:[395,2592], KY:[220,2220], LA:[647,3167], ME:[112,1467],
+  MD:[459,2117], MA:[357,1552], MI:[385,1808], MN:[265,2289], MS:[286,2464],
+  MO:[473,2811], MT:[391,2472], NE:[328,2251], NV:[674,3098], NH:[152,1460],
+  NJ:[231,1508], NM:[779,3706], NY:[362,1453], NC:[377,2752], ND:[282,2034],
+  OH:[302,2388], OK:[446,2900], OR:[292,2951], PA:[314,1527], RI:[230,1725],
+  SC:[519,2998], SD:[384,1993], TN:[604,3113], TX:[443,2757], UT:[229,2617],
+  VT:[169,1597], VA:[219,1894], WA:[316,3331], WV:[302,1797], WI:[289,1989],
+  WY:[223,2224],
+};
+const NATIONAL_VIOLENT_2022 = 381;
+const NATIONAL_PROPERTY_2022 = 1954;
 
 async function getCrimeData(locationInfo) {
-  const fbiKey = process.env.FBI_CRIME_API_KEY;
-  if (!fbiKey) return null;
-  const { city, state } = locationInfo || {};
-  if (!city || !state) return null;
-  try {
-    const cityEnc = encodeURIComponent(city);
-    const url = `https://api.usa.gov/crime/fbi/sapi/api/summarized/agencies/${state}/${cityEnc}/offenses/2022/2022?api_key=${fbiKey}`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const results = data?.results || (Array.isArray(data) ? data : null);
-    if (!results?.length) return null;
+  if (!process.env.FBI_CRIME_API_KEY) return null;
+  const { state } = locationInfo || {};
+  if (!state) return null;
 
-    let totalViolent = 0, totalProperty = 0, totalPop = 0;
-    for (const r of results) {
-      totalViolent += (r.violent_crime || 0);
-      totalProperty += (r.property_crime || 0);
-      totalPop += (r.population || 0);
-    }
-    if (!totalPop) return null;
+  const rates = STATE_CRIME_RATES_2022[state.toUpperCase()];
+  if (!rates) return null;
 
-    const violentRate = ((totalViolent / totalPop) * 1000).toFixed(1);
-    const propertyRate = ((totalProperty / totalPop) * 1000).toFixed(1);
-    const totalRate = (((totalViolent + totalProperty) / totalPop) * 1000).toFixed(1);
-    const nationalAvg = 30;
-    const safetyScore = Math.round(Math.max(0, Math.min(100, 100 - (parseFloat(totalRate) / nationalAvg) * 50)));
+  const [violentRate, propertyRate] = rates;
+  const totalRate = violentRate + propertyRate;
+  const nationalTotal = NATIONAL_VIOLENT_2022 + NATIONAL_PROPERTY_2022;
+  const safetyScore = Math.round(Math.max(0, Math.min(100, 100 - (violentRate / NATIONAL_VIOLENT_2022) * 50)));
 
-    return {
-      city, state, population: totalPop,
-      violentRate, propertyRate, totalRate,
-      safetyScore, grade: getCrimeGrade(safetyScore),
-      comparedToNational: parseFloat(totalRate) < nationalAvg ? 'below' : 'above',
-      nationalPct: Math.abs(Math.round(((parseFloat(totalRate) - nationalAvg) / nationalAvg) * 100)),
-      dataYear: 2022,
-    };
-  } catch (err) {
-    console.error('[Crime]', err.message);
-    return null;
-  }
+  return {
+    state,
+    violentRate,
+    propertyRate,
+    totalRate,
+    safetyScore,
+    grade: getCrimeGrade(safetyScore),
+    comparedToNational: violentRate < NATIONAL_VIOLENT_2022 ? 'below' : 'above',
+    nationalPct: Math.abs(Math.round(((violentRate - NATIONAL_VIOLENT_2022) / NATIONAL_VIOLENT_2022) * 100)),
+    dataYear: 2022,
+    dataLevel: 'state',
+  };
 }
 
 function getCrimeGrade(score) {
@@ -600,25 +605,25 @@ function buildCrimeHTML(crime) {
       <div class="prem-grade-circle" style="border-color:${gradeColor};color:${gradeColor}">${esc(crime.grade)}</div>
       <div class="prem-crime-summary">
         <div class="prem-crime-score">${crime.safetyScore}/100 Safety Score</div>
-        <div class="prem-crime-city">${esc(crime.city)}, ${esc(crime.state)}</div>
-        <div class="prem-crime-context">Total crime rate is ${crime.nationalPct}% ${crime.comparedToNational} the national average.</div>
+        <div class="prem-crime-city">${esc(crime.state)} State Average</div>
+        <div class="prem-crime-context">Violent crime rate is ${crime.nationalPct}% ${crime.comparedToNational} the national average.</div>
       </div>
     </div>
     <div class="prem-crime-stats">
       <div class="prem-crime-stat">
         <div class="prem-stat-val">${crime.violentRate}</div>
-        <div class="prem-stat-lbl">Violent crime<br>per 1,000</div>
+        <div class="prem-stat-lbl">Violent crime<br>per 100k</div>
       </div>
       <div class="prem-crime-stat">
         <div class="prem-stat-val">${crime.propertyRate}</div>
-        <div class="prem-stat-lbl">Property crime<br>per 1,000</div>
+        <div class="prem-stat-lbl">Property crime<br>per 100k</div>
       </div>
       <div class="prem-crime-stat">
-        <div class="prem-stat-val">${crime.totalRate}</div>
-        <div class="prem-stat-lbl">Total crime<br>per 1,000</div>
+        <div class="prem-stat-val">${NATIONAL_VIOLENT_2022}</div>
+        <div class="prem-stat-lbl">National violent<br>avg per 100k</div>
       </div>
     </div>
-    <p class="prem-disclaimer">FBI Crime Data Explorer (${crime.dataYear}) for ${esc(crime.city)}. City-level data. Crime statistics are for informational purposes only and should not be the sole factor in housing decisions.</p>`;
+    <p class="prem-disclaimer">FBI Uniform Crime Report ${crime.dataYear} — state-level data. City-level variation may differ. Crime statistics are for informational purposes only.</p>`;
   return premiumCard('Safety', 'Crime & Safety Data', body);
 }
 
