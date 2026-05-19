@@ -804,6 +804,37 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
   </div>`;
 }
 
+const CUSTOM_DEST_ICONS = { work: '💼', family: '🏠', medical: '⚕️', recreation: '⛳', other: '📍' };
+
+function buildCustomDestinationsCardHTML(customDestinations) {
+  if (!customDestinations || !customDestinations.length) return '';
+
+  const itemsHTML = customDestinations.map((dest) => {
+    const icon = CUSTOM_DEST_ICONS[dest.type] || '📍';
+    const timeHTML = dest.driveTimeMinutes != null
+      ? `<div class="custom-dest-time">${formatDriveTime(dest.driveTimeMinutes)}</div>`
+      : `<div class="custom-dest-time-na">—</div>`;
+    return `
+    <div class="custom-dest-item">
+      <div class="custom-dest-icon">${icon}</div>
+      <div class="custom-dest-info">
+        <div class="custom-dest-name">${escapeHtml(dest.name)}</div>
+        <div class="custom-dest-addr">${escapeHtml(dest.address)}</div>
+      </div>
+      ${timeHTML}
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="custom-dests-card">
+    <div class="custom-dests-card-header">
+      <div class="custom-dests-card-eyebrow">Your Places</div>
+      <div class="custom-dests-card-title">Custom Destinations</div>
+    </div>
+    ${itemsHTML}
+  </div>`;
+}
+
 function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
   if (!elementarySchool && !park && !coffeeShop) return '';
   return `
@@ -820,7 +851,7 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
   </div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, origin, reportId }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, origin, reportId }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -886,8 +917,18 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     });
   });
 
+  if (customDestinations) {
+    customDestinations.forEach((dest) => {
+      if (dest?.location) mapServices.push({
+        name: dest.name, address: dest.address, driveTimeMinutes: dest.driveTimeMinutes,
+        lat: dest.location.lat, lng: dest.location.lng, label: dest.name,
+      });
+    });
+  }
+
   const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
+  const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
 
   const safeAddrJS = JSON.stringify(address).replace(/</g, '\\u003c');
   const saveHistoryScriptHTML = `
@@ -990,7 +1031,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="chapter-body">
       ${sectionsHTML}
     </div>
-  </div>${additionalServicesCardHTML}
+  </div>${additionalServicesCardHTML}${customDestinationsCardHTML}
   <footer class="footer">
     <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
     <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
@@ -1108,7 +1149,7 @@ function buildLoadingHTML(address) {
       }
 
       function doFetch() {
-        fetch('/report?address=' + encodeURIComponent(address) + '&fetch=1')
+        fetch('/report' + location.search + '&fetch=1')
           .then(function (res) { return res.text(); })
           .then(function (html) {
             var parser = new DOMParser();
@@ -1129,7 +1170,7 @@ function buildLoadingHTML(address) {
             clearInterval(cycleInterval);
             msgEl.style.opacity = '0';
             setTimeout(function () {
-              msgEl.innerHTML = 'Connection issue. <a href="/report?address=' + encodeURIComponent(address) + '">Try again</a>';
+              msgEl.innerHTML = 'Connection issue. <a href="' + location.pathname + location.search + '">Try again</a>';
               msgEl.style.opacity = '1';
             }, 300);
           });
@@ -1178,10 +1219,30 @@ app.get('/report', async (req, res) => {
     const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool] =
       results.map((r) => (r.status === 'fulfilled' ? r.value : null));
 
+    const rawNames    = [].concat(req.query.customDestName    || []);
+    const rawAddresses = [].concat(req.query.customDestAddress || []);
+    const rawTypes    = [].concat(req.query.customDestType    || []);
+    const rawCustomDests = [];
+    for (let i = 0; i < Math.min(rawAddresses.length, 10); i++) {
+      const addr = (rawAddresses[i] || '').trim();
+      if (addr) rawCustomDests.push({ name: (rawNames[i] || 'Destination').trim(), address: addr, type: rawTypes[i] || 'other' });
+    }
+
+    const customDestResults = await Promise.allSettled(
+      rawCustomDests.map(async ({ name, address: destAddr, type }) => {
+        const location = await geocodeAddress(destAddr);
+        const driveTimeMinutes = await getDriveTime(originLatLng, location);
+        return { name, address: destAddr, type, location, driveTimeMinutes };
+      }),
+    );
+    const customDestinations = customDestResults
+      .filter((r) => r.status === 'fulfilled')
+      .map((r) => r.value);
+
     let reportId = null;
     try { reportId = saveReport(address); } catch {}
 
-    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, origin, reportId }));
+    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, origin, reportId }));
   } catch (error) {
     const { type, title, message } = classifyError(error);
     return res.send(buildErrorHTML(type, title, message, address));

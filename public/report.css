@@ -763,3 +763,192 @@ body.compare-page {
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
+
+/* FR-012 — Custom destinations: homepage form */
+.custom-dests-toggle {
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--divider);
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.88rem;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s;
+}
+.custom-dests-toggle:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.custom-dests-section {
+  margin-bottom: 0.5rem;
+}
+.custom-dests-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.custom-dest-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr auto auto;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+  align-items: center;
+}
+.custom-dest-input {
+  background: var(--white);
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--ink);
+  min-width: 0;
+}
+.custom-dest-input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.custom-dest-select {
+  background: var(--white);
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  padding: 0.5rem 0.4rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.82rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.custom-dest-select:focus { outline: none; border-color: var(--gold); }
+.custom-dest-remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem 0.3rem;
+  border-radius: 4px;
+  line-height: 1;
+}
+.custom-dest-remove:hover { color: #c0392b; background: rgba(192,57,43,0.07); }
+.custom-dests-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.custom-add-btn {
+  background: none;
+  border: none;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.82rem;
+  color: var(--gold);
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+.custom-add-btn:hover { text-decoration: underline; }
+.custom-templates-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.custom-template-select {
+  background: var(--white);
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.custom-template-select:focus { outline: none; border-color: var(--gold); }
+.custom-save-tpl-btn {
+  background: none;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.custom-save-tpl-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* FR-012 — Custom destinations: report card */
+.custom-dests-card {
+  margin: 0 1rem 1rem;
+  background: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.custom-dests-card-header {
+  padding: 1.1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--divider);
+}
+.custom-dests-card-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.2rem;
+}
+.custom-dests-card-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.custom-dest-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--divider);
+}
+.custom-dest-item:last-child { border-bottom: none; }
+.custom-dest-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  width: 2rem;
+  text-align: center;
+}
+.custom-dest-info { flex: 1; min-width: 0; }
+.custom-dest-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.custom-dest-addr {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.custom-dest-time {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.custom-dest-time-na {
+  font-size: 0.82rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}

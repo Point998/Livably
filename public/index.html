@@ -18,6 +18,22 @@
 
     <form action="/report" method="get" class="address-form">
       <input type="text" name="address" placeholder="Enter a home address" autocomplete="street-address" required>
+
+      <div class="custom-dests-section" id="customDestsSection" style="display:none">
+        <div class="custom-dests-label">Custom destinations</div>
+        <div id="customDestRows"></div>
+        <div class="custom-dests-controls">
+          <button type="button" class="custom-add-btn" id="addDestBtn" onclick="addDestRow()">+ Add destination</button>
+          <div class="custom-templates-wrap" id="templatesWrap" style="display:none">
+            <select class="custom-template-select" id="templateSelect" onchange="loadTemplate(this.value)">
+              <option value="">Load template…</option>
+            </select>
+            <button type="button" class="custom-save-tpl-btn" onclick="saveTemplate()">Save template</button>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="custom-dests-toggle" id="toggleCustomDests" onclick="toggleCustomDests()">+ Add custom destinations</button>
       <button type="submit">Generate report</button>
     </form>
 
@@ -42,6 +58,98 @@
       }).join('');
       document.getElementById('recentSearches').style.display = 'block';
     })();
+
+    // Custom destinations
+    var customDestCount = 0;
+    var MAX_DESTS = 10;
+
+    function toggleCustomDests() {
+      var section = document.getElementById('customDestsSection');
+      var btn = document.getElementById('toggleCustomDests');
+      var visible = section.style.display !== 'none';
+      section.style.display = visible ? 'none' : 'block';
+      btn.textContent = visible ? '+ Add custom destinations' : '− Custom destinations';
+      if (!visible && customDestCount === 0) addDestRow();
+    }
+
+    function addDestRow() {
+      if (customDestCount >= MAX_DESTS) return;
+      var idx = Date.now();
+      var row = document.createElement('div');
+      row.className = 'custom-dest-row';
+      row.dataset.idx = idx;
+      row.innerHTML =
+        '<input type="text" name="customDestName[]" placeholder="Label (e.g., My office)" class="custom-dest-input">' +
+        '<input type="text" name="customDestAddress[]" placeholder="Address" class="custom-dest-input custom-dest-addr" required>' +
+        '<select name="customDestType[]" class="custom-dest-select">' +
+          '<option value="work">Work</option>' +
+          '<option value="family">Family</option>' +
+          '<option value="medical">Medical</option>' +
+          '<option value="recreation">Recreation</option>' +
+          '<option value="other">Other</option>' +
+        '</select>' +
+        '<button type="button" class="custom-dest-remove" onclick="removeDestRow(this)">&#x2715;</button>';
+      document.getElementById('customDestRows').appendChild(row);
+      customDestCount++;
+      refreshTemplatesBar();
+    }
+
+    function removeDestRow(btn) {
+      btn.closest('.custom-dest-row').remove();
+      customDestCount--;
+      refreshTemplatesBar();
+    }
+
+    function refreshTemplatesBar() {
+      var wrap = document.getElementById('templatesWrap');
+      var templates = JSON.parse(localStorage.getItem('destTemplates') || '[]');
+      var hasRows = customDestCount > 0;
+      var hasTpls = templates.length > 0;
+      wrap.style.display = (hasRows || hasTpls) ? 'flex' : 'none';
+      var sel = document.getElementById('templateSelect');
+      sel.innerHTML = '<option value="">Load template…</option>' +
+        templates.map(function (t) {
+          var safe = t.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+          return '<option value="' + safe + '">' + safe + '</option>';
+        }).join('');
+      sel.parentElement.style.display = hasTpls ? '' : 'none';
+    }
+
+    function saveTemplate() {
+      var rows = document.querySelectorAll('.custom-dest-row');
+      if (!rows.length) return;
+      var name = prompt('Name this template:');
+      if (!name) return;
+      var dests = Array.from(rows).map(function (r) {
+        return {
+          name: r.querySelector('[name="customDestName[]"]').value,
+          address: r.querySelector('[name="customDestAddress[]"]').value,
+          type: r.querySelector('[name="customDestType[]"]').value,
+        };
+      }).filter(function (d) { return d.address.trim(); });
+      var templates = JSON.parse(localStorage.getItem('destTemplates') || '[]');
+      templates.push({ name: name, destinations: dests, createdAt: Date.now() });
+      localStorage.setItem('destTemplates', JSON.stringify(templates));
+      refreshTemplatesBar();
+    }
+
+    function loadTemplate(name) {
+      if (!name) return;
+      var templates = JSON.parse(localStorage.getItem('destTemplates') || '[]');
+      var tpl = templates.find(function (t) { return t.name === name; });
+      if (!tpl) return;
+      document.getElementById('customDestRows').innerHTML = '';
+      customDestCount = 0;
+      tpl.destinations.forEach(function (dest) {
+        addDestRow();
+        var rows = document.querySelectorAll('.custom-dest-row');
+        var row = rows[rows.length - 1];
+        row.querySelector('[name="customDestName[]"]').value = dest.name || '';
+        row.querySelector('[name="customDestAddress[]"]').value = dest.address || '';
+        row.querySelector('[name="customDestType[]"]').value = dest.type || 'other';
+      });
+      document.getElementById('templateSelect').value = '';
+    }
   </script>
 </body>
 </html>
