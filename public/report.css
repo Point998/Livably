@@ -469,6 +469,143 @@ body {
 }
 .share-toast.hidden { display: none; }
 
+/* History page (FR-011) */
+body.history-page {
+  max-width: 680px;
+}
+.history-container {
+  padding: 2rem 1.5rem;
+}
+.history-header {
+  margin-bottom: 1.75rem;
+}
+.history-title {
+  font-family: 'Fraunces', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.history-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.history-clear-btn {
+  background: none;
+  border: 1px solid var(--divider);
+  color: var(--muted);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.history-clear-btn:hover { border-color: var(--ink); color: var(--ink); }
+.history-list {
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.history-item {
+  background: var(--white);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.history-info { flex: 1; min-width: 0; }
+.history-address {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-date {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+.history-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.history-view-btn {
+  display: inline-block;
+  width: auto;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.history-delete-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.4rem;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.history-delete-btn:hover { color: var(--ink); }
+.history-empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Recent searches (homepage) */
+.recent-searches {
+  margin-bottom: 1.5rem;
+}
+.recent-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+.recent-item {
+  display: block;
+  padding: 0.6rem 0.85rem;
+  background: var(--white);
+  border-radius: 7px;
+  margin-bottom: 0.4rem;
+  text-decoration: none;
+  font-size: 0.85rem;
+  color: var(--ink);
+  border: 1px solid var(--divider);
+  transition: border-color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-item:hover { border-color: var(--gold); }
+
+/* Homepage footer links */
+.form-footer-links {
+  margin-top: 1.25rem;
+  text-align: center;
+}
+.form-footer-link {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.form-footer-link:hover { color: var(--ink); }
+.form-footer-sep {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0 0.4rem;
+}
+
 /* Compare page (FR-010) */
 body.compare-page {
   max-width: 960px;

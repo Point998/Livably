@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search History — Livably</title>
+  <link rel="stylesheet" href="/report.css">
+</head>
+<body class="history-page">
+  <header class="header">
+    <a href="/" style="text-decoration:none"><div class="logo">Liv<span class="logo-gold">ably</span></div></a>
+  </header>
+  <div class="history-container">
+    <div class="history-header">
+      <h1 class="history-title">Search History</h1>
+      <div class="history-actions-row">
+        <a href="/" class="back-link" style="margin-top:0">← New search</a>
+        <button class="history-clear-btn" id="clearBtn" onclick="clearHistory()">Clear all</button>
+      </div>
+    </div>
+
+    <div id="historyList" class="history-list"></div>
+
+    <div id="emptyState" class="history-empty" style="display:none">
+      <p>No search history yet.</p>
+      <a href="/" class="btn-primary" style="display:inline-block;width:auto;padding:0.75rem 1.5rem;margin-top:1rem">Generate your first report</a>
+    </div>
+  </div>
+
+  <script>
+    function loadHistory() {
+      var history = JSON.parse(localStorage.getItem('livablyHistory') || '[]');
+      var listEl = document.getElementById('historyList');
+      var emptyEl = document.getElementById('emptyState');
+      var clearBtn = document.getElementById('clearBtn');
+
+      if (!history.length) {
+        listEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        clearBtn.style.display = 'none';
+        return;
+      }
+
+      listEl.style.display = 'flex';
+      emptyEl.style.display = 'none';
+      clearBtn.style.display = 'inline-block';
+
+      listEl.innerHTML = history.map(function (entry) {
+        var d = new Date(entry.timestamp);
+        var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        var safeAddr = entry.address.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        var safeId = String(entry.id).replace(/'/g, '');
+        return '<div class="history-item">' +
+          '<div class="history-info">' +
+            '<div class="history-address">' + safeAddr + '</div>' +
+            '<div class="history-date">' + dateStr + '</div>' +
+          '</div>' +
+          '<div class="history-item-actions">' +
+            '<a href="/report?address=' + encodeURIComponent(entry.address) + '" class="btn-primary history-view-btn">View Report</a>' +
+            '<button class="history-delete-btn" onclick="deleteEntry(\'' + safeId + '\')" title="Delete">&#x2715;</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function deleteEntry(id) {
+      var history = JSON.parse(localStorage.getItem('livablyHistory') || '[]');
+      localStorage.setItem('livablyHistory', JSON.stringify(history.filter(function (h) { return String(h.id) !== String(id); })));
+      loadHistory();
+    }
+
+    function clearHistory() {
+      if (confirm('Clear all search history?')) {
+        localStorage.removeItem('livablyHistory');
+        loadHistory();
+      }
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>

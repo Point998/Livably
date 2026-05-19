@@ -889,6 +889,22 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
 
+  const safeAddrJS = JSON.stringify(address).replace(/</g, '\\u003c');
+  const saveHistoryScriptHTML = `
+  <script>
+    (function () {
+      try {
+        var addr = ${safeAddrJS};
+        var hist = JSON.parse(localStorage.getItem('livablyHistory') || '[]');
+        var idx = hist.findIndex(function (h) { return h.address === addr; });
+        if (idx !== -1) hist.splice(idx, 1);
+        hist.unshift({ address: addr, timestamp: Date.now(), id: String(Date.now()) });
+        if (hist.length > 50) hist.pop();
+        localStorage.setItem('livablyHistory', JSON.stringify(hist));
+      } catch (e) {}
+    })();
+  <\/script>`;
+
   const mapData = origin ? { home: { lat: origin.lat, lng: origin.lng }, services: mapServices } : null;
   // Escape < so address/name strings can't contain </script> and break the JSON block
   const safeMapJSON = mapData ? JSON.stringify(mapData).replace(/</g, '\\u003c') : null;
@@ -980,7 +996,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
     <div class="footer-legal">Drive times are estimates from Google Maps for 8am Tuesday departure. Assigned school requires verification with the local school district. For informational purposes only.</div>
     <a href="/" class="back-link">← Back to address form</a>
-  </footer>${mapScriptsHTML}
+  </footer>${mapScriptsHTML}${saveHistoryScriptHTML}
 </body>
 </html>`;
 }
@@ -1393,6 +1409,10 @@ app.get('/r/:reportId', (req, res) => {
   }
   try { updateReportAccess(req.params.reportId); } catch {}
   return res.redirect(`/report?address=${encodeURIComponent(report.address)}`);
+});
+
+app.get('/history', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/history.html'));
 });
 
 ensureReportsFile();

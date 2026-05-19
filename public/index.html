@@ -10,14 +10,38 @@
   <div class="form-container">
     <div class="form-logo">Liv<span class="logo-gold">ably</span></div>
     <p class="form-tagline">The things you'd only learn after living there for two years.</p>
+
+    <div id="recentSearches" class="recent-searches" style="display:none">
+      <div class="recent-label">Recent searches</div>
+      <div id="recentList"></div>
+    </div>
+
     <form action="/report" method="get" class="address-form">
       <input type="text" name="address" placeholder="Enter a home address" autocomplete="street-address" required>
       <button type="submit">Generate report</button>
     </form>
+
+    <div class="form-footer-links">
+      <a href="/history" class="form-footer-link">View history</a>
+      <span class="form-footer-sep">·</span>
+      <a href="/compare" class="form-footer-link">Compare addresses</a>
+    </div>
   </div>
   <script>
     var p = new URLSearchParams(location.search).get('address');
     if (p) document.querySelector('input[name="address"]').value = p;
+
+    (function () {
+      var hist = JSON.parse(localStorage.getItem('livablyHistory') || '[]');
+      var recent = hist.slice(0, 3);
+      if (!recent.length) return;
+      var listEl = document.getElementById('recentList');
+      listEl.innerHTML = recent.map(function (e) {
+        var safe = e.address.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        return '<a href="/report?address=' + encodeURIComponent(e.address) + '" class="recent-item">' + safe + '</a>';
+      }).join('');
+      document.getElementById('recentSearches').style.display = 'block';
+    })();
   </script>
 </body>
 </html>
