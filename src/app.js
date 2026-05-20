@@ -1095,24 +1095,24 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
       if (s?.location) mapServices.push({
         name: s.name, address: s.address, driveTimeMinutes: s.driveTimeMinutes,
         lat: s.location.lat, lng: s.location.lng,
-        label: i === 0 ? 'Grocery' : null,
+        label: 'Grocery', category: 'grocery',
       });
     });
   }
   [
-    { result: pharmacy,         label: 'Pharmacy' },
-    { result: hospital,         label: 'Hospital' },
-    { result: urgentCare,       label: 'Urgent Care' },
-    { result: highwayRamp,      label: highwayRamp?.name || 'Highway' },
-    { result: school,           label: 'School' },
-    { result: gasStation,       label: 'Gas Station' },
-    { result: park,             label: 'Park' },
-    { result: coffeeShop,       label: 'Coffee Shop' },
-    { result: elementarySchool, label: 'Elementary School' },
-  ].forEach(({ result, label }) => {
+    { result: pharmacy,         label: 'Pharmacy',          category: 'healthcare' },
+    { result: hospital,         label: 'Hospital',          category: 'healthcare' },
+    { result: urgentCare,       label: 'Urgent Care',       category: 'healthcare' },
+    { result: highwayRamp,      label: highwayRamp?.name || 'Highway', category: 'transit' },
+    { result: school,           label: 'School',            category: 'education' },
+    { result: gasStation,       label: 'Gas Station',       category: 'transit' },
+    { result: park,             label: 'Park',              category: 'parks' },
+    { result: coffeeShop,       label: 'Coffee Shop',       category: 'coffee' },
+    { result: elementarySchool, label: 'Elementary School', category: 'education' },
+  ].forEach(({ result, label, category }) => {
     if (result?.location) mapServices.push({
       name: result.name, address: result.address, driveTimeMinutes: result.driveTimeMinutes,
-      lat: result.location.lat, lng: result.location.lng, label,
+      lat: result.location.lat, lng: result.location.lng, label, category,
     });
   });
 
@@ -1120,7 +1120,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     customDestinations.forEach((dest) => {
       if (dest?.location) mapServices.push({
         name: dest.name, address: dest.address, driveTimeMinutes: dest.driveTimeMinutes,
-        lat: dest.location.lat, lng: dest.location.lng, label: dest.name,
+        lat: dest.location.lat, lng: dest.location.lng, label: dest.name, category: 'custom',
       });
     });
   }
@@ -1153,7 +1153,23 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
 
   const mapSectionHTML = mapData ? `
   <div class="map-section no-print">
+    <div class="map-controls" id="mapControls">
+      <button class="map-toggle active" data-cat="all">All</button>
+      <button class="map-toggle" data-cat="education">Schools</button>
+      <button class="map-toggle" data-cat="healthcare">Healthcare</button>
+      <button class="map-toggle" data-cat="grocery">Grocery</button>
+      <button class="map-toggle" data-cat="coffee">Coffee</button>
+      <button class="map-toggle" data-cat="parks">Parks</button>${mapData.services.some(s => s.category === 'custom') ? '\n      <button class="map-toggle" data-cat="custom">Custom</button>' : ''}
+    </div>
     <div id="map" class="report-map"></div>
+    <div id="map-detail">
+      <div class="map-detail-pill"></div>
+      <button id="map-detail-close" aria-label="Close">&#x2715;</button>
+      <div class="map-detail-cat" id="map-detail-cat"></div>
+      <div class="map-detail-name" id="map-detail-name"></div>
+      <div class="map-detail-addr" id="map-detail-addr"></div>
+      <span class="map-detail-time" id="map-detail-time"></span>
+    </div>
   </div>` : '';
 
   const mapScriptsHTML = mapData ? `
@@ -1166,38 +1182,92 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
         var map = new google.maps.Map(document.getElementById('map'), {
           center: home, zoom: 12,
           mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
+          styles: [
+            { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+            { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+          ],
         });
+
+        var CAT_COLORS = {
+          education: '#7B8E7F',
+          healthcare: '#C27B5B',
+          grocery:    '#B8956A',
+          coffee:     '#7A6247',
+          parks:      '#5B7A5E',
+          transit:    '#9B9080',
+          custom:     '#7A8FAD',
+        };
+
         var bounds = new google.maps.LatLngBounds();
         bounds.extend(home);
+
         new google.maps.Marker({
-          position: home, map: map, title: 'Your address', zIndex: 10,
+          position: home, map: map, title: 'Your address', zIndex: 20,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
             fillColor: '#7B8E7F', fillOpacity: 1,
-            strokeColor: '#ffffff', strokeWeight: 2, scale: 10,
+            strokeColor: '#ffffff', strokeWeight: 3, scale: 11,
           },
         });
-        var infoWindow = new google.maps.InfoWindow();
+
+        var svcMarkers = [];
+        var detail = document.getElementById('map-detail');
+        var detailCat  = document.getElementById('map-detail-cat');
+        var detailName = document.getElementById('map-detail-name');
+        var detailAddr = document.getElementById('map-detail-addr');
+        var detailTime = document.getElementById('map-detail-time');
+
+        function showDetail(svc) {
+          detailCat.textContent  = svc.label || svc.category || '';
+          detailName.textContent = svc.name;
+          detailAddr.textContent = svc.address;
+          detailTime.textContent = svc.driveTimeMinutes + ' min drive';
+          if (detail) detail.classList.add('visible');
+        }
+
+        document.getElementById('map-detail-close') && document.getElementById('map-detail-close').addEventListener('click', function () {
+          if (detail) detail.classList.remove('visible');
+        });
+
         data.services.forEach(function (svc) {
           var pos = { lat: svc.lat, lng: svc.lng };
           bounds.extend(pos);
-          var marker = new google.maps.Marker({ position: pos, map: map, title: svc.name });
-          marker.addListener('click', function () {
-            infoWindow.setContent(
-              '<div style="font-family:DM Sans,sans-serif;font-size:0.85rem;max-width:200px">' +
-              '<strong>' + svc.name + '</strong>' +
-              (svc.label ? '<br><span style="color:#6b6b6b;font-size:0.75rem">' + svc.label + '</span>' : '') +
-              '<br><span style="color:#6b6b6b">' + svc.address + '</span>' +
-              '<br><strong>' + svc.driveTimeMinutes + ' min</strong></div>'
-            );
-            infoWindow.open(map, marker);
+          var color = CAT_COLORS[svc.category] || '#9B9080';
+          var marker = new google.maps.Marker({
+            position: pos, map: map, title: svc.name,
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: color, fillOpacity: 0.9,
+              strokeColor: '#ffffff', strokeWeight: 2, scale: 8,
+            },
           });
+          marker._svc = svc;
+          marker.addListener('click', function () { showDetail(svc); });
+          svcMarkers.push(marker);
         });
+
         map.fitBounds(bounds);
         var listener = google.maps.event.addListener(map, 'idle', function () {
           if (map.getZoom() > 15) map.setZoom(15);
           google.maps.event.removeListener(listener);
         });
+
+        // Category toggle filtering
+        var controls = document.getElementById('mapControls');
+        if (controls) {
+          controls.addEventListener('click', function (e) {
+            var btn = e.target.closest('.map-toggle');
+            if (!btn) return;
+            controls.querySelectorAll('.map-toggle').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            var cat = btn.dataset.cat;
+            if (detail) detail.classList.remove('visible');
+            svcMarkers.forEach(function (m) {
+              var show = cat === 'all' || (m._svc && m._svc.category === cat);
+              m.setVisible(show);
+            });
+          });
+        }
       } catch (e) {
         var el = document.getElementById('map');
         if (el) el.style.display = 'none';
@@ -1226,7 +1296,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   </div>${mapSectionHTML}${insightsCardHTML}
   <div class="chapter-card">
     <div class="chapter-header">
-      <div class="chapter-label">Chapter 03</div>
+      <div class="chapter-label">Core Services</div>
       <div class="chapter-title">Daily Reachability</div>
     </div>
     <div class="chapter-body">
@@ -1242,6 +1312,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     </div>
     <a href="/" class="back-link no-print">← Back to address form</a>
   </footer>${mapScriptsHTML}${saveHistoryScriptHTML}
+  <script src="/ui.js" defer><\/script>
 </body>
 </html>`;
 }
