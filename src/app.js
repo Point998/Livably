@@ -1050,33 +1050,37 @@ function buildTrafficCardHTML(trafficData) {
   </div>`;
 }
 
+function buildHeroQuickStatsHTML(grocery, coffeeShop, premium, elementarySchool, school) {
+  const stats = [];
+
+  if (coffeeShop?.driveTimeMinutes != null) {
+    stats.push({ icon: '☕', label: 'Coffee nearby', value: `${coffeeShop.driveTimeMinutes} min drive` });
+  }
+  if (grocery?.length) {
+    stats.push({ icon: '🛒', label: 'Groceries', value: `${grocery[0].driveTimeMinutes} min drive` });
+  }
+  const walk = premium?.walkability;
+  if (walk?.category?.label) {
+    stats.push({ icon: '🚶', label: 'Walkability', value: walk.category.label });
+  }
+  const nearestSchool = elementarySchool || school;
+  if (nearestSchool?.driveTimeMinutes != null) {
+    stats.push({ icon: '🏫', label: 'Nearest school', value: `${nearestSchool.driveTimeMinutes} min drive` });
+  }
+
+  return stats.slice(0, 4).map(({ icon, label, value }) => `
+      <div class="hero-stat">
+        <div class="hero-stat-icon">${icon}</div>
+        <div class="hero-stat-text">
+          <span class="hero-stat-label">${escapeHtml(label)}</span>
+          <span class="hero-stat-value">${escapeHtml(value)}</span>
+        </div>
+      </div>`).join('');
+}
+
 function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
-
-  const shareSectionHTML = reportId ? `
-  <div class="share-section no-print">
-    <button id="shareBtn" class="share-button">Share this report</button>
-    <span id="shareToast" class="share-toast hidden">Link copied!</span>
-  </div>
-  <script>
-    (function () {
-      var id = '${reportId}';
-      document.getElementById('shareBtn').addEventListener('click', function () {
-        var url = window.location.origin + '/r/' + id;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(url).then(showToast).catch(function () { prompt('Copy this link:', url); });
-        } else {
-          prompt('Copy this link:', url);
-        }
-      });
-      function showToast() {
-        var t = document.getElementById('shareToast');
-        t.classList.remove('hidden');
-        setTimeout(function () { t.classList.add('hidden'); }, 3000);
-      }
-    })();
-  <\/script>` : '';
 
   const sectionsHTML = [
     buildGrocerySection(grocery),
@@ -1091,7 +1095,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   // Build map pin data from all non-null services
   const mapServices = [];
   if (grocery && grocery.length) {
-    grocery.forEach((s, i) => {
+    grocery.forEach((s) => {
       if (s?.location) mapServices.push({
         name: s.name, address: s.address, driveTimeMinutes: s.driveTimeMinutes,
         lat: s.location.lat, lng: s.location.lng,
@@ -1148,29 +1152,60 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <\/script>`;
 
   const mapData = origin ? { home: { lat: origin.lat, lng: origin.lng }, services: mapServices } : null;
-  // Escape < so address/name strings can't contain </script> and break the JSON block
   const safeMapJSON = mapData ? JSON.stringify(mapData).replace(/</g, '\\u003c') : null;
 
-  const mapSectionHTML = mapData ? `
-  <div class="map-section no-print">
-    <div class="map-controls" id="mapControls">
-      <button class="map-toggle active" data-cat="all">All</button>
-      <button class="map-toggle" data-cat="education">Schools</button>
-      <button class="map-toggle" data-cat="healthcare">Healthcare</button>
-      <button class="map-toggle" data-cat="grocery">Grocery</button>
-      <button class="map-toggle" data-cat="coffee">Coffee</button>
-      <button class="map-toggle" data-cat="parks">Parks</button>${mapData.services.some(s => s.category === 'custom') ? '\n      <button class="map-toggle" data-cat="custom">Custom</button>' : ''}
+  // Quick stats for the hero info card
+  const quickStatsHTML = buildHeroQuickStatsHTML(grocery, coffeeShop, premium, elementarySchool, school);
+
+  // Share button lives in the hero; script wires it up
+  const heroShareHTML = reportId ? `
+    <button id="shareBtn" class="hero-share-btn no-print">Share this report</button>
+    <span id="shareToast" class="hero-share-toast hidden">Link copied!</span>` : '';
+
+  const shareScriptHTML = reportId ? `
+  <script>
+    (function () {
+      var id = '${reportId}';
+      var btn = document.getElementById('shareBtn');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        var url = window.location.origin + '/r/' + id;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(showToast).catch(function () { prompt('Copy this link:', url); });
+        } else {
+          prompt('Copy this link:', url);
+        }
+      });
+      function showToast() {
+        var t = document.getElementById('shareToast');
+        if (!t) return;
+        t.classList.remove('hidden');
+        setTimeout(function () { t.classList.add('hidden'); }, 3000);
+      }
+    })();
+  <\/script>` : '';
+
+  // Hero map HTML (map + detail panel + toggles live inside .hero)
+  const heroMapHTML = mapData ? `
+    <div class="hero-map-container no-print">
+      <div id="map" class="hero-map"></div>
     </div>
-    <div id="map" class="report-map"></div>
-    <div id="map-detail">
+    <div class="hero-category-toggles no-print" id="mapControls">
+      <button class="map-toggle active" data-cat="all">All</button>
+      <button class="map-toggle" data-cat="education">🏫 Schools</button>
+      <button class="map-toggle" data-cat="healthcare">🏥 Healthcare</button>
+      <button class="map-toggle" data-cat="grocery">🛒 Grocery</button>
+      <button class="map-toggle" data-cat="coffee">☕ Coffee</button>
+      <button class="map-toggle" data-cat="parks">🌳 Parks</button>${mapData.services.some((s) => s.category === 'custom') ? '\n      <button class="map-toggle" data-cat="custom">⭐ Custom</button>' : ''}
+    </div>
+    <div id="map-detail" class="no-print">
       <div class="map-detail-pill"></div>
       <button id="map-detail-close" aria-label="Close">&#x2715;</button>
       <div class="map-detail-cat" id="map-detail-cat"></div>
       <div class="map-detail-name" id="map-detail-name"></div>
       <div class="map-detail-addr" id="map-detail-addr"></div>
       <span class="map-detail-time" id="map-detail-time"></span>
-    </div>
-  </div>` : '';
+    </div>` : '';
 
   const mapScriptsHTML = mapData ? `
   <script id="map-data" type="application/json">${safeMapJSON}<\/script>
@@ -1225,7 +1260,8 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
           if (detail) detail.classList.add('visible');
         }
 
-        document.getElementById('map-detail-close') && document.getElementById('map-detail-close').addEventListener('click', function () {
+        var closeBtn = document.getElementById('map-detail-close');
+        if (closeBtn) closeBtn.addEventListener('click', function () {
           if (detail) detail.classList.remove('visible');
         });
 
@@ -1284,34 +1320,43 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <title>Livably Report — ${escapeHtml(address)}</title>
   <link rel="stylesheet" href="/report.css">
 </head>
-<body>
-  <header class="header">
-    <div class="logo">Liv<span class="logo-gold">ably</span></div>
-    <div class="report-badge">Standard Report</div>
-  </header>
-  <div class="hero">
-    <div class="hero-street">${escapeHtml(street)}</div>
-    <div class="hero-city">${escapeHtml(cityState)}</div>
-    <div class="hero-date">Research date: ${researchDate}</div>${shareSectionHTML}
-  </div>${mapSectionHTML}${insightsCardHTML}
-  <div class="chapter-card">
-    <div class="chapter-header">
-      <div class="chapter-label">Core Services</div>
-      <div class="chapter-title">Daily Reachability</div>
+<body class="report-page">
+  <div class="hero">${heroMapHTML}
+    <div class="hero-info-card">
+      <div class="hero-card-brand">Liv<span class="logo-gold">ably</span></div>
+      <h1 class="hero-info-street">${escapeHtml(street)}</h1>
+      <div class="hero-info-city">${escapeHtml(cityState)}</div>${quickStatsHTML ? `
+      <div class="hero-quick-stats">${quickStatsHTML}
+      </div>` : ''}
+    </div>${heroShareHTML}
+    <div class="hero-scroll-indicator" aria-hidden="true">
+      <span>Explore</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14m0 0l7-7m-7 7l-7-7"/>
+      </svg>
     </div>
-    <div class="chapter-body">
-      ${sectionsHTML}
-    </div>
-  </div>${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${premiumSectionsHTML}
-  <footer class="footer">
-    <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
-    <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
-    <div class="footer-legal">Drive times are estimates from Google Maps for 8am Tuesday departure. Assigned school requires verification with the local school district. For informational purposes only.</div>
-    <div class="footer-actions no-print">
-      <a id="pdfLink" href="#" class="btn-pdf" onclick="this.href='/report/pdf'+location.search.replace(/[?&]fetch=1/,'')">Download PDF</a>
-    </div>
-    <a href="/" class="back-link no-print">← Back to address form</a>
-  </footer>${mapScriptsHTML}${saveHistoryScriptHTML}
+  </div>
+  <div class="report-content">
+    ${insightsCardHTML}
+    <div class="chapter-card">
+      <div class="chapter-header">
+        <div class="chapter-label">Core Services</div>
+        <div class="chapter-title">Daily Reachability</div>
+      </div>
+      <div class="chapter-body">
+        ${sectionsHTML}
+      </div>
+    </div>${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${premiumSectionsHTML}
+    <footer class="footer">
+      <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
+      <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
+      <div class="footer-legal">Drive times are estimates from Google Maps for 8am Tuesday departure. Assigned school requires verification with the local school district. For informational purposes only.</div>
+      <div class="footer-actions no-print">
+        <a id="pdfLink" href="#" class="btn-pdf" onclick="this.href='/report/pdf'+location.search.replace(/[?&]fetch=1/,'')">Download PDF</a>
+      </div>
+      <a href="/" class="back-link no-print">← Back to address form</a>
+    </footer>
+  </div>${mapScriptsHTML}${shareScriptHTML}${saveHistoryScriptHTML}
   <script src="/ui.js" defer><\/script>
 </body>
 </html>`;
