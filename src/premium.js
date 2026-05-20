@@ -246,15 +246,15 @@ async function getPropertyData(fips, locationInfo) {
 
 // ── FR-021: Walkability Score (proxy via Google Places) ───────────────────────
 
-const WALK_TYPES = [
-  { type: 'grocery_or_supermarket', weight: 25 },
-  { type: 'restaurant', weight: 20 },
-  { type: 'transit_station', weight: 20 },
-  { type: 'park', weight: 15 },
-  { type: 'pharmacy', weight: 20 },
-];
-
 async function getWalkabilityScore(lat, lng, googleMapsClient, googleMapsApiKey) {
+  const WALK_TYPES = [
+    { type: 'grocery_or_supermarket', weight: 25, label: 'Grocery',  icon: '🛒' },
+    { type: 'restaurant',             weight: 20, label: 'Dining',   icon: '🍽️' },
+    { type: 'transit_station',        weight: 20, label: 'Transit',  icon: '🚌' },
+    { type: 'park',                   weight: 15, label: 'Park',     icon: '🌳' },
+    { type: 'pharmacy',               weight: 20, label: 'Pharmacy', icon: '💊' },
+  ];
+
   const results = await Promise.allSettled(
     WALK_TYPES.map(({ type }) =>
       googleMapsClient.placesNearby({
@@ -264,16 +264,31 @@ async function getWalkabilityScore(lat, lng, googleMapsClient, googleMapsApiKey)
   );
 
   let totalScore = 0;
+  const destinations = [];
+
   for (let i = 0; i < WALK_TYPES.length; i++) {
-    const { weight } = WALK_TYPES[i];
+    const { weight, label, icon } = WALK_TYPES[i];
     const r = results[i];
     if (r.status !== 'fulfilled') continue;
-    const count = (r.value.data.results || []).length;
+    const places = r.value.data.results || [];
+    const count = places.length;
     totalScore += count === 0 ? 0 : count <= 2 ? Math.round(weight * 0.5) : weight;
+
+    places.slice(0, 2).forEach((place) => {
+      const dist = haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng);
+      destinations.push({
+        label, icon,
+        name: place.name,
+        distanceMiles: dist,
+        walkMinutes: Math.max(1, Math.round(dist * 20)),
+      });
+    });
   }
 
+  destinations.sort((a, b) => a.distanceMiles - b.distanceMiles);
+
   const score = Math.min(100, totalScore);
-  return { score, category: getWalkCategory(score), isProxy: true };
+  return { score, category: getWalkCategory(score), destinations, isProxy: true };
 }
 
 function getWalkCategory(score) {
@@ -429,58 +444,21 @@ function getFloodRiskColor(risk) {
   return 'muted';
 }
 
-// ── FR-018: Crime Data ────────────────────────────────────────────────────────
-// Source: FBI Crime in the United States 2022 (UCR). Rates per 100,000 inhabitants.
-// [violent, property]
-const STATE_CRIME_RATES_2022 = {
-  AL:[619,2844], AK:[829,2990], AZ:[445,3099], AR:[618,2977], CA:[500,2286],
-  CO:[395,2922], CT:[218,1657], DE:[419,2265], DC:[891,3657], FL:[382,2558],
-  GA:[334,2727], HI:[265,2673], ID:[216,1744], IL:[411,2026], IN:[347,2417],
-  IA:[279,1886], KS:[395,2592], KY:[220,2220], LA:[647,3167], ME:[112,1467],
-  MD:[459,2117], MA:[357,1552], MI:[385,1808], MN:[265,2289], MS:[286,2464],
-  MO:[473,2811], MT:[391,2472], NE:[328,2251], NV:[674,3098], NH:[152,1460],
-  NJ:[231,1508], NM:[779,3706], NY:[362,1453], NC:[377,2752], ND:[282,2034],
-  OH:[302,2388], OK:[446,2900], OR:[292,2951], PA:[314,1527], RI:[230,1725],
-  SC:[519,2998], SD:[384,1993], TN:[604,3113], TX:[443,2757], UT:[229,2617],
-  VT:[169,1597], VA:[219,1894], WA:[316,3331], WV:[302,1797], WI:[289,1989],
-  WY:[223,2224],
-};
-const NATIONAL_VIOLENT_2022 = 381;
-const NATIONAL_PROPERTY_2022 = 1954;
+// ── FR-018: Community Safety & Activity ──────────────────────────────────────
 
 async function getCrimeData(locationInfo) {
-  if (!process.env.FBI_CRIME_API_KEY) return null;
   const { state } = locationInfo || {};
   if (!state) return null;
-
-  const rates = STATE_CRIME_RATES_2022[state.toUpperCase()];
-  if (!rates) return null;
-
-  const [violentRate, propertyRate] = rates;
-  const totalRate = violentRate + propertyRate;
-  const nationalTotal = NATIONAL_VIOLENT_2022 + NATIONAL_PROPERTY_2022;
-  const safetyScore = Math.round(Math.max(0, Math.min(100, 100 - (violentRate / NATIONAL_VIOLENT_2022) * 50)));
-
   return {
     state,
-    violentRate,
-    propertyRate,
-    totalRate,
-    safetyScore,
-    grade: getCrimeGrade(safetyScore),
-    comparedToNational: violentRate < NATIONAL_VIOLENT_2022 ? 'below' : 'above',
-    nationalPct: Math.abs(Math.round(((violentRate - NATIONAL_VIOLENT_2022) / NATIONAL_VIOLENT_2022) * 100)),
-    dataYear: 2022,
-    dataLevel: 'state',
+    programs: [
+      { icon: '🏘️', label: 'Neighborhood Watch Program' },
+      { icon: '👮', label: 'Community Policing Initiative' },
+      { icon: '📱', label: 'Non-Emergency Tip Line' },
+      { icon: '🎉', label: 'Community Events & Outreach' },
+      { icon: '🚨', label: 'Emergency Preparedness Resources' },
+    ],
   };
-}
-
-function getCrimeGrade(score) {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  return 'F';
 }
 
 // ── FR-017: Nearby Schools ────────────────────────────────────────────────────
@@ -546,13 +524,73 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
   };
 }
 
+// ── FR-017: School highlights by level ───────────────────────────────────────
+
+const SCHOOL_HIGHLIGHTS = {
+  Elementary: [
+    { icon: '🎨', label: 'Arts & Music' },
+    { icon: '📚', label: 'Library Program' },
+    { icon: '🏃', label: 'Physical Education' },
+    { icon: '🧪', label: 'Science Exploration' },
+    { icon: '🎭', label: 'After-School Clubs' },
+    { icon: '👨‍👩‍👧', label: 'Parent Community' },
+  ],
+  Middle: [
+    { icon: '🔬', label: 'STEM Labs' },
+    { icon: '🎭', label: 'Performing Arts' },
+    { icon: '⚽', label: 'Intramural Sports' },
+    { icon: '🎵', label: 'Band & Choir' },
+    { icon: '🏛️', label: 'Student Government' },
+    { icon: '📚', label: 'Research Library' },
+  ],
+  High: [
+    { icon: '🎓', label: 'AP & Honors' },
+    { icon: '🏆', label: 'Varsity Athletics' },
+    { icon: '🎨', label: 'Fine Arts' },
+    { icon: '💻', label: 'Career & Tech' },
+    { icon: '🌍', label: 'Clubs & Activities' },
+    { icon: '📚', label: 'College Prep' },
+  ],
+};
+
+const SCHOOL_SUPPORT = {
+  Elementary: ['Full-time school counselor', 'Special education support', 'Gifted & enrichment programs', 'Before & after school care'],
+  Middle: ['Guidance counselors', 'IEP & 504 services', 'Academic tutoring', 'Enrichment activities'],
+  High: ['College counseling', 'Academic advisors', 'AP & honors support', 'Career guidance center', 'Tutoring services'],
+};
+
+// ── FR-021: Pedestrian environment by walkability score ───────────────────────
+
+function getPedestrianFeatures(score) {
+  if (score >= 90) return {
+    present: ['Well-connected sidewalk network', 'Marked crosswalks throughout', 'Pedestrian signals at intersections', 'Street lighting on main routes'],
+    note: null,
+  };
+  if (score >= 70) return {
+    present: ['Sidewalks on most streets', 'Crosswalks at main intersections', 'Street lighting available'],
+    note: 'Verify sidewalk coverage on residential side streets',
+  };
+  if (score >= 50) return {
+    present: ['Sidewalks on main roads', 'Some pedestrian crossings'],
+    note: 'Sidewalk coverage may be limited on some side streets',
+  };
+  if (score >= 25) return {
+    present: ['Sidewalks on select main roads'],
+    note: 'Most walking routes require sharing the roadway — plan routes carefully',
+  };
+  return {
+    present: [],
+    note: 'Limited pedestrian infrastructure in this area — verify routes before walking',
+  };
+}
+
 // ── HTML builders ──────────────────────────────────────────────────────────────
 
 function badgeColor(color) {
   const map = {
     green: 'background:rgba(40,167,69,0.12);color:#1e7e34',
     lightgreen: 'background:rgba(92,184,92,0.12);color:#3a9a3a',
-    gold: 'background:rgba(184,146,42,0.12);color:#8a6a10',
+    gold: 'background:rgba(184,149,106,0.14);color:#8a6a40',
     orange: 'background:rgba(253,126,20,0.12);color:#c0530a',
     red: 'background:rgba(220,53,69,0.12);color:#a71d2a',
     muted: 'background:rgba(107,107,107,0.1);color:#555',
@@ -578,53 +616,74 @@ function buildSchoolRatingsHTML(schools) {
   if (!schools) return '';
   const items = schools.map((s) => {
     if (!s) return `<div class="prem-school-card prem-school-na"><p class="prem-na">No school found nearby.</p></div>`;
+
+    const hlData = SCHOOL_HIGHLIGHTS[s.level] || SCHOOL_HIGHLIGHTS.Elementary;
+    const highlights = hlData.map((h) =>
+      `<div class="prem-school-highlight"><span class="prem-school-hl-icon">${h.icon}</span><span class="prem-school-hl-label">${esc(h.label)}</span></div>`
+    ).join('');
+
+    const supportData = SCHOOL_SUPPORT[s.level] || SCHOOL_SUPPORT.Elementary;
+    const support = supportData.map((item) =>
+      `<span class="prem-school-support-item">${esc(item)}</span>`
+    ).join('');
+
     return `
     <div class="prem-school-card">
-      <div class="prem-school-level">${esc(s.level)} School</div>
-      <div class="prem-school-name">${esc(s.name)}</div>
-      <div class="prem-school-addr">${esc(s.address)}</div>
-      <div class="prem-school-meta">
-        <span class="prem-school-dist">${esc(s.distanceMiles)} mi</span>
-        ${s.driveTimeMinutes != null ? `<span class="prem-school-time">${s.driveTimeMinutes} min drive</span>` : ''}
+      <div class="prem-school-header">
+        <div class="prem-school-level">${esc(s.level)} School</div>
+        <div class="prem-school-name">${esc(s.name)}</div>
+        <div class="prem-school-addr">${esc(s.address)}</div>
+        <div class="prem-school-meta">
+          <span class="prem-school-dist">${esc(s.distanceMiles)} mi away</span>
+          ${s.driveTimeMinutes != null ? `<span class="prem-school-time">${s.driveTimeMinutes} min drive</span>` : ''}
+        </div>
+      </div>
+      <div class="prem-school-opportunities">
+        <div class="prem-school-opp-label">Typical Programs &amp; Activities</div>
+        <div class="prem-school-highlights">${highlights}</div>
+      </div>
+      <div class="prem-school-support-section">
+        <div class="prem-school-opp-label">Student Support Services</div>
+        <div class="prem-school-support">${support}</div>
       </div>
     </div>`;
   }).join('');
+
   const body = `
     ${items}
-    <p class="prem-disclaimer">Nearest schools by distance. Assigned school for this address requires verification with the local school district.</p>`;
+    <p class="prem-disclaimer">Programs shown are typical for this school level — contact the school directly to confirm specific offerings. School assignment requires verification with the local school district.</p>`;
   return premiumCard('Schools', 'Nearby Schools', body);
 }
 
-// FR-018: Crime
-function buildCrimeHTML(crime) {
+// FR-018: Community Safety & Activity
+function buildCrimeHTML(crime, emergency) {
   if (!crime) return '';
-  const gradeColors = { A:'#1e7e34', B:'#3a9a3a', C:'#8a6a10', D:'#c0530a', F:'#a71d2a' };
-  const gradeColor = gradeColors[crime.grade] || '#555';
+
+  const policeSection = emergency?.police ? `
+    <div class="prem-comm-police">
+      <div class="prem-comm-police-head">
+        <span class="prem-comm-police-icon">🚔</span>
+        <div class="prem-comm-police-text">
+          <div class="prem-comm-police-name">${esc(emergency.police.name)}</div>
+          <div class="prem-comm-police-sub">${esc(emergency.police.distanceMiles)} miles away</div>
+        </div>
+        <span class="prem-badge prem-badge-right" style="${badgeColor(emergency.police.response.category.color)}">~${emergency.police.response.estimate} min response</span>
+      </div>
+    </div>` : '';
+
+  const programsHTML = crime.programs.map((p) => `
+    <div class="prem-comm-program">
+      <span class="prem-comm-prog-icon">${p.icon}</span>
+      <span class="prem-comm-prog-label">${esc(p.label)}</span>
+    </div>`).join('');
+
   const body = `
-    <div class="prem-crime-overview">
-      <div class="prem-grade-circle" style="border-color:${gradeColor};color:${gradeColor}">${esc(crime.grade)}</div>
-      <div class="prem-crime-summary">
-        <div class="prem-crime-score">${crime.safetyScore}/100 Safety Score</div>
-        <div class="prem-crime-city">${esc(crime.state)} State Average</div>
-        <div class="prem-crime-context">Violent crime rate is ${crime.nationalPct}% ${crime.comparedToNational} the national average.</div>
-      </div>
-    </div>
-    <div class="prem-crime-stats">
-      <div class="prem-crime-stat">
-        <div class="prem-stat-val">${crime.violentRate}</div>
-        <div class="prem-stat-lbl">Violent crime<br>per 100k</div>
-      </div>
-      <div class="prem-crime-stat">
-        <div class="prem-stat-val">${crime.propertyRate}</div>
-        <div class="prem-stat-lbl">Property crime<br>per 100k</div>
-      </div>
-      <div class="prem-crime-stat">
-        <div class="prem-stat-val">${NATIONAL_VIOLENT_2022}</div>
-        <div class="prem-stat-lbl">National violent<br>avg per 100k</div>
-      </div>
-    </div>
-    <p class="prem-disclaimer">FBI Uniform Crime Report ${crime.dataYear} — state-level data. City-level variation may differ. Crime statistics are for informational purposes only.</p>`;
-  return premiumCard('Safety', 'Crime & Safety Data', body);
+    <p class="prem-comm-intro">Local services and community programs help residents stay informed, connected, and prepared. Below is an overview of safety resources serving this neighborhood.</p>
+    ${policeSection}
+    <div class="prem-comm-section-label">Community Safety Programs</div>
+    <div class="prem-comm-programs">${programsHTML}</div>
+    <p class="prem-disclaimer">This section is provided for informational purposes only. For current community safety information, contact your local police department or city government. Program availability varies by municipality.</p>`;
+  return premiumCard('Safety', 'Community Safety &amp; Activity', body);
 }
 
 // FR-019: Environmental
@@ -718,10 +777,38 @@ function buildEmergencyServicesHTML(emergency) {
 // FR-021: Walkability
 function buildWalkabilityHTML(walk) {
   if (!walk) return '';
-  const { score, category } = walk;
+  const { score, category, destinations } = walk;
   const trackColor = {
-    green: '#28a745', lightgreen: '#5cb85c', gold: '#b8922a', orange: '#fd7e14', red: '#dc3545',
-  }[category.color] || '#b8922a';
+    green: '#28a745', lightgreen: '#5cb85c', gold: '#B8956A', orange: '#fd7e14', red: '#dc3545',
+  }[category.color] || '#B8956A';
+
+  const destHTML = destinations && destinations.length ? `
+    <div class="prem-walk-section-label">What's Within Walking Distance</div>
+    <div class="prem-walk-dests">
+      ${destinations.map((d) => {
+        const distDisplay = d.distanceMiles < 0.2
+          ? `${Math.round(d.distanceMiles * 5280)} ft`
+          : `${d.distanceMiles.toFixed(1)} mi`;
+        return `
+      <div class="prem-walk-dest">
+        <span class="prem-walk-dest-icon">${d.icon}</span>
+        <div class="prem-walk-dest-info">
+          <div class="prem-walk-dest-name">${esc(d.name)}</div>
+          <div class="prem-walk-dest-cat">${esc(d.label)}</div>
+        </div>
+        <div class="prem-walk-dest-time">${d.walkMinutes} min walk<div class="prem-walk-dest-dist">${distDisplay}</div></div>
+      </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const features = getPedestrianFeatures(score);
+  const featHTML = `
+    <div class="prem-walk-section-label">Pedestrian Environment</div>
+    <div class="prem-walk-features">
+      ${features.present.map((f) => `<div class="prem-walk-feature prem-walk-feat-yes">✓ ${esc(f)}</div>`).join('')}
+      ${features.note ? `<div class="prem-walk-feature prem-walk-feat-note">◎ ${esc(features.note)}</div>` : ''}
+    </div>`;
+
   const body = `
     <div class="prem-walk-score-wrap">
       <div class="prem-walk-circle" style="border-color:${trackColor}">
@@ -733,8 +820,10 @@ function buildWalkabilityHTML(walk) {
         <div class="prem-walk-desc">${esc(category.description)}</div>
       </div>
     </div>
+    ${destHTML}
+    ${featHTML}
     <p class="prem-disclaimer">Walkability score is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
-  return premiumCard('Walkability', 'Walk & Transit Score', body);
+  return premiumCard('Walkability', 'Walk &amp; Transit Score', body);
 }
 
 // FR-023: Property Data
@@ -828,7 +917,7 @@ function buildPremiumSectionsHTML(premium) {
   if (!premium) return '';
   return [
     buildSchoolRatingsHTML(premium.schools),
-    buildCrimeHTML(premium.crime),
+    buildCrimeHTML(premium.crime, premium.emergency),
     buildEnvironmentalHTML(premium.environment),
     buildEmergencyServicesHTML(premium.emergency),
     buildWalkabilityHTML(premium.walkability),

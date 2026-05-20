@@ -1173,7 +1173,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
           position: home, map: map, title: 'Your address', zIndex: 10,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
-            fillColor: '#b8922a', fillOpacity: 1,
+            fillColor: '#7B8E7F', fillOpacity: 1,
             strokeColor: '#ffffff', strokeWeight: 2, scale: 10,
           },
         });
