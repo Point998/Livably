@@ -841,7 +841,7 @@ function buildPropertyDataHTML(p) {
         <div class="prem-market-icon">🏠</div>
         <div class="prem-market-title">Median Home Value</div>
         <div class="prem-market-value">${p.medianHomeValue ? formatMoney(p.medianHomeValue) : 'N/A'}</div>
-        <div class="prem-market-sub">Census tract estimate</div>
+        <div class="prem-market-sub">ACS 2022 est. · tract avg</div>
       </div>
       <div class="prem-market-card">
         <div class="prem-market-icon">📋</div>
@@ -856,7 +856,11 @@ function buildPropertyDataHTML(p) {
         <div class="prem-market-sub">by Census tract population</div>
       </div>
     </div>
-    <p class="prem-disclaimer">Tax rate is the state average effective property tax rate. Home values from U.S. Census Bureau ACS 5-year estimates. Not a property appraisal. Consult a licensed professional.</p>`;
+    <div class="prem-market-note">
+      <span class="prem-market-note-icon">ℹ️</span>
+      <span>The median home value is a <strong>Census tract average</strong> from 2018–2022 ACS data. It includes rentals, condos, and all owner-occupied units across the tract — individual property values and current market prices may differ significantly. Fast-growing areas especially may have seen substantial appreciation since this estimate.</span>
+    </div>
+    <p class="prem-disclaimer">Property tax rate is the state average effective rate. Home values from U.S. Census Bureau ACS 5-year estimates (2022). Not a property appraisal — consult a licensed real estate professional for current pricing.</p>`;
   return premiumCard('Market', 'Property & Market Data', body);
 }
 

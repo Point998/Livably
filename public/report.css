@@ -1544,6 +1544,21 @@ body.compare-page {
   font-size: 0.7rem;
   color: var(--text-secondary);
 }
+.prem-market-note {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  background: rgba(184,149,106,0.1);
+  border: 1px solid rgba(184,149,106,0.25);
+  border-radius: 8px;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 0.25rem;
+}
+.prem-market-note-icon { flex-shrink: 0; font-size: 0.9rem; margin-top: 0.05rem; }
+.prem-market-note strong { color: var(--text-primary); font-weight: 600; }
 
 /* FR-024: Demographics */
 .prem-demo-grid {
