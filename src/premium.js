@@ -614,6 +614,15 @@ function premiumCard(label, title, bodyHTML) {
 // FR-017: Schools
 function buildSchoolRatingsHTML(schools) {
   if (!schools) return '';
+  const nearest = schools.find((s) => s != null);
+
+  const narrativeHTML = nearest ? `
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">The nearest ${nearest.level.toLowerCase()} school is ${nearest.driveTimeMinutes} minute${nearest.driveTimeMinutes !== 1 ? 's' : ''} away—${nearest.driveTimeMinutes <= 5 ? 'close enough that walking or biking is realistic on good weather days' : nearest.driveTimeMinutes <= 10 ? 'a quick drive that fits easily into any morning routine' : nearest.driveTimeMinutes <= 15 ? 'a manageable commute once you know the route' : 'a commute worth timing on a real school morning'}. The information below is a starting point, not the full picture.</p>
+      <p class="prem-narrative-body">The questions that matter most and are hardest to find online: average class size (smaller is generally better, especially in grades K–3), after-school care availability and its cutoff time (a dealbreaker for many working parents), and how active the parent community is. None of those appear in any directory—you find them by scheduling a tour on a regular school day and talking to parents at afternoon pickup.</p>
+      <p class="prem-narrative-note">Don't assume the nearest school is your assigned school. Attendance boundaries don't always follow distance logic. Call the district office with your specific address—it takes 5 minutes and eliminates guesswork before you make a decision based on the wrong school.</p>
+    </div>` : '';
+
   const items = schools.map((s) => {
     if (!s) return `<div class="prem-school-card prem-school-na"><p class="prem-na">No school found nearby.</p></div>`;
 
@@ -650,6 +659,7 @@ function buildSchoolRatingsHTML(schools) {
   }).join('');
 
   const body = `
+    ${narrativeHTML}
     ${items}
     <p class="prem-disclaimer">Programs shown are typical for this school level — contact the school directly to confirm specific offerings. School assignment requires verification with the local school district.</p>`;
   return premiumCard('Schools', 'Nearby Schools', body);
@@ -677,8 +687,20 @@ function buildCrimeHTML(crime, emergency) {
       <span class="prem-comm-prog-label">${esc(p.label)}</span>
     </div>`).join('');
 
+  const policeTime = emergency?.police?.response?.estimate;
+  const policeIntro = emergency?.police
+    ? `The nearest police station is ${esc(emergency.police.distanceMiles)} miles away with an estimated ${policeTime}-minute response time.`
+    : '';
+
+  const crimeContext = `
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">Understanding community safety goes beyond crime statistics. The programs and infrastructure below tell you how actively this area invests in resident safety—neighborhood watch networks, community policing, and emergency preparedness all contribute to how safe daily life actually feels.</p>
+      <p class="prem-narrative-body">${policeIntro ? policeIntro + ' ' : ''}Response time estimates are based on distance—actual times depend on call volume, time of day, and available units. For a truer picture, check with the local precinct or look up community crime mapping tools for your specific block.</p>
+      <p class="prem-narrative-note">The most informative signal is often community engagement: active neighborhood watch groups and strong turnout at local meetings correlate with lower crime rates more reliably than raw statistics. Ask neighbors when you visit—five minutes of conversation reveals what no report can.</p>
+    </div>`;
+
   const body = `
-    <p class="prem-comm-intro">Local services and community programs help residents stay informed, connected, and prepared. Below is an overview of safety resources serving this neighborhood.</p>
+    ${crimeContext}
     ${policeSection}
     <div class="prem-comm-section-label">Community Safety Programs</div>
     <div class="prem-comm-programs">${programsHTML}</div>
@@ -739,7 +761,19 @@ function buildEnvironmentalHTML(env) {
   }
 
   if (!items.length) return '';
-  const body = items.join('') + `<p class="prem-disclaimer">Air quality: EPA AirNow. Flood zone: FEMA National Flood Hazard Layer. Noise: estimate based on highway proximity.</p>`;
+
+  const envFactors = [];
+  if (env.airQuality) envFactors.push(env.airQuality.category.color === 'green' ? 'air quality is good' : env.airQuality.category.color === 'gold' ? 'air quality is moderate—noticeable for sensitive individuals' : 'air quality is a genuine concern worth monitoring');
+  if (env.noise) envFactors.push(env.noise.category.color === 'green' ? 'noise levels are low' : env.noise.category.color === 'gold' ? 'noise is moderate—you may notice it with windows open' : 'noise is elevated enough to factor into your daily experience');
+  if (env.floodRisk) envFactors.push(env.floodRisk.risk === 'Low' ? 'flood risk is minimal' : env.floodRisk.risk === 'Moderate' ? 'flood risk is moderate—worth understanding your specific parcel' : 'flood risk is elevated—insurance and elevation certificates matter here');
+
+  const envIntro = envFactors.length
+    ? `For this location: ${envFactors.join('; ')}. These factors affect daily comfort and long-term costs in ways that don't show up in price-per-square-foot comparisons.`
+    : '';
+
+  const body = (envIntro ? `<div class="prem-narrative"><p class="prem-narrative-body">${envIntro}</p></div>` : '') +
+    items.join('') +
+    `<p class="prem-disclaimer">Air quality: EPA AirNow. Flood zone: FEMA National Flood Hazard Layer. Noise: estimate based on highway proximity.</p>`;
   return premiumCard('Environment', 'Environmental Factors', body);
 }
 
@@ -767,10 +801,26 @@ function buildEmergencyServicesHTML(emergency) {
     </div>`;
   }
 
-  const body =
-    serviceCard('🚔', 'Police', emergency.police) +
-    serviceCard('🚒', 'Fire Department', emergency.fire) +
-    `<p class="prem-disclaimer">Response times are estimates based on distance to nearest stations. Actual times vary. Contact local emergency services for official data.</p>`;
+  const fastestResponse = [emergency.police, emergency.fire]
+    .filter(Boolean)
+    .map((s) => s.response.estimate)
+    .sort((a, b) => a - b)[0];
+  const emergencyNarrative = fastestResponse != null
+    ? fastestResponse <= 5
+      ? `Emergency services reach this location quickly—estimated response times under ${fastestResponse + 1} minutes. That's meaningfully faster than average, and it reflects well on the density and positioning of local stations.`
+      : fastestResponse <= 10
+      ? `Emergency response times here are typical for residential areas—around ${fastestResponse} minutes on average. In most situations, that's enough time for basic first aid and preparing to receive responders. Knowing the address clearly posted outside your home speeds things up further.`
+      : `Response times are longer than average at approximately ${fastestResponse} minutes. In a time-critical emergency—cardiac arrest, structure fire—every minute matters. Families in areas with longer response times often invest more in smoke detectors, carbon monoxide alarms, and basic CPR training as a practical buffer.`
+    : '';
+
+  const body = emergencyNarrative
+    ? `<div class="prem-narrative"><p class="prem-narrative-body">${emergencyNarrative}</p></div>` +
+      serviceCard('🚔', 'Police', emergency.police) +
+      serviceCard('🚒', 'Fire Department', emergency.fire) +
+      `<p class="prem-disclaimer">Response times are estimates based on distance to nearest stations. Actual times vary. Contact local emergency services for official data.</p>`
+    : serviceCard('🚔', 'Police', emergency.police) +
+      serviceCard('🚒', 'Fire Department', emergency.fire) +
+      `<p class="prem-disclaimer">Response times are estimates based on distance to nearest stations. Actual times vary. Contact local emergency services for official data.</p>`;
   return premiumCard('Emergency Services', 'Emergency Response', body);
 }
 
@@ -778,11 +828,65 @@ function buildEmergencyServicesHTML(emergency) {
 function buildWalkabilityHTML(walk) {
   if (!walk) return '';
   const { score, category, destinations } = walk;
-  const trackColor = {
-    green: '#28a745', lightgreen: '#5cb85c', gold: '#B8956A', orange: '#fd7e14', red: '#dc3545',
-  }[category.color] || '#B8956A';
 
-  const destHTML = destinations && destinations.length ? `
+  const verdictColor = {
+    green: '#1e7e34', lightgreen: '#3a9a3a', gold: '#8a6a40', orange: '#c0530a', red: '#a71d2a',
+  }[category.color] || '#8a6a40';
+  const verdictBg = {
+    green: 'rgba(40,167,69,0.1)', lightgreen: 'rgba(92,184,92,0.1)', gold: 'rgba(184,149,106,0.12)',
+    orange: 'rgba(253,126,20,0.1)', red: 'rgba(220,53,69,0.1)',
+  }[category.color] || 'rgba(184,149,106,0.12)';
+
+  // Bucket destinations by walk time for narrative use
+  const nearby = (destinations || []).filter((d) => d.walkMinutes <= 10);
+  const reachable = (destinations || []).filter((d) => d.walkMinutes > 10 && d.walkMinutes <= 20);
+
+  // Lead paragraph: the felt experience
+  let para1HTML;
+  if (score >= 70) {
+    const examples = nearby.length
+      ? `${nearby.slice(0, 2).map((d) => `${esc(d.name)} (${d.walkMinutes} min)`).join(' and ')} ${nearby.length > 1 ? 'are' : 'is'} reachable on foot without a second thought. `
+      : '';
+    para1HTML = `<p class="prem-narrative-lead">${examples}Walking here is practical, not aspirational. Morning coffee, a quick errand, an evening stroll—these happen without involving the car. That low-friction access compounds quietly: you stop thinking about it after a week, and start missing it immediately if you ever move somewhere without it.</p>`;
+  } else if (score >= 50) {
+    const firstDest = (destinations || [])[0];
+    const example = firstDest ? `${esc(firstDest.name)} is ${firstDest.walkMinutes} minutes on foot. ` : '';
+    para1HTML = `<p class="prem-narrative-lead">${example}Walking is a realistic option here—for some trips, on some days. It's a pleasant supplement to a car-based routine, not a replacement for it. On a nice evening or a relaxed weekend morning, you'll use your feet. On a typical Tuesday errand run, you'll drive.</p>`;
+  } else if (score >= 30) {
+    para1HTML = `<p class="prem-narrative-lead">This is car-dependent territory. Not because it's unwalkable for exercise or leisure—it's fine for that—but because the distances and infrastructure don't support walking as a way to run errands or access daily services. Plan your life around the car, and enjoy the walking for what it is: recreation, not transportation.</p>`;
+  } else {
+    para1HTML = `<p class="prem-narrative-lead">Walking to daily services isn't part of the picture here. The distances are long, the pedestrian infrastructure is limited, and that's simply the character of this kind of location. What it offers instead—space, quiet, nature—is a different kind of value. Most people who choose somewhere like this have already made that trade-off consciously.</p>`;
+  }
+
+  // Second paragraph: what IS and ISN'T walkable
+  let para2HTML = '';
+  if (score >= 70 && (nearby.length || reachable.length)) {
+    const nearbyNames = nearby.map((d) => esc(d.name)).join(', ');
+    const reachableNames = reachable.map((d) => esc(d.name)).join(', ');
+    let text = '';
+    if (nearbyNames) text += `Within easy walking distance: ${nearbyNames}.`;
+    if (reachableNames) text += ` A bit further but still walkable: ${reachableNames}.`;
+    if (text) text += ' A full grocery haul or anything that needs a car seat still gets driven—walkability here doesn\'t eliminate the car, it just reduces how often you reach for the keys.';
+    if (text) para2HTML = `<p class="prem-narrative-body">${text}</p>`;
+  } else if (score >= 50 && (destinations || []).length) {
+    const destNames = (destinations || []).slice(0, 3).map((d) => esc(d.name)).join(', ');
+    para2HTML = `<p class="prem-narrative-body">The walkable options nearby—${destNames}—are genuinely useful when the timing is right, but they don't add up to a fully walkable lifestyle. Most daily needs still require a car trip.</p>`;
+  } else if (score < 30 && (destinations || []).length) {
+    const destNames = (destinations || []).slice(0, 2).map((d) => esc(d.name)).join(' and ');
+    para2HTML = `<p class="prem-narrative-body">${destNames ? `The closest options on foot are ${destNames}—` : ''}worth knowing for a neighborhood stroll, but not practical for regular errands given the distances involved.</p>`;
+  }
+
+  // Third paragraph: honest reality / anticipation
+  let para3HTML;
+  if (score >= 70) {
+    para3HTML = `<p class="prem-narrative-body">One thing walkability ratings can't fully capture: the quality of the experience. Sidewalk continuity, shade, lighting, and how the streets feel matter as much as what's nearby. The pedestrian environment details below give you a ground-level picture of what walking here actually feels like.</p>`;
+  } else if (score >= 50) {
+    para3HTML = `<p class="prem-narrative-body">If walkability matters to you but this location is otherwise right, most people adapt to car-based routines easily. Where it surfaces more is for teenagers who can't drive yet, elderly family members who may stop driving, or anyone who values the independence of not needing a car for daily life.</p>`;
+  } else {
+    para3HTML = `<p class="prem-narrative-body">Worth naming clearly: in a car-dependent location, anyone who doesn't or can't drive is significantly constrained. That's a real quality-of-life factor for families with teenagers, for aging in place, and for any household member who loses driving ability. Worth thinking about before committing.</p>`;
+  }
+
+  const destHTML = (destinations || []).length ? `
     <div class="prem-walk-section-label">What's Within Walking Distance</div>
     <div class="prem-walk-dests">
       ${destinations.map((d) => {
@@ -810,26 +914,36 @@ function buildWalkabilityHTML(walk) {
     </div>`;
 
   const body = `
-    <div class="prem-walk-score-wrap">
-      <div class="prem-walk-circle" style="border-color:${trackColor}">
-        <div class="prem-walk-number" style="color:${trackColor}">${score}</div>
-        <div class="prem-walk-scale">/ 100</div>
-      </div>
-      <div class="prem-walk-info">
-        <div class="prem-walk-label">${esc(category.label)}</div>
-        <div class="prem-walk-desc">${esc(category.description)}</div>
-      </div>
+    <div class="prem-walk-header">
+      <div class="prem-walk-verdict" style="color:${verdictColor};background:${verdictBg}">${esc(category.label)}</div>
+      <div class="prem-walk-desc">${esc(category.description)}</div>
+    </div>
+    <div class="prem-narrative">
+      ${para1HTML}
+      ${para2HTML}
+      ${para3HTML}
     </div>
     ${destHTML}
     ${featHTML}
-    <p class="prem-disclaimer">Walkability score is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
-  return premiumCard('Walkability', 'Walk &amp; Transit Score', body);
+    <p class="prem-disclaimer">Walkability is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
+  return premiumCard('Walkability', 'Getting Around on Foot', body);
 }
 
 // FR-023: Property Data
 function buildPropertyDataHTML(p) {
   if (!p) return '';
+  const taxLow = p.taxRate < 0.5;
+  const taxHigh = p.taxRate > 1.5;
+  const taxContext = taxLow
+    ? `${p.taxRate.toFixed(2)}% is a notably low property tax rate. That translates to meaningful savings over time compared to higher-tax states—but check whether local municipalities layer on additional levies above the state average.`
+    : taxHigh
+    ? `${p.taxRate.toFixed(2)}% is on the higher end for property taxes. Factor this into your total cost-of-ownership math. In many high-tax states, strong school funding is the trade-off—so what you pay in taxes may come back in school quality and local services.`
+    : `${p.taxRate.toFixed(2)}% is a typical property tax rate. Budget roughly ${p.annualTax ? formatMoney(Math.round(p.annualTax / 12)) + '/month' : 'taxes based on your purchase price'} for property taxes on a home at the area median.`;
+
   const body = `
+    <div class="prem-narrative">
+      <p class="prem-narrative-body">${taxContext} The median home value shown here is a Census tract average from 2018–2022 data—it includes all housing types across a wide geographic area. In fast-growing markets, actual current prices may be significantly higher. Use this as directional context, not a pricing estimate.</p>
+    </div>
     <div class="prem-market-grid">
       <div class="prem-market-card">
         <div class="prem-market-icon">💰</div>
@@ -880,7 +994,38 @@ function buildDemographicsHTML(d) {
   const incomeBadge = `<span class="prem-badge" style="${badgeColor(d.income.level.color)}">${esc(d.income.level.label)}</span>`;
   const eduBadge = `<span class="prem-badge" style="${badgeColor(d.education.level.color)}">${esc(d.education.level.label)}</span>`;
 
+  const ageNarrative = (() => {
+    const under18 = d.age.under18;
+    const seniors = d.age.age65plus;
+    const youngAdults = d.age.age18to34;
+    if (under18 > 28) return `With ${under18}% of residents under 18, this is family-heavy territory. Expect school buses, youth sports, and neighbors who share your kid-related schedule. The upside: a strong parenting community and lots of kids the same age for yours to grow up with.`;
+    if (seniors > 25) return `${seniors}% of residents are 65 or older. That typically means a quieter, more established neighborhood with strong community ties and low turnover. Neighbors tend to know each other and have been here a while.`;
+    if (youngAdults > 30) return `${youngAdults}% of residents are 18–34. This skews younger—expect more energy, more turnover, and a neighborhood that's still forming its identity. Can mean more vibrancy; can also mean less of the settled-in community feel that comes with long-term residents.`;
+    return `The age mix here is fairly balanced across life stages. That typically produces a stable, diverse community—families, working adults, and established residents sharing the same streets.`;
+  })();
+
+  const incomeNarrative = d.income.median
+    ? (() => {
+        const inc = d.income.median;
+        if (inc > 100000) return `Median household income of ${formatMoney(inc)} indicates an affluent area. That usually correlates with well-maintained properties, strong local tax base, and active investment in schools and public services.`;
+        if (inc > 60000) return `Median household income of ${formatMoney(inc)} puts this solidly in the middle tier—a working and professional community with financial stability. The range of incomes typically produces diverse, grounded neighborhoods.`;
+        return `Median household income of ${formatMoney(inc)} reflects a more modest economic profile. That can mean a tight-knit community with deep roots, or it can mean deferred maintenance and stretched local services—visit in person to get a feel for which describes this area.`;
+      })()
+    : null;
+
+  const communityNarrative = (() => {
+    const ownership = d.community.ownershipRate;
+    if (ownership > 75) return `${ownership}% homeownership means you're in a primarily owner-occupied neighborhood. People who own tend to stay longer, invest in their properties, and participate more in community decisions. That translates to stability and a stronger sense of shared stake in the neighborhood.`;
+    if (ownership > 50) return `${ownership}% homeownership suggests a mixed neighborhood of owners and renters. Ownership majority generally signals investment and stability, while a meaningful renter population brings diversity and change.`;
+    return `${ownership}% homeownership—majority renter. Renters aren't less invested in their communities, but higher turnover is typical in rental-heavy areas. It can make it harder to build long-term neighbor relationships and often correlates with more frequent property management changes.`;
+  })();
+
   const body = `
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">${ageNarrative}</p>
+      ${incomeNarrative ? `<p class="prem-narrative-body">${incomeNarrative}</p>` : ''}
+      <p class="prem-narrative-body">${communityNarrative}</p>
+    </div>
     <div class="prem-demo-grid">
       <div class="prem-demo-card">
         <div class="prem-demo-title">👨‍👩‍👧‍👦 Age Distribution</div>

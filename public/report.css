@@ -783,6 +783,12 @@ body.report-page {
   line-height: 1.55;
   margin-bottom: 0.85rem;
 }
+.insight-para {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 0.6rem;
+}
 .insight-breakdown {
   display: flex;
   flex-direction: column;
@@ -1558,6 +1564,40 @@ body.compare-page {
   color: var(--text-secondary);
 }
 
+/* Shared narrative blocks across premium sections */
+.prem-narrative {
+  margin-bottom: 1.25rem;
+}
+.prem-narrative-lead {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+.prem-narrative-body {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-bottom: 0.65rem;
+}
+.prem-narrative-note {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border-left: 3px solid var(--accent-warm);
+  padding: 0.6rem 0.85rem;
+  border-radius: 0 6px 6px 0;
+  line-height: 1.55;
+  margin-bottom: 0.5rem;
+}
+.services-intro {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
 /* FR-018: Community Safety & Activity */
 .prem-comm-intro {
   font-size: 0.84rem;
@@ -1672,38 +1712,18 @@ body.compare-page {
 .prem-emergency-dist { font-size: 0.8rem; }
 
 /* FR-021: Walkability */
-.prem-walk-score-wrap {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1rem 0 0.75rem;
+.prem-walk-header {
+  padding: 0.5rem 0 0.75rem;
 }
-.prem-walk-circle {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 5px solid;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.prem-walk-number {
-  font-size: 1.8rem;
+.prem-walk-verdict {
+  display: inline-block;
+  font-size: 0.95rem;
   font-weight: 700;
   font-family: 'Fraunces', serif;
-  line-height: 1;
-}
-.prem-walk-scale {
-  font-size: 0.65rem;
-  color: var(--text-secondary);
-}
-.prem-walk-info { flex: 1; }
-.prem-walk-label {
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: 0.3rem;
+  padding: 0.35rem 1rem;
+  border-radius: 50px;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.01em;
 }
 .prem-walk-desc {
   font-size: 0.82rem;

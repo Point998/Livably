@@ -794,20 +794,43 @@ function buildSchoolSection(school) {
 
 function generateDailyConveniencesNarrative(grocery, pharmacy, gasStation) {
   const g = Array.isArray(grocery) ? grocery[0] : grocery;
+  const stores = Array.isArray(grocery) ? grocery : (grocery ? [grocery] : []);
   const times = [g, pharmacy, gasStation].filter(Boolean).map((s) => s.driveTimeMinutes);
   if (!times.length) return null;
   const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
 
   let opening;
-  if (avg < 10) opening = 'Everything you need is right around the corner.';
-  else if (avg < 20) opening = 'A quick drive gets you to daily essentials.';
-  else if (avg < 30) opening = "Stock up when you're out—errands take a bit longer from here.";
-  else opening = "You'll want to plan your trips. Essential services are farther out.";
+  if (avg < 8) opening = 'Daily errands are genuinely effortless here—everything you need is within a short drive.';
+  else if (avg < 15) opening = "A quick drive covers the essentials. You're close enough that nothing feels like a production.";
+  else if (avg < 25) opening = 'Services are accessible, just not around the corner. Most residents plan ahead and batch errands together.';
+  else opening = "This is a location where you plan ahead. Services are farther out, so keeping a well-stocked home becomes part of the rhythm.";
 
-  const parts = [];
-  if (g) parts.push(`Your nearest grocery store (${g.name}) is ${g.driveTimeMinutes} minutes away.`);
-  if (pharmacy) parts.push(`Pharmacy runs take about ${pharmacy.driveTimeMinutes} minutes.`);
-  if (gasStation) parts.push(`The nearest gas station is ${gasStation.driveTimeMinutes} minutes.`);
+  const paragraphs = [];
+
+  if (g) {
+    let gPara = `Your nearest grocery option is ${g.name}, ${g.driveTimeMinutes} minutes away.`;
+    if (stores.length > 1 && stores[1]) {
+      gPara += ` ${stores[1].name} is another option at ${stores[1].driveTimeMinutes} minutes—useful if you want variety or have store preferences.`;
+    } else if (g.driveTimeMinutes <= 8) {
+      gPara += " That's close enough to make mid-week top-offs practical, not just big Sunday hauls.";
+    } else {
+      gPara += ' Most residents find it easiest to do one bigger weekly shop rather than multiple trips.';
+    }
+    paragraphs.push(gPara);
+  }
+
+  const p2Parts = [];
+  if (pharmacy) p2Parts.push(`Pharmacy runs take ${pharmacy.driveTimeMinutes} minutes to ${pharmacy.name}—convenient for prescriptions or last-minute needs.`);
+  if (gasStation) p2Parts.push(`The nearest gas station is ${gasStation.driveTimeMinutes} minutes at ${gasStation.name}.`);
+  if (p2Parts.length) paragraphs.push(p2Parts.join(' '));
+
+  if (avg < 10) {
+    paragraphs.push("Most people don't think twice about running out for a forgotten ingredient or picking up a prescription after work. That's the kind of low-friction living this location offers.");
+  } else if (avg < 20) {
+    paragraphs.push("The distance is easy to build into a routine—swing by on the way home, combine trips, and it rarely becomes a burden. The flip side: you're far enough out that this still feels like a neighborhood, not a strip mall parking lot.");
+  } else {
+    paragraphs.push("If quiet and space matter more to you than convenience, this trade-off tends to feel worth it over time. The adjustment is real, but most people who choose locations like this say they'd do it again.");
+  }
 
   const items = [
     g ? { label: 'Grocery', name: g.name, time: g.driveTimeMinutes } : null,
@@ -815,41 +838,66 @@ function generateDailyConveniencesNarrative(grocery, pharmacy, gasStation) {
     gasStation ? { label: 'Gas', name: gasStation.name, time: gasStation.driveTimeMinutes } : null,
   ].filter(Boolean);
 
-  return { opening, details: parts.join(' '), items };
+  return { opening, paragraphs, items };
 }
 
 function generatePeaceOfMindNarrative(hospital, urgentCare) {
   if (!hospital) return null;
 
   let opening;
-  if (hospital.driveTimeMinutes < 15) opening = 'Medical care is close by.';
-  else if (hospital.driveTimeMinutes < 25) opening = `The nearest hospital is ${hospital.driveTimeMinutes} minutes away—worth knowing for emergencies.`;
-  else opening = 'Hospital access takes time from here.';
+  if (hospital.driveTimeMinutes < 10) opening = 'Medical care is genuinely close. You could cover the distance quickly in any situation.';
+  else if (hospital.driveTimeMinutes < 20) opening = `The nearest hospital is ${hospital.driveTimeMinutes} minutes away—reassuring distance without being in the thick of a medical district.`;
+  else if (hospital.driveTimeMinutes < 30) opening = `Hospital access takes ${hospital.driveTimeMinutes} minutes. Worth knowing the route before you ever actually need it.`;
+  else opening = 'The nearest hospital is more than 30 minutes away. If immediate medical access matters to you—young children, elderly parents, chronic conditions—this is something to weigh seriously.';
 
-  let details = `${hospital.name} is ${hospital.driveTimeMinutes} minutes away.`;
-  if (urgentCare && urgentCare.driveTimeMinutes < hospital.driveTimeMinutes - 5) {
-    details += ` For non-emergencies, ${urgentCare.name} is closer at ${urgentCare.driveTimeMinutes} minutes.`;
+  const paragraphs = [];
+
+  let hPara = `${hospital.name} is the closest full-service hospital at ${hospital.driveTimeMinutes} minutes.`;
+  if (hospital.driveTimeMinutes > 20) {
+    hPara += " Save the route in your phone now. In a real emergency, you don't want to be searching for it.";
+  } else {
+    hPara += ' The kind of distance that\'s manageable in nearly any situation.';
   }
+  paragraphs.push(hPara);
+
+  if (urgentCare) {
+    const ucPara = urgentCare.driveTimeMinutes < hospital.driveTimeMinutes - 5
+      ? `For non-emergencies—ear infections, minor injuries, high fevers—${urgentCare.name} is closer at ${urgentCare.driveTimeMinutes} minutes. Urgent care handles the vast majority of situations that don't require a full ER, often with shorter waits and lower bills.`
+      : `${urgentCare.name} provides urgent care ${urgentCare.driveTimeMinutes} minutes away. For anything short of a true emergency, it's often the smarter first stop than an ER.`;
+    paragraphs.push(ucPara);
+  }
+
+  paragraphs.push('Worth doing before you need it: find a primary care physician and pediatrician nearby, and save a list of after-hours clinics on your phone. Five minutes of prep pays real dividends.');
 
   const items = [
     { label: 'Hospital', name: hospital.name, time: hospital.driveTimeMinutes },
     urgentCare ? { label: 'Urgent Care', name: urgentCare.name, time: urgentCare.driveTimeMinutes } : null,
   ].filter(Boolean);
 
-  return { opening, details, items };
+  return { opening, paragraphs, items };
 }
 
 function generateGettingAroundNarrative(highwayRamp) {
   if (!highwayRamp) return null;
 
   let opening;
-  if (highwayRamp.driveTimeMinutes < 5) opening = 'Quick highway access for commuting.';
-  else if (highwayRamp.driveTimeMinutes < 15) opening = `The highway is ${highwayRamp.driveTimeMinutes} minutes away.`;
-  else opening = `You're off the beaten path—highway access is ${highwayRamp.driveTimeMinutes} minutes.`;
+  if (highwayRamp.driveTimeMinutes < 5) opening = "Highway access is essentially immediate—you're on the ramp in under five minutes.";
+  else if (highwayRamp.driveTimeMinutes < 10) opening = `The highway is ${highwayRamp.driveTimeMinutes} minutes away. Close enough for easy commuting, far enough to avoid interchange noise.`;
+  else if (highwayRamp.driveTimeMinutes < 20) opening = `You're ${highwayRamp.driveTimeMinutes} minutes from the highway—a buffer from road noise and commercial traffic without sacrificing connectivity.`;
+  else opening = `Highway access is ${highwayRamp.driveTimeMinutes} minutes from here. If you commute daily, test the drive during your actual rush hour before committing.`;
+
+  const paragraphs = [];
+  paragraphs.push(`${highwayRamp.name} is your nearest on-ramp at ${highwayRamp.driveTimeMinutes} minutes. Once you're on, you can cover significant ground quickly—regional employment centers, airports, and weekend destinations all become more reachable.`);
+
+  if (highwayRamp.driveTimeMinutes < 8) {
+    paragraphs.push("The proximity is an underrated advantage. Grocery runs, airport pickups, and visiting family all get easier when you're this close to a major route. The noise and commercial clutter that comes with being right at an interchange stays far enough back not to register.");
+  } else if (highwayRamp.driveTimeMinutes >= 15) {
+    paragraphs.push("If you work remotely or have a reverse commute, this distance barely registers in daily life. Daily commuters heading into a busy corridor should do a test run at actual rush hour—trip times often vary more than you'd expect depending on direction and congestion patterns.");
+  }
 
   return {
     opening,
-    details: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} minutes from here.`,
+    paragraphs,
     items: [{ label: 'Highway Access', name: highwayRamp.name, time: highwayRamp.driveTimeMinutes }],
   };
 }
@@ -900,6 +948,9 @@ function buildInsightItemsHTML(items) {
 
 function buildInsightSectionHTML(icon, title, subtitle, narrative) {
   if (!narrative) return '';
+  const parasHTML = (narrative.paragraphs || [])
+    .map((p) => `<p class="insight-para">${escapeHtml(p)}</p>`)
+    .join('');
   return `
     <div class="insight-section">
       <div class="insight-header">
@@ -910,7 +961,7 @@ function buildInsightSectionHTML(icon, title, subtitle, narrative) {
         </div>
       </div>
       <p class="insight-opening">${escapeHtml(narrative.opening)}</p>
-      <p class="insight-details">${escapeHtml(narrative.details)}</p>
+      ${parasHTML}
       <div class="insight-breakdown">
         ${buildInsightItemsHTML(narrative.items)}
       </div>
@@ -947,7 +998,7 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
       <div class="chapter-title">What Daily Life Looks Like Here</div>
     </div>
     <div class="chapter-body insights-body">
-      <p class="insights-intro">The stuff you'd only learn after living here for two years.</p>
+      <p class="insights-intro">The stuff you'd only learn after living here for two years—or by reading this.</p>
       ${sectionsHTML}${calloutsHTML}
     </div>
   </div>`;
@@ -986,6 +1037,27 @@ function buildCustomDestinationsCardHTML(customDestinations) {
 
 function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
   if (!elementarySchool && !park && !coffeeShop) return '';
+
+  const narrativeParts = [];
+  if (coffeeShop) {
+    narrativeParts.push(coffeeShop.driveTimeMinutes <= 5
+      ? `${coffeeShop.name} is ${coffeeShop.driveTimeMinutes} minutes away—close enough to become a morning habit.`
+      : `There's coffee nearby at ${coffeeShop.name}, ${coffeeShop.driveTimeMinutes} minutes out.`);
+  }
+  if (park) {
+    narrativeParts.push(park.driveTimeMinutes <= 5
+      ? `${park.name} is ${park.driveTimeMinutes} minutes away—the kind of proximity that actually changes how you use your weekends.`
+      : `${park.name} is ${park.driveTimeMinutes} minutes away for outdoor time.`);
+  }
+  if (elementarySchool) {
+    narrativeParts.push(elementarySchool.driveTimeMinutes <= 5
+      ? `The nearest elementary school is ${elementarySchool.driveTimeMinutes} minutes away. For families, that's a meaningful part of the morning routine.`
+      : `The nearest elementary school is ${elementarySchool.driveTimeMinutes} minutes away—verify your assigned school directly with the district.`);
+  }
+  const narrativeHTML = narrativeParts.length
+    ? `<p class="services-intro">${escapeHtml(narrativeParts.join(' '))}</p>`
+    : '';
+
   return `
   <div class="chapter-card">
     <div class="chapter-header">
@@ -993,6 +1065,7 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
       <div class="chapter-title">More Nearby Destinations</div>
     </div>
     <div class="chapter-body">
+      ${narrativeHTML}
       ${buildDestSection('Elementary School', elementarySchool)}
       ${buildDestSection('Park', park)}
       ${buildDestSection('Coffee Shop', coffeeShop)}
@@ -1044,7 +1117,7 @@ function buildTrafficCardHTML(trafficData) {
       <div class="chapter-title">Traffic Patterns</div>
     </div>
     <div class="chapter-body traffic-body">
-      <p class="traffic-intro">How drive times shift across rush hour, midday, and weekend — so you can plan around congestion.</p>
+      <p class="traffic-intro">Drive times aren't fixed—they shift significantly based on when you leave. The bars below show how your commute varies across rush hour, midday, and weekends so you can build a realistic picture of daily travel. If you're considering a regular commute, the "Worst" time is the one to internalize.</p>
       ${sectionsHTML}
     </div>
   </div>`;
