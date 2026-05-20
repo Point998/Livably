@@ -705,7 +705,7 @@ function buildCrimeHTML(crime, emergency) {
     <div class="prem-comm-section-label">Community Safety Programs</div>
     <div class="prem-comm-programs">${programsHTML}</div>
     <p class="prem-disclaimer">This section is provided for informational purposes only. For current community safety information, contact your local police department or city government. Program availability varies by municipality.</p>`;
-  return premiumCard('Safety', 'Community Safety &amp; Activity', body);
+  return premiumCard('Safety', 'Community Safety & Activity', body);
 }
 
 // FR-019: Environmental
