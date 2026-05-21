@@ -1581,6 +1581,13 @@ body.compare-page {
   line-height: 1.65;
   margin-bottom: 0.65rem;
 }
+.prem-synthesis-line {
+  font-style: italic;
+  color: var(--text-primary);
+  border-left: 3px solid var(--gold);
+  padding-left: 0.75rem;
+  margin-top: 0.75rem;
+}
 .prem-narrative-note {
   font-size: 0.8rem;
   color: var(--text-secondary);
