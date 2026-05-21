@@ -37,6 +37,26 @@ Chapter card "Growth & Development" added to the standard tier report, rendered 
 - Key Takeaway based on growth trend or commercial density
 - Always ends with planning department guidance for pipeline projects
 
+## Update: Manual Development Intelligence Database (2026-05-21)
+
+Added `src/development-intel.js` — a city-keyed database of manually verified development projects that are shown prominently in the chapter before the automated Census/Places data.
+
+**Georgetown, KY entries:**
+- Publix Supermarket — Under Construction, Q4 2026
+- Target — Approved, Early 2027
+
+**How it works:**
+- `getLocalDevelopmentIntel(city, state)` is called inside `getGrowthAndDevelopment()` and returned as `namedProjects`
+- `buildGrowthAndDevelopmentHTML` renders them as a gold-bordered card at the top of the chapter (before the permit narrative)
+- Status badges are color-coded: green (Under Construction), gold (Approved), purple (Planned)
+- Key Takeaway is overridden to reference the named project when one exists
+- Source line reads "Livably Development Intelligence (manually verified)"
+- Louisville, KY and other cities without entries return an empty array (no section rendered)
+
+**To add a new city:** Add a `'city,state'` key to the `DATABASE` object in `src/development-intel.js`.
+
+---
+
 ## Deviations from Spec
 - Phase 2 (county planning portal scraping) deferred as specified
 - DOT project database integration deferred — no unified national API

@@ -2,6 +2,8 @@
 
 // Premium data module — FR-017 through FR-024 (excluding FR-022 paywall)
 
+const { getLocalDevelopmentIntel } = require('./development-intel');
+
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
 function haversineDistance(lat1, lng1, lat2, lng2) {
@@ -912,6 +914,7 @@ async function getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsC
     permits:         permitRes.status   === 'fulfilled' ? permitRes.value   : null,
     newConstruction: newConstRes.status === 'fulfilled' ? newConstRes.value : null,
     establishments:  activityRes.status === 'fulfilled' ? activityRes.value : [],
+    namedProjects:   getLocalDevelopmentIntel(locationInfo?.city, locationInfo?.state),
     locationInfo,
   };
 }
@@ -1767,8 +1770,42 @@ function buildDemographicsHTML(d) {
 // FR-025: Growth & Development
 function buildGrowthAndDevelopmentHTML(growth) {
   if (!growth) return '';
-  const { permits, newConstruction, establishments, locationInfo } = growth;
+  const { permits, newConstruction, establishments, namedProjects = [], locationInfo } = growth;
   const county = locationInfo?.county || 'this county';
+  const city   = locationInfo?.city   || '';
+
+  // ── Named projects (from local intel database) ────────────────────────────
+  const STATUS_COLORS = {
+    'Under Construction': '#2e7d32',
+    'Approved':           '#b8922a',
+    'Planned':            '#5c6bc0',
+  };
+
+  let namedProjectsHTML = '';
+  if (namedProjects.length) {
+    const projectCards = namedProjects.map((p) => {
+      const color = STATUS_COLORS[p.status] || '#666';
+      return `
+        <div class="prem-growth-named-project">
+          <div class="prem-growth-named-project-header">
+            <span class="prem-growth-named-project-icon">${p.icon}</span>
+            <div class="prem-growth-named-project-title">
+              <div class="prem-growth-named-project-name">${esc(p.name)}</div>
+              <div class="prem-growth-named-project-type">${esc(p.type)}</div>
+            </div>
+            <div class="prem-growth-named-project-status" style="color:${color};border-color:${color}">${esc(p.status)}</div>
+          </div>
+          ${p.timeline ? `<div class="prem-growth-named-project-timeline">Expected: ${esc(p.timeline)}</div>` : ''}
+          <div class="prem-growth-named-project-impact">${esc(p.impact)}</div>
+        </div>`;
+    }).join('');
+
+    namedProjectsHTML = `
+      <div class="prem-growth-section prem-growth-named-projects">
+        <div class="prem-growth-label">Confirmed Projects Near ${esc(city || county)}</div>
+        ${projectCards}
+      </div>`;
+  }
 
   // ── Growth trend narrative ────────────────────────────────────────────────
   let growthPara;
@@ -1776,8 +1813,8 @@ function buildGrowthAndDevelopmentHTML(growth) {
     const countStr = permits.current.toLocaleString();
     const yearStr  = permits.currentYear ? ` in ${permits.currentYear}` : '';
     const trendCtx =
-      permits.trend === 'rising'   ? `up ${Math.abs(permits.percentChange)}% from ${permits.priorYear || 'the prior year'}` :
-      permits.trend === 'declining'? `down ${Math.abs(permits.percentChange)}% from ${permits.priorYear || 'the prior year'}` :
+      permits.trend === 'rising'    ? `up ${Math.abs(permits.percentChange)}% from ${permits.priorYear || 'the prior year'}` :
+      permits.trend === 'declining' ? `down ${Math.abs(permits.percentChange)}% from ${permits.priorYear || 'the prior year'}` :
       `relatively stable compared to ${permits.priorYear || 'the prior year'}`;
     const trendDesc =
       permits.trend === 'rising'
@@ -1799,8 +1836,8 @@ function buildGrowthAndDevelopmentHTML(growth) {
   let activityPara = '';
   let placesHTML   = '';
   if (establishments?.length) {
-    const nearby      = establishments.filter((e) => e.distanceMiles <= 0.5);
-    const withinMile  = establishments.filter((e) => e.distanceMiles > 0.5 && e.distanceMiles <= 1);
+    const nearby     = establishments.filter((e) => e.distanceMiles <= 0.5);
+    const withinMile = establishments.filter((e) => e.distanceMiles > 0.5 && e.distanceMiles <= 1);
     if (nearby.length) {
       activityPara = `Within a half mile: ${nearby.slice(0, 3).map((e) => esc(e.name)).join(', ')}. The commercial environment immediately surrounding this address is active and established.`;
     } else if (withinMile.length) {
@@ -1831,7 +1868,17 @@ function buildGrowthAndDevelopmentHTML(growth) {
 
   // ── Key Takeaway ──────────────────────────────────────────────────────────
   let takeaway;
-  if (permits?.trend === 'rising' && permits.percentChange >= 20) {
+  if (namedProjects.length) {
+    const underConstruction = namedProjects.filter((p) => p.status === 'Under Construction');
+    const approved          = namedProjects.filter((p) => p.status === 'Approved');
+    if (underConstruction.length) {
+      takeaway = `${esc(underConstruction[0].name)} is currently under construction${underConstruction[0].timeline ? ` (expected ${esc(underConstruction[0].timeline)})` : ''} — a significant change coming to this area within the next year or two.`;
+    } else if (approved.length) {
+      takeaway = `${esc(approved[0].name)} has been approved${approved[0].timeline ? ` (expected ${esc(approved[0].timeline)})` : ''} — this development is confirmed and on the way.`;
+    } else {
+      takeaway = `${namedProjects.length} confirmed development project${namedProjects.length > 1 ? 's are' : ' is'} on the way near this address. See details above.`;
+    }
+  } else if (permits?.trend === 'rising' && permits.percentChange >= 20) {
     takeaway = `${esc(county)} is in an active growth phase — building permits are up ${permits.percentChange}% year-over-year. Expect continued residential and commercial expansion near this area.`;
   } else if (permits?.trend === 'declining' && permits.percentChange !== null && permits.percentChange <= -20) {
     takeaway = `Construction activity in ${esc(county)} has slowed significantly (${permits.percentChange}%). Ask your agent about what's driving the change.`;
@@ -1842,12 +1889,14 @@ function buildGrowthAndDevelopmentHTML(growth) {
   }
 
   const sources = [];
+  if (namedProjects.length) sources.push('Livably Development Intelligence (manually verified)');
   if (permits) sources.push('U.S. Census Bureau Building Permits Survey');
   else if (newConstruction) sources.push('U.S. Census ACS 5-year estimates');
   if (establishments?.length) sources.push('Google Places');
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const body = `
+    ${namedProjectsHTML}
     <div class="prem-narrative">
       <p class="prem-narrative-lead">${growthPara}</p>
       ${activityPara ? `<p class="prem-narrative-body">${activityPara}</p>` : ''}

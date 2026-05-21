@@ -1991,6 +1991,68 @@ body.compare-page {
   color: var(--text-secondary);
   flex-shrink: 0;
 }
+.prem-growth-named-projects {
+  background: var(--surface-raised);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  border-left: 3px solid var(--gold);
+}
+.prem-growth-named-project {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--stone);
+}
+.prem-growth-named-project:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.prem-growth-named-project-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+.prem-growth-named-project-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+.prem-growth-named-project-title {
+  flex: 1;
+  min-width: 0;
+}
+.prem-growth-named-project-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.prem-growth-named-project-type {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+}
+.prem-growth-named-project-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.5rem;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.prem-growth-named-project-timeline {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.3rem;
+}
+.prem-growth-named-project-impact {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-body);
+}
 
 /* FR-026: Property Intelligence */
 .prem-intel-section {
