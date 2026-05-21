@@ -736,21 +736,12 @@ async function getEJScreen(lat, lng) {
   }
 }
 
-// ── FR-018: Community Safety & Activity ──────────────────────────────────────
+// ── FR-018: Safety & Emergency Response ──────────────────────────────────────
 
 async function getCrimeData(locationInfo) {
-  const { state } = locationInfo || {};
+  const { state, city, county } = locationInfo || {};
   if (!state) return null;
-  return {
-    state,
-    programs: [
-      { icon: '🏘️', label: 'Neighborhood Watch Program' },
-      { icon: '👮', label: 'Community Policing Initiative' },
-      { icon: '📱', label: 'Non-Emergency Tip Line' },
-      { icon: '🎉', label: 'Community Events & Outreach' },
-      { icon: '🚨', label: 'Emergency Preparedness Resources' },
-    ],
-  };
+  return { state, city, county };
 }
 
 // ── FR-017: Nearby Schools ────────────────────────────────────────────────────
@@ -1250,47 +1241,111 @@ function buildSchoolRatingsHTML(schools) {
   return premiumCard('Schools', 'Nearby Schools', body);
 }
 
-// FR-018: Community Safety & Activity
+// FR-018: Safety & Emergency Response
 function buildCrimeHTML(crime, emergency) {
-  if (!crime) return '';
+  if (!crime && !emergency) return '';
+  const police = emergency?.police;
+  const fire   = emergency?.fire;
+  if (!police && !fire) return '';
 
-  const policeSection = emergency?.police ? `
-    <div class="prem-comm-police">
-      <div class="prem-comm-police-head">
-        <span class="prem-comm-police-icon">🚔</span>
-        <div class="prem-comm-police-text">
-          <div class="prem-comm-police-name">${esc(emergency.police.name)}</div>
-          <div class="prem-comm-police-sub">${esc(emergency.police.distanceMiles)} miles away</div>
-        </div>
-        <span class="prem-badge prem-badge-right" style="${badgeColor(emergency.police.response.category.color)}">~${emergency.police.response.estimate} min response</span>
+  const city   = crime?.city   || '';
+  const county = crime?.county || 'this county';
+
+  // ── Police response ───────────────────────────────────────────────────────
+  let policePara = '';
+  if (police) {
+    const mins = police.response.estimate;
+    const cat  = police.response.category;
+    const dist = parseFloat(police.distanceMiles);
+    const context =
+      mins <= 5  ? `That's an excellent response time — faster than most suburban areas. Response quality at this level is genuinely meaningful in an emergency.` :
+      mins <= 8  ? `That's a solid response time, consistent with typical suburban service levels and well within the range where outcomes are good across most emergency types.` :
+      mins <= 12 ? `That's an average response time. For medical emergencies, every minute matters — knowing basic first aid and having a plan adds a real margin of safety.` :
+      mins <= 20 ? `A ${mins}-minute response estimate is common for rural and exurban areas. Working smoke detectors, a CO detector, and a family emergency plan matter more when professional help is further away.` :
+      `At ${mins} minutes, response is extended — typical for sparsely populated rural areas. Fire extinguishers on each floor, interconnected smoke alarms, and a practiced family escape plan are practical necessities here, not just suggestions.`;
+    policePara = `The nearest police station is ${esc(police.name)}, ${police.distanceMiles} miles away. Estimated response time: <strong>~${mins} minutes</strong> <span class="prem-inline-badge" style="${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
+  }
+
+  // ── Fire response ─────────────────────────────────────────────────────────
+  let firePara = '';
+  if (fire) {
+    const mins = fire.response.estimate;
+    const cat  = fire.response.category;
+    const context =
+      mins <= 5  ? `That's an excellent fire response — critical for limiting structural damage. Homes near stations like this often qualify for lower homeowner's insurance rates (ISO rating 1–4 range).` :
+      mins <= 8  ? `A ${mins}-minute fire response is solid — this is the range where professional suppression and modern systems work well together.` :
+      mins <= 12 ? `A ${mins}-minute fire response means a fire has time to spread beyond one room. Working smoke detectors in every bedroom and a household fire escape plan are essential.` :
+      `A ${mins}-minute fire response time is extended. A house fire doubles in size every minute — this is a meaningful practical consideration. Ask your insurance agent for the ISO fire protection class rating, which directly affects your premium.`;
+    firePara = `${esc(fire.name)} is ${fire.distanceMiles} miles away. Estimated fire response: <strong>~${mins} minutes</strong> <span class="prem-inline-badge" style="${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
+  }
+
+  // ── Insurance / ISO note ──────────────────────────────────────────────────
+  const isoNote = `The ISO Public Protection Classification (PPC) for this address determines your homeowner's insurance premium for fire coverage. Ratings 1–4 are excellent; 8–10 mean limited station coverage and higher premiums. Your insurance agent can pull this — it takes one minute and can be worth hundreds per year in premium differences.`;
+
+  // ── 4-item research checklist ─────────────────────────────────────────────
+  const actions = [
+    {
+      icon: '🗺️',
+      label: 'Run a crime map',
+      detail: `Search "crime map ${city || county}" — most police departments publish neighborhood-level incident maps. Look at the 3-month trend on your specific block, not the city average.`,
+    },
+    {
+      icon: '🏘️',
+      label: 'Find the neighborhood watch',
+      detail: `Ask the listing agent if there's an active neighborhood watch. Search "[neighborhood name] Nextdoor" — active online communities indicate real neighbor engagement, which correlates with lower property crime.`,
+    },
+    {
+      icon: '📞',
+      label: 'Call the community resource officer',
+      detail: `Call the non-emergency line for ${city ? esc(city) + ' Police' : 'the local police department'} and ask for the community resource officer for this precinct. They'll tell you more about the area than any statistic.`,
+    },
+    {
+      icon: '🔐',
+      label: 'Get the ISO fire protection rating',
+      detail: `Ask your homeowner's insurance agent for the ISO PPC rating for this specific address. The number directly sets your fire coverage premium — it's address-specific, not neighborhood-level.`,
+    },
+  ];
+
+  const actionsHTML = actions.map((a) => `
+    <div class="prem-safety-action">
+      <span class="prem-safety-action-icon">${a.icon}</span>
+      <div class="prem-safety-action-text">
+        <div class="prem-safety-action-label">${esc(a.label)}</div>
+        <div class="prem-safety-action-detail">${a.detail}</div>
       </div>
-    </div>` : '';
-
-  const programsHTML = crime.programs.map((p) => `
-    <div class="prem-comm-program">
-      <span class="prem-comm-prog-icon">${p.icon}</span>
-      <span class="prem-comm-prog-label">${esc(p.label)}</span>
     </div>`).join('');
 
-  const policeTime = emergency?.police?.response?.estimate;
-  const policeIntro = emergency?.police
-    ? `The nearest police station is ${esc(emergency.police.distanceMiles)} miles away with an estimated ${policeTime}-minute response time.`
-    : '';
+  // ── Key Takeaway ──────────────────────────────────────────────────────────
+  let takeaway;
+  const pmins = police?.response?.estimate;
+  const fmins = fire?.response?.estimate;
+  if (pmins && pmins <= 5) {
+    takeaway = `Police response of ~${pmins} min is excellent — a genuine safety asset for this address. Check the ISO fire protection rating with your insurance agent to confirm fire coverage costs.`;
+  } else if (fmins && fmins > 12) {
+    takeaway = `Fire station response of ~${fmins} min is extended. Get the ISO PPC rating before closing — it affects your insurance premium and tells you the official fire risk classification for this address.`;
+  } else if (pmins && pmins > 15) {
+    takeaway = `Police response of ~${pmins} min reflects a rural service area. A family emergency plan, working smoke and CO detectors, and fire extinguishers on every floor are practical necessities — not optional — at this response time.`;
+  } else {
+    takeaway = `Response times are within normal range for this area type. Run a crime map search on the specific block before you close — it takes 5 minutes and shows the street-level picture that neighborhood-level stats miss.`;
+  }
 
-  const crimeContext = `
-    <div class="prem-narrative">
-      <p class="prem-narrative-lead">Understanding community safety goes beyond crime statistics. The programs and infrastructure below tell you how actively this area invests in resident safety—neighborhood watch networks, community policing, and emergency preparedness all contribute to how safe daily life actually feels.</p>
-      <p class="prem-narrative-body">${policeIntro ? policeIntro + ' ' : ''}Response time estimates are based on distance—actual times depend on call volume, time of day, and available units. For a truer picture, check with the local precinct or look up community crime mapping tools for your specific block.</p>
-      <p class="prem-narrative-note">The most informative signal is often community engagement: active neighborhood watch groups and strong turnout at local meetings correlate with lower crime rates more reliably than raw statistics. Ask neighbors when you visit—five minutes of conversation reveals what no report can.</p>
-    </div>`;
-
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const body = `
-    ${crimeContext}
-    ${policeSection}
-    <div class="prem-comm-section-label">Community Safety Programs</div>
-    <div class="prem-comm-programs">${programsHTML}</div>
-    <p class="prem-disclaimer">This section is provided for informational purposes only. For current community safety information, contact your local police department or city government. Program availability varies by municipality.</p>`;
-  return premiumCard('Safety', 'Community Safety & Activity', body);
+    <div class="prem-narrative">
+      ${policePara ? `<p class="prem-narrative-lead">${policePara}</p>` : ''}
+      ${firePara   ? `<p class="prem-narrative-body">${firePara}</p>`   : ''}
+      <p class="prem-narrative-body">${isoNote}</p>
+    </div>
+    <div class="prem-safety-actions">
+      <div class="prem-safety-actions-label">4 Things to Research Before You Close</div>
+      ${actionsHTML}
+    </div>
+    <div class="prem-sensory-takeaway">
+      <span class="prem-sensory-key">🔑</span>
+      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    </div>
+    <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}. For current safety data, contact ${city ? esc(city) + ' Police or' : ''} ${esc(county)} Emergency Management.</p>`;
+  return premiumCard('Safety', 'Safety & Emergency Response', body);
 }
 
 // FR-027: Sensory & Environmental

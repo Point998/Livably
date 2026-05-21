@@ -1598,59 +1598,57 @@ body.compare-page {
   margin-bottom: 1rem;
 }
 
-/* FR-018: Community Safety & Activity */
-.prem-comm-intro {
-  font-size: 0.84rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  padding: 0.85rem 0 0.85rem;
+/* FR-018: Safety & Emergency Response */
+.prem-inline-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-left: 0.1rem;
 }
-.prem-comm-police {
-  background: var(--surface-raised);
+.prem-safety-actions {
+  margin: 1rem 0;
+  border: 1px solid var(--stone);
   border-radius: 8px;
-  padding: 0.85rem 1rem;
-  margin-bottom: 1rem;
+  overflow: hidden;
 }
-.prem-comm-police-head {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.prem-comm-police-icon { font-size: 1.4rem; flex-shrink: 0; }
-.prem-comm-police-text { flex: 1; min-width: 0; }
-.prem-comm-police-name {
-  font-weight: 600;
-  font-size: 0.88rem;
-}
-.prem-comm-police-sub {
-  font-size: 0.75rem;
+.prem-safety-actions-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--text-secondary);
+  padding: 0.55rem 0.85rem;
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--stone);
+}
+.prem-safety-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--stone);
+}
+.prem-safety-action:last-child { border-bottom: none; }
+.prem-safety-action-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
   margin-top: 0.1rem;
 }
-.prem-comm-section-label {
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.prem-safety-action-text { flex: 1; min-width: 0; }
+.prem-safety-action-label {
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+.prem-safety-action-detail {
+  font-size: 0.78rem;
   color: var(--text-secondary);
-  margin-bottom: 0.45rem;
+  line-height: 1.5;
 }
-.prem-comm-programs {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.5rem;
-}
-.prem-comm-program {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0.75rem;
-  background: var(--surface-raised);
-  border-radius: 6px;
-}
-.prem-comm-prog-icon { font-size: 1rem; flex-shrink: 0; }
-.prem-comm-prog-label { font-size: 0.84rem; color: var(--text-primary); }
 
 /* FR-027: Sensory & Environmental */
 .prem-sensory-section {
