@@ -1652,34 +1652,41 @@ body.compare-page {
 .prem-comm-prog-icon { font-size: 1rem; flex-shrink: 0; }
 .prem-comm-prog-label { font-size: 0.84rem; color: var(--text-primary); }
 
-/* FR-019: Environmental */
-.prem-env-card {
-  padding: 1rem 0;
+/* FR-027: Sensory & Environmental */
+.prem-sensory-section {
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
   border-bottom: 1px solid var(--stone);
 }
-.prem-env-card:last-of-type { border-bottom: none; }
-.prem-env-head {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+.prem-sensory-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
-.prem-env-icon { font-size: 1.4rem; flex-shrink: 0; }
-.prem-env-title {
-  font-weight: 600;
-  font-size: 0.9rem;
-  flex: 1;
-}
-.prem-env-value {
-  font-size: 1.1rem;
+.prem-sensory-label {
+  font-size: 0.63rem;
   font-weight: 700;
-  font-family: 'Fraunces', serif;
-  flex-shrink: 0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bronze);
+  margin-bottom: 0.75rem;
 }
-.prem-env-desc {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
+.prem-sensory-takeaway {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  background: rgba(184,146,42,0.07);
+  border-left: 3px solid var(--bronze);
+  padding: 0.8rem 1rem;
+  border-radius: 0 4px 4px 0;
+  margin-top: 1.25rem;
+}
+.prem-sensory-key { font-size: 1rem; flex-shrink: 0; margin-top: 0.1rem; }
+.prem-sensory-takeaway p {
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0;
 }
 
 /* FR-020: Emergency Services */

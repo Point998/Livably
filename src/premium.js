@@ -352,19 +352,36 @@ function estimateResponseTime(distanceMiles, type) {
   return { estimate: minutes, category };
 }
 
-// ── FR-019: Environmental Data ────────────────────────────────────────────────
+// ── FR-027: Sensory & Environmental (supersedes FR-019) ──────────────────────
 
-async function getEnvironmentalData(lat, lng, highwayDriveMinutes) {
-  const [airResult, floodResult] = await Promise.allSettled([
-    getAirQuality(lat, lng),
-    getFloodRisk(lat, lng),
-  ]);
+async function getEnvironmentalData(lat, lng, _highwayDriveMinutes, fips, googleMapsClient, googleMapsApiKey) {
+  const [airResult, floodResult, airportsResult, roadNoiseResult, railResult, lightResult, waterResult, radonResult, ejResult] =
+    await Promise.allSettled([
+      getAirQuality(lat, lng),
+      getFloodRisk(lat, lng),
+      googleMapsClient ? getAirportData(lat, lng, googleMapsClient, googleMapsApiKey) : Promise.resolve(null),
+      getRoadNoise(lat, lng),
+      getRailProximity(lat, lng),
+      getLightPollution(lat, lng, fips),
+      getWaterQuality(lat, lng),
+      Promise.resolve(getRadonZone(fips)),
+      getEJScreen(lat, lng),
+    ]);
+  const v = (r) => (r.status === 'fulfilled' ? r.value : null);
   return {
-    airQuality: airResult.status === 'fulfilled' ? airResult.value : null,
-    noise: estimateNoiseLevel(highwayDriveMinutes),
-    floodRisk: floodResult.status === 'fulfilled' ? floodResult.value : null,
+    airQuality:     v(airResult),
+    floodRisk:      v(floodResult),   // retained for future Chapter 6
+    airports:       v(airportsResult),
+    roadNoise:      v(roadNoiseResult),
+    rail:           v(railResult),
+    lightPollution: v(lightResult),
+    waterQuality:   v(waterResult),
+    radon:          v(radonResult),
+    ejscreen:       v(ejResult),
   };
 }
+
+// Air quality ─────────────────────────────────────────────────────────────────
 
 async function getAirQuality(lat, lng) {
   const apiKey = process.env.AIRNOW_API_KEY;
@@ -382,31 +399,14 @@ async function getAirQuality(lat, lng) {
 }
 
 function getAQICategory(aqi) {
-  if (aqi <= 50) return { label: 'Good', color: 'green', description: 'Air quality is satisfactory.' };
-  if (aqi <= 100) return { label: 'Moderate', color: 'gold', description: 'Acceptable for most people.' };
-  if (aqi <= 150) return { label: 'Unhealthy for Sensitive Groups', color: 'orange', description: 'May affect sensitive individuals.' };
-  if (aqi <= 200) return { label: 'Unhealthy', color: 'red', description: 'Everyone may experience health effects.' };
-  return { label: 'Very Unhealthy', color: 'red', description: 'Health alert — everyone may be affected.' };
+  if (aqi <= 50)  return { label: 'Good',                           color: 'green',  description: 'Air quality is satisfactory.' };
+  if (aqi <= 100) return { label: 'Moderate',                       color: 'gold',   description: 'Acceptable for most people.' };
+  if (aqi <= 150) return { label: 'Unhealthy for Sensitive Groups',  color: 'orange', description: 'May affect sensitive individuals.' };
+  if (aqi <= 200) return { label: 'Unhealthy',                      color: 'red',    description: 'Everyone may experience health effects.' };
+  return            { label: 'Very Unhealthy',                       color: 'red',    description: 'Health alert — everyone may be affected.' };
 }
 
-function estimateNoiseLevel(highwayDriveMinutes) {
-  let db = 40;
-  const sources = [];
-  if (highwayDriveMinutes != null) {
-    if (highwayDriveMinutes <= 2) { db += 20; sources.push('Very close to highway'); }
-    else if (highwayDriveMinutes <= 5) { db += 12; sources.push('Near highway'); }
-    else if (highwayDriveMinutes <= 10) { db += 5; sources.push('Moderate highway proximity'); }
-  }
-  return { level: Math.min(db, 75), category: getNoiseCategory(db), sources };
-}
-
-function getNoiseCategory(db) {
-  if (db < 45) return { label: 'Very Quiet', color: 'green', description: 'Rural or very quiet neighborhood.' };
-  if (db < 55) return { label: 'Quiet', color: 'lightgreen', description: 'Typical quiet suburban.' };
-  if (db < 65) return { label: 'Moderate', color: 'gold', description: 'Busy suburban or light urban.' };
-  if (db < 70) return { label: 'Noisy', color: 'orange', description: 'Urban area with traffic noise.' };
-  return { label: 'Very Noisy', color: 'red', description: 'Heavy traffic or industrial area.' };
-}
+// Flood risk (retained for future Chapter 6) ──────────────────────────────────
 
 async function getFloodRisk(lat, lng) {
   const url =
@@ -436,12 +436,302 @@ function interpretFloodZone(zone) {
   return map[zone] || { risk: 'Unknown', insuranceRequired: false, description: 'Flood zone data unavailable.' };
 }
 
-function getFloodRiskColor(risk) {
-  if (risk === 'Minimal') return 'green';
-  if (risk === 'Moderate') return 'gold';
-  if (risk === 'High') return 'orange';
-  if (risk === 'Very High') return 'red';
-  return 'muted';
+// Airport analysis (Google Places) ───────────────────────────────────────────
+
+// Keywords that indicate a non-airport aviation venue (paragliding, skydiving, etc.)
+const NON_AIRPORT_RE = /paragli|skydiv|balloon|ultralight|glider|soaring|ppg|hang.?glid|flying.?club|flight.?school|air.?sport|airfield.?club/i;
+// Keywords that confirm it's a real airport
+const AIRPORT_RE = /airport|airfield|air\s*force\s*base|\bafb\b|international|regional|municipal|executive|aviation\s*center|jetport/i;
+
+async function getAirportData(lat, lng, googleMapsClient, googleMapsApiKey) {
+  const resp = await googleMapsClient.placesNearby({
+    params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: 32000, type: 'airport' },
+  });
+  const airports = (resp.data.results || [])
+    .filter((p) => !NON_AIRPORT_RE.test(p.name) && AIRPORT_RE.test(p.name))
+    .map((p) => ({
+      name: p.name,
+      distanceMiles: haversineDistance(lat, lng, p.geometry.location.lat, p.geometry.location.lng),
+    }))
+    .filter((a) => a.distanceMiles <= 20)
+    .sort((a, b) => a.distanceMiles - b.distanceMiles);
+  return airports.length ? airports : null;
+}
+
+// Road noise (BTS GIS → OSM fallback) ────────────────────────────────────────
+
+async function getRoadNoise(lat, lng) {
+  try {
+    const url =
+      `https://gis.bts.gov/arcgis/rest/services/National_Transportation_Noise_Map/MapServer/0/query` +
+      `?geometry=${lng},${lat}&geometryType=esriGeometryPoint` +
+      `&spatialRel=esriSpatialRelIntersects&outFields=DNL_RD&returnGeometry=false&f=json`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      const dnl = data.features?.[0]?.attributes?.DNL_RD;
+      if (dnl != null && dnl > 0) {
+        return { dnl: Math.round(dnl), source: 'BTS', category: getDNLCategory(dnl), nearestRoad: null };
+      }
+    }
+  } catch {}
+  try {
+    return await getRoadNoiseOSM(lat, lng);
+  } catch {
+    return null;
+  }
+}
+
+// Fetch from Overpass API with fallback to alternative instances
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
+];
+
+async function fetchOverpass(query, timeoutMs = 15000) {
+  for (let i = 0; i < OVERPASS_ENDPOINTS.length; i++) {
+    const base = OVERPASS_ENDPOINTS[i];
+    try {
+      const resp = await fetch(
+        `${base}?data=${encodeURIComponent(query)}`,
+        { signal: AbortSignal.timeout(timeoutMs) },
+      );
+      if (resp.ok) return resp;
+      // 429 = rate limited, 406 = blocked — try next endpoint after brief pause
+      if (resp.status === 429 || resp.status === 406) {
+        if (i < OVERPASS_ENDPOINTS.length - 1) await new Promise((r) => setTimeout(r, 300));
+      }
+    } catch {}
+  }
+  return null;
+}
+
+async function getRoadNoiseOSM(lat, lng) {
+  const query =
+    `[out:json][timeout:15];` +
+    `(way(around:4000,${lat},${lng})["highway"~"motorway|trunk|primary|secondary"];);` +
+    `out center tags;`;
+  const resp = await fetchOverpass(query, 16000);
+  if (!resp) return null;
+  const data = await resp.json();
+  const roads = (data.elements || [])
+    .filter((el) => el.center || (el.lat && el.lon))
+    .map((el) => ({
+      highway:      el.tags?.highway || 'road',
+      name:         el.tags?.name || el.tags?.ref || null,
+      distanceMiles: haversineDistance(lat, lng, el.center?.lat ?? el.lat, el.center?.lon ?? el.lon),
+    }))
+    .sort((a, b) => a.distanceMiles - b.distanceMiles);
+
+  if (!roads.length) return { dnl: 40, source: 'estimated', category: getDNLCategory(40), nearestRoad: null };
+  const nearest = roads[0];
+  const dnl = estimateDNLFromRoad(nearest.highway, nearest.distanceMiles);
+  return { dnl, source: 'estimated', category: getDNLCategory(dnl), nearestRoad: nearest };
+}
+
+function estimateDNLFromRoad(type, distanceMiles) {
+  // Normalize _link variants (motorway_link → motorway)
+  const baseType = type?.replace(/_link$/, '') || 'road';
+  const base = { motorway: 72, trunk: 68, primary: 62, secondary: 56 }[baseType] || 52;
+  const decay = Math.log2(Math.max(distanceMiles * 5280 / 50, 1)) * 4.5;
+  return Math.max(38, Math.round(base - decay));
+}
+
+function getDNLCategory(dnl) {
+  if (dnl < 45) return { label: 'Very Quiet',  color: 'green',      hint: 'well below the residential noise threshold' };
+  if (dnl < 55) return { label: 'Quiet',       color: 'lightgreen', hint: 'within the quiet residential range' };
+  if (dnl < 65) return { label: 'Moderate',    color: 'gold',       hint: 'approaching FHWA\'s 65 dB residential standard' };
+  if (dnl < 70) return { label: 'Elevated',    color: 'orange',     hint: 'above FHWA residential standard of 65 dB' };
+  return           { label: 'Significant',     color: 'red',        hint: 'well above residential noise standards' };
+}
+
+// Rail proximity (OSM Overpass) ───────────────────────────────────────────────
+
+async function getRailProximity(lat, lng) {
+  try {
+    const query =
+      `[out:json][timeout:15];` +
+      `(way(around:4800,${lat},${lng})["railway"~"rail|light_rail|tram"];);` +
+      `out center tags;`;
+    const resp = await fetchOverpass(query, 16000);
+    if (!resp) return null;
+    const data = await resp.json();
+    const lines = (data.elements || [])
+      .filter((el) => el.center || (el.lat != null && el.lon != null))
+      .map((el) => ({
+        type:          el.tags?.railway || 'rail',
+        name:          el.tags?.name || el.tags?.operator || el.tags?.ref || null,
+        distanceMiles: haversineDistance(lat, lng, el.center?.lat ?? el.lat, el.center?.lon ?? el.lon),
+      }))
+      .sort((a, b) => a.distanceMiles - b.distanceMiles);
+    return lines.length ? lines[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+// Light pollution (Census pop density + OSM landuse proxy) ────────────────────
+
+async function getLightPollution(lat, lng, fips) {
+  const [acsResult, osmResult] = await Promise.allSettled([
+    fips ? fetchCensusACS(fips, ['B01003_001E']) : Promise.resolve(null),
+    fetchLanduseOSM(lat, lng),
+  ]);
+  const acs = acsResult.status === 'fulfilled' ? acsResult.value : null;
+  const population = acs ? safeInt(acs.get('B01003_001E')) : null;
+  const landuse = osmResult.status === 'fulfilled' ? osmResult.value : null;
+  return estimateBortle(population, landuse);
+}
+
+async function fetchLanduseOSM(lat, lng) {
+  const query = `[out:json][timeout:10];(way(around:800,${lat},${lng})["landuse"];);out center tags 10;`;
+  const resp = await fetchOverpass(query, 11000);
+  if (!resp) return null;
+  const d = await resp.json();
+  const uses = (d.elements || []).map((el) => el.tags?.landuse).filter(Boolean);
+  if (uses.some((u) => ['commercial', 'industrial', 'retail'].includes(u))) return 'commercial';
+  if (uses.includes('residential')) return 'residential';
+  if (uses.some((u) => ['farmland', 'forest', 'meadow', 'grass', 'orchard'].includes(u))) return 'rural';
+  return null;
+}
+
+function estimateBortle(population, landuse) {
+  let b;
+  if (population == null) {
+    b = landuse === 'commercial' ? 7 : landuse === 'rural' ? 3 : 5;
+  } else if (population > 6000) b = 7;
+  else if (population > 3000)   b = 6;
+  else if (population > 1200)   b = 5;
+  else if (population > 400)    b = 4;
+  else                          b = 3;
+  if (landuse === 'commercial' && b < 7) b = Math.min(b + 1, 8);
+  if (landuse === 'rural'      && b > 4) b = Math.max(b - 1, 2);
+  return { bortle: b, ...getBortleDescription(b) };
+}
+
+function getBortleDescription(b) {
+  if (b <= 2) return { label: 'Exceptional dark sky',      desc: 'The Milky Way is strikingly detailed and casts faint shadows.' };
+  if (b <= 3) return { label: 'Rural dark sky',            desc: 'The Milky Way is clearly visible with obvious structure. Light domes from distant cities appear at the horizon.' };
+  if (b <= 4) return { label: 'Rural/suburban transition', desc: 'The Milky Way is still visible but faint. Some light pollution from the nearest town is noticeable.' };
+  if (b <= 5) return { label: 'Suburban sky',              desc: 'The Milky Way is a faint smudge on a good night. The sky background is noticeably bright near the horizon.' };
+  if (b <= 6) return { label: 'Bright suburban sky',       desc: 'The Milky Way is at or below the threshold of visibility. Skyglow is obvious in multiple directions.' };
+  if (b <= 7) return { label: 'Suburban/urban transition', desc: 'The Milky Way is not visible. Only the moon and the brightest stars are easily seen.' };
+  return          { label: 'Urban sky',                    desc: 'Only the brightest stars are visible against a washed-out background.' };
+}
+
+// Water quality (EPA ECHO / SDWIS) ────────────────────────────────────────────
+
+async function getWaterQuality(lat, lng) {
+  // Uses EPA ECHO SDW REST services — verify endpoint if returning null; sdw_rest_services may be deprecated
+  try {
+    const facResp = await fetch(
+      `https://echodata.epa.gov/echo/sdw_rest_services.get_facilities` +
+      `?output=JSON&p_lat=${lat}&p_long=${lng}&p_radius=10&p_wt_type=CWS`,
+      { signal: AbortSignal.timeout(12000) },
+    );
+    if (!facResp.ok) return null;
+    const facData = await facResp.json();
+    const systems =
+      facData?.Results?.Water_Systems ||
+      facData?.results?.water_systems ||
+      [];
+    if (!systems.length) return null;
+
+    const sys = systems[0];
+    const pwsId   = sys.pws_id   || sys.PWS_ID;
+    const pwsName = sys.pws_name || sys.PWS_NAME || 'Public water system';
+    if (!pwsId) return { systemName: pwsName, violations: [] };
+
+    const vResp = await fetch(
+      `https://echodata.epa.gov/echo/sdw_rest_services.get_violations` +
+      `?output=JSON&p_id=${encodeURIComponent(pwsId)}`,
+      { signal: AbortSignal.timeout(12000) },
+    );
+    if (!vResp.ok) return { systemName: pwsName, violations: [] };
+    const vData = await vResp.json();
+
+    const cutoff = new Date().getFullYear() - 5;
+    const rawViolations =
+      vData?.Results?.Violations ||
+      vData?.results?.violations ||
+      vData?.Results?.SDW_Violations ||
+      [];
+    const violations = rawViolations
+      .filter((v) => {
+        const dateStr =
+          v.compl_per_begin_date || v.COMPL_PER_BEGIN_DATE ||
+          v.compl_per_end_date   || v.COMPL_PER_END_DATE   || '';
+        const yr = parseInt(dateStr.slice(0, 4), 10);
+        return !yr || yr >= cutoff;
+      })
+      .map((v) => ({
+        type: v.violation_code_desc || v.VIOLATION_CODE_DESCRIPTION ||
+              v.viol_code_desc      || v.contaminant_code           || 'Violation',
+        date: v.compl_per_begin_date || v.COMPL_PER_BEGIN_DATE || null,
+        status: v.violation_status   || v.VIOLATION_STATUS     || 'Unknown',
+      }));
+
+    return { systemName: pwsName, pwsId, violations };
+  } catch {
+    return null;
+  }
+}
+
+// Radon zone (EPA static county-level lookup) ─────────────────────────────────
+
+// State FIPS → default EPA radon zone (1=high, 2=moderate, 3=low)
+const RADON_ZONE_BY_STATE = {
+  '08': 1, '17': 1, '18': 1, '19': 1, '20': 1, '21': 1, '26': 1,
+  '27': 1, '29': 1, '30': 1, '31': 1, '38': 1, '39': 1, '42': 1,
+  '46': 1, '55': 1, '56': 1,
+  '12': 3, '15': 3, '22': 3,
+};
+
+function getRadonZone(fips) {
+  if (!fips?.state) return null;
+  const zone = RADON_ZONE_BY_STATE[fips.state] ?? 2;
+  return { zone };
+}
+
+// EPA EJSCREEN ────────────────────────────────────────────────────────────────
+
+async function getEJScreen(lat, lng) {
+  try {
+    // EJSCREEN REST broker (ejscreen.epa.gov — verify URL if this returns null; domain may migrate)
+    const geom = encodeURIComponent(JSON.stringify({ x: lng, y: lat, spatialReference: { wkid: 4326 } }));
+    const resp = await fetch(
+      `https://ejscreen.epa.gov/mapper/ejscreenRESTbroker.aspx` +
+      `?namestr=&geometry=${geom}&distance=1&unit=9035&areatype=&areaid=&f=pjson`,
+      { signal: AbortSignal.timeout(12000) },
+    );
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    // Response can be { features: [{ attributes: {...} }] } or flat { PNPL: ... }
+    const a = data?.features?.[0]?.attributes ?? data?.data ?? data;
+    if (!a || typeof a !== 'object') return null;
+    // Field names vary by API version: PNPL / P_PNPL / NPL_CNT_PCTILE / superfund_pctile
+    const pnpl  = parseFloat(
+      a.PNPL ?? a.P_PNPL ?? a.NPL_CNT_PCTILE ?? a.D2_PNPL ?? 0,
+    ) || 0;
+    const prmp  = parseFloat(
+      a.PRMP ?? a.P_PRMP ?? a.RMP_CNT_PCTILE ?? a.D2_PRMP ?? 0,
+    ) || 0;
+    const ptsdf = parseFloat(
+      a.PTSDF ?? a.P_PTSDF ?? a.TSDF_CNT_PCTILE ?? a.D2_PTSDF ?? 0,
+    ) || 0;
+    // If all values are 0 the API likely returned an empty/error result
+    if (pnpl === 0 && prmp === 0 && ptsdf === 0 && !data?.features?.length) return null;
+    return {
+      superfundPct: Math.round(pnpl),
+      rmpPct:       Math.round(prmp),
+      tsdfPct:      Math.round(ptsdf),
+      flagged:      pnpl > 75 || prmp > 75 || ptsdf > 75,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ── FR-018: Community Safety & Activity ──────────────────────────────────────
@@ -507,7 +797,7 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
       getPropertyData(fips, locationInfo),
       getWalkabilityScore(lat, lng, googleMapsClient, googleMapsApiKey),
       getEmergencyServices(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
-      getEnvironmentalData(lat, lng, highwayDriveMinutes),
+      getEnvironmentalData(lat, lng, highwayDriveMinutes, fips, googleMapsClient, googleMapsApiKey),
       getCrimeData(locationInfo),
       getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
     ]);
@@ -708,73 +998,195 @@ function buildCrimeHTML(crime, emergency) {
   return premiumCard('Safety', 'Community Safety & Activity', body);
 }
 
-// FR-019: Environmental
-function buildEnvironmentalHTML(env) {
+// FR-027: Sensory & Environmental
+function buildSensoryEnvironmentalHTML(env) {
   if (!env) return '';
-  const items = [];
+  const { airports, roadNoise, rail, lightPollution, airQuality, waterQuality, radon, ejscreen } = env;
 
-  if (env.airQuality) {
-    items.push(`
-    <div class="prem-env-card">
-      <div class="prem-env-head">
-        <div class="prem-env-icon">🌫️</div>
-        <div>
-          <div class="prem-env-title">Air Quality</div>
-          <span class="prem-badge" style="${badgeColor(env.airQuality.category.color)}">${esc(env.airQuality.category.label)}</span>
-        </div>
-        <div class="prem-env-value">AQI ${env.airQuality.aqi}</div>
-      </div>
-      <div class="prem-env-desc">${esc(env.airQuality.category.description)} Primary pollutant: ${esc(env.airQuality.primaryPollutant)}.</div>
-    </div>`);
+  // ── Section A: What You'll Hear ───────────────────────────────────────────
+
+  let airportPara;
+  if (!airports || !airports.length) {
+    airportPara = 'No airports are within 20 miles of this address. Commercial and general aviation flight traffic is not a daily experience here.';
+  } else {
+    const n = airports[0];
+    const d = n.distanceMiles.toFixed(1);
+    if (n.distanceMiles < 5) {
+      airportPara = `${esc(n.name)} is ${d} miles away — close enough that aircraft on approach or departure are frequently audible, particularly in the mornings and evenings. Consider visiting the property during early morning hours (6–9am weekdays) before committing.`;
+    } else if (n.distanceMiles < 10) {
+      airportPara = `${esc(n.name)} is approximately ${d} miles away. Aircraft on approach or departure paths may be audible at this distance during peak periods. Worth visiting at different times of day to gauge the actual sound level.`;
+    } else if (n.distanceMiles < 15) {
+      airportPara = `The nearest airport, ${esc(n.name)}, is ${d} miles away. Depending on prevailing winds and runway configuration, some approach traffic may occasionally be audible overhead. At this distance, it's not typically disruptive.`;
+    } else {
+      airportPara = `The nearest airport, ${esc(n.name)}, is ${d} miles away. At that distance, aircraft are at altitude and not meaningfully audible at ground level. Flight noise is not a daily factor here.`;
+    }
+    if (airports.length > 1) {
+      const others = airports.slice(1, 3).map((a) => `${esc(a.name)} (${a.distanceMiles.toFixed(1)} mi)`).join(' and ');
+      airportPara += ` ${others} ${airports.length === 2 ? 'is' : 'are'} also in the region.`;
+    }
   }
 
-  if (env.noise) {
-    const noiseSrc = env.noise.sources.length ? ` Source: ${env.noise.sources.join(', ')}.` : '';
-    items.push(`
-    <div class="prem-env-card">
-      <div class="prem-env-head">
-        <div class="prem-env-icon">🔊</div>
-        <div>
-          <div class="prem-env-title">Noise Level</div>
-          <span class="prem-badge" style="${badgeColor(env.noise.category.color)}">${esc(env.noise.category.label)}</span>
-        </div>
-        <div class="prem-env-value">~${env.noise.level} dB</div>
-      </div>
-      <div class="prem-env-desc">${esc(env.noise.category.description)}${esc(noiseSrc)} Estimated based on proximity to highway.</div>
-    </div>`);
+  let roadNoisePara;
+  if (!roadNoise) {
+    roadNoisePara = 'Road noise data was not available for this address.';
+  } else {
+    const { dnl, source, nearestRoad } = roadNoise;
+    const srcNote = source === 'BTS' ? ' (BTS National Transportation Noise Map)' : ' (estimated from highway proximity)';
+    const roadRef = nearestRoad?.name ? ` Nearest major road: ${esc(nearestRoad.name)}.` : '';
+    if (dnl < 55) {
+      roadNoisePara = `Road noise is low — approximately ${dnl} dB day-night average${srcNote}. That's well below the FHWA's 65 dB residential threshold, and in a range most people describe as quiet.${roadRef}`;
+    } else if (dnl < 65) {
+      roadNoisePara = `Road noise is moderate — approximately ${dnl} dB day-night average${srcNote}. Highway sound may be noticeable with windows open during busy periods. This is within FHWA's acceptable residential range, but worth evaluating at different times of day.${roadRef}`;
+    } else {
+      roadNoisePara = `Road noise is elevated at approximately ${dnl} dB day-night average${srcNote} — above FHWA's 65 dB residential standard. Outdoor spaces and open windows will carry highway sound. Evaluate this on-site, not just on paper.${roadRef}`;
+    }
   }
 
-  if (env.floodRisk) {
-    const fl = env.floodRisk;
-    items.push(`
-    <div class="prem-env-card">
-      <div class="prem-env-head">
-        <div class="prem-env-icon">💧</div>
-        <div>
-          <div class="prem-env-title">Flood Risk</div>
-          <span class="prem-badge" style="${badgeColor(getFloodRiskColor(fl.risk))}">${esc(fl.risk)} Risk</span>
-        </div>
-        <div class="prem-env-value">Zone ${esc(fl.zone)}</div>
-      </div>
-      <div class="prem-env-desc">${esc(fl.description)} Flood insurance: <strong>${fl.insuranceRequired ? 'Required for mortgages' : 'Not required'}</strong>.</div>
-    </div>`);
+  let railPara;
+  if (!rail) {
+    railPara = 'No freight or passenger rail lines run within 3 miles of this address. Train noise is not a factor here.';
+  } else {
+    const typeLabel = rail.type === 'light_rail' ? 'light rail' : rail.type === 'tram' ? 'tram' : 'rail';
+    const nameStr = rail.name ? `${esc(rail.name)} ` : '';
+    if (rail.distanceMiles < 0.25) {
+      railPara = `A ${nameStr}${typeLabel} line runs less than a quarter mile from this address. At that proximity, trains will be audible indoors. Freight schedules aren't fixed — trains can pass at any hour, including overnight.`;
+    } else if (rail.distanceMiles < 0.75) {
+      railPara = `A ${nameStr}${typeLabel} line runs approximately ${Math.round(rail.distanceMiles * 5280)} feet away. Whether trains are audible inside depends on frequency and construction. Listen for this during any site visit.`;
+    } else {
+      railPara = `The nearest ${typeLabel} line (${nameStr.trim() || 'unnamed'}) is ${rail.distanceMiles.toFixed(2)} miles away. At that distance, trains are unlikely to be audible indoors except possibly on quiet nights with windows open.`;
+    }
   }
 
-  if (!items.length) return '';
+  const sectionA = `
+    <div class="prem-sensory-section">
+      <div class="prem-sensory-label">What You'll Hear</div>
+      <div class="prem-narrative">
+        <p class="prem-narrative-lead">${airportPara}</p>
+        <p class="prem-narrative-body">${roadNoisePara}</p>
+        <p class="prem-narrative-body">${railPara}</p>
+      </div>
+    </div>`;
 
-  const envFactors = [];
-  if (env.airQuality) envFactors.push(env.airQuality.category.color === 'green' ? 'air quality is good' : env.airQuality.category.color === 'gold' ? 'air quality is moderate—noticeable for sensitive individuals' : 'air quality is a genuine concern worth monitoring');
-  if (env.noise) envFactors.push(env.noise.category.color === 'green' ? 'noise levels are low' : env.noise.category.color === 'gold' ? 'noise is moderate—you may notice it with windows open' : 'noise is elevated enough to factor into your daily experience');
-  if (env.floodRisk) envFactors.push(env.floodRisk.risk === 'Low' ? 'flood risk is minimal' : env.floodRisk.risk === 'Moderate' ? 'flood risk is moderate—worth understanding your specific parcel' : 'flood risk is elevated—insurance and elevation certificates matter here');
+  // ── Section B: What You'll See at Night ──────────────────────────────────
 
-  const envIntro = envFactors.length
-    ? `For this location: ${envFactors.join('; ')}. These factors affect daily comfort and long-term costs in ways that don't show up in price-per-square-foot comparisons.`
-    : '';
+  let lightPara;
+  if (!lightPollution) {
+    lightPara = 'Night sky brightness data was not available for this address.';
+  } else {
+    const { bortle, label, desc } = lightPollution;
+    lightPara = `The night sky here is roughly Bortle ${bortle} — a ${esc(label)}. ${esc(desc)} This is estimated from Census tract population density and nearby land use patterns, not satellite measurement.`;
+  }
 
-  const body = (envIntro ? `<div class="prem-narrative"><p class="prem-narrative-body">${envIntro}</p></div>` : '') +
-    items.join('') +
-    `<p class="prem-disclaimer">Air quality: EPA AirNow. Flood zone: FEMA National Flood Hazard Layer. Noise: estimate based on highway proximity.</p>`;
-  return premiumCard('Environment', 'Environmental Factors', body);
+  const sectionB = `
+    <div class="prem-sensory-section">
+      <div class="prem-sensory-label">What You'll See at Night</div>
+      <div class="prem-narrative">
+        <p class="prem-narrative-lead">${lightPara}</p>
+      </div>
+    </div>`;
+
+  // ── Section C: What You Can't See ────────────────────────────────────────
+
+  let airPara;
+  if (airQuality) {
+    const { aqi, category: c, primaryPollutant } = airQuality;
+    const pollNote = primaryPollutant && primaryPollutant !== 'N/A' ? ` Primary pollutant: ${esc(primaryPollutant)}.` : '';
+    airPara = `Air quality in this region averages AQI ${aqi} — ${esc(c.label.toLowerCase())}. ${esc(c.description)}${pollNote} Source: EPA AirNow, nearest monitoring station.`;
+  } else {
+    airPara = 'Air quality data was not available for this address. Check EPA AirNow (airnow.gov) for current conditions in your area.';
+  }
+
+  let waterPara;
+  if (!waterQuality) {
+    waterPara = 'The serving water utility for this address could not be confirmed through EPA records. Contact the local water utility directly and request their Consumer Confidence Report before closing.';
+  } else if (!waterQuality.violations?.length) {
+    waterPara = `Water here is supplied by ${esc(waterQuality.systemName)}. EPA Safe Drinking Water records show no health-based violations in the last five years — a clean record. You can request the annual Consumer Confidence Report from the utility for full detail.`;
+  } else {
+    const v = waterQuality.violations[0];
+    const dateStr = v.date ? ` in ${v.date.slice(0, 4)}` : '';
+    const statusStr = (v.status && v.status !== 'Unknown') ? ` — ${esc(v.status)}` : '';
+    waterPara = `Water here is supplied by ${esc(waterQuality.systemName)}. EPA records show ${waterQuality.violations.length} violation${waterQuality.violations.length > 1 ? 's' : ''} in the last five years. The most recent: ${esc(v.type)}${dateStr}${statusStr}. Request the utility's Consumer Confidence Report before closing to understand current status.`;
+  }
+
+  let radonPara;
+  if (!radon) {
+    radonPara = 'Radon zone data requires county identification. Verify your county\'s EPA radon zone at epa.gov/radon. Testing is inexpensive and recommended before purchase.';
+  } else if (radon.zone === 1) {
+    radonPara = 'This county is EPA Radon Zone 1 — high geologic potential for elevated indoor radon. Radon is the second-leading cause of lung cancer, and it\'s odorless and invisible. Testing is strongly recommended before closing: DIY kits run $15–$30 and results come back in days. If elevated, mitigation systems typically cost $800–$2,500 installed.';
+  } else if (radon.zone === 2) {
+    radonPara = 'This county is EPA Radon Zone 2 — moderate geologic potential for radon. Testing is recommended, particularly if the home has below-grade living space. Kits are inexpensive and widely available.';
+  } else {
+    radonPara = 'This county is EPA Radon Zone 3 — lower geologic potential for elevated radon. While the risk is reduced here, no zone is radon-free. A quick test remains a reasonable precaution, especially for homes with basements.';
+  }
+  if (radon) radonPara += ' Note: Zone classifications are county-level, not parcel-specific. Source: EPA Radon Zone Map.';
+
+  let ejPara;
+  if (!ejscreen) {
+    ejPara = 'EPA environmental screening data was not available for this address.';
+  } else if (ejscreen.flagged) {
+    const flags = [];
+    if (ejscreen.superfundPct > 75) flags.push(`${ejscreen.superfundPct}th percentile nationally for proximity to Superfund sites`);
+    if (ejscreen.rmpPct > 75)       flags.push(`${ejscreen.rmpPct}th percentile for chemical risk facilities`);
+    if (ejscreen.tsdfPct > 75)      flags.push(`${ejscreen.tsdfPct}th percentile for hazardous waste facilities`);
+    ejPara = `EPA EJSCREEN flags this location: ${flags.join('; ')}. That means more nearby industrial or hazardous-site activity than the majority of US residential locations. Review the EPA ECHO database for specific facilities near this address.`;
+  } else {
+    ejPara = 'EPA environmental screening (EJSCREEN) shows no significant proximity concerns — below the 75th national percentile for Superfund sites, chemical risk facilities, and hazardous waste sites.';
+  }
+
+  const sectionC = `
+    <div class="prem-sensory-section">
+      <div class="prem-sensory-label">What You Can't See</div>
+      <div class="prem-narrative">
+        <p class="prem-narrative-body">${airPara}</p>
+        <p class="prem-narrative-body">${waterPara}</p>
+        <p class="prem-narrative-body">${radonPara}</p>
+        <p class="prem-narrative-body">${ejPara}</p>
+      </div>
+    </div>`;
+
+  // ── Key Takeaway ──────────────────────────────────────────────────────────
+
+  let takeaway;
+  if (airports?.length && airports[0].distanceMiles < 10) {
+    takeaway = `${esc(airports[0].name)} is ${airports[0].distanceMiles.toFixed(1)} miles away. Visit the property during morning hours (6–9am weekdays) to hear the actual aircraft noise level before committing.`;
+  } else if (roadNoise?.dnl >= 65) {
+    takeaway = `Road noise at this location (~${roadNoise.dnl} dB) exceeds the FHWA residential standard of 65 dB. Evaluate it on-site during peak traffic hours.`;
+  } else if (waterQuality?.violations?.length) {
+    const v = waterQuality.violations[0];
+    takeaway = `EPA records show a recent water quality violation (${esc(v.type)}). Request the utility's Consumer Confidence Report before closing.`;
+  } else if (radon?.zone === 1) {
+    takeaway = 'This is a high-radon county (EPA Zone 1). Include radon testing in your inspection scope — a $20 kit prevents a costly and dangerous surprise.';
+  } else if (ejscreen?.flagged) {
+    takeaway = 'EPA environmental screening flagged elevated industrial hazard proximity for this location. Review EPA ECHO for specific nearby facilities.';
+  } else if (rail && rail.distanceMiles < 0.5) {
+    takeaway = `A rail line runs ${Math.round(rail.distanceMiles * 5280)} feet from this address. Visit during evening or overnight hours to evaluate train noise.`;
+  } else {
+    const aqLabel = airQuality ? esc(airQuality.category.label.toLowerCase()) : 'not reported';
+    takeaway = `No major noise, water, or hazard concerns were identified for this location. Air quality is ${aqLabel} per EPA monitoring.`;
+  }
+
+  const sources = [
+    airports   && 'Google Places (airports)',
+    roadNoise  && 'BTS National Transportation Noise Map / OpenStreetMap (road noise)',
+    rail       && 'OpenStreetMap (rail)',
+    lightPollution && 'U.S. Census ACS / OpenStreetMap (light pollution, estimated)',
+    airQuality && 'EPA AirNow (air quality)',
+    waterQuality && 'EPA ECHO/SDWIS (water quality)',
+    radon      && 'EPA Radon Zone Map (county-level)',
+    ejscreen   && 'EPA EJSCREEN (hazard proximity)',
+  ].filter(Boolean).join('; ');
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const body =
+    sectionA + sectionB + sectionC +
+    `<div class="prem-sensory-takeaway">
+      <span class="prem-sensory-key">🔑</span>
+      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    </div>` +
+    `<p class="prem-disclaimer">Sources: ${sources}. Research date: ${today}. Light pollution is estimated, not satellite-measured.</p>`;
+
+  return premiumCard('Environment', 'Sensory & Environmental', body);
 }
 
 // FR-020: Emergency Services
@@ -1067,7 +1479,7 @@ function buildPremiumSectionsHTML(premium) {
   return [
     buildSchoolRatingsHTML(premium.schools),
     buildCrimeHTML(premium.crime, premium.emergency),
-    buildEnvironmentalHTML(premium.environment),
+    buildSensoryEnvironmentalHTML(premium.environment),
     buildEmergencyServicesHTML(premium.emergency),
     buildWalkabilityHTML(premium.walkability),
     buildPropertyDataHTML(premium.propertyData),
