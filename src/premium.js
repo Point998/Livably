@@ -786,12 +786,299 @@ async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, google
   return schools.some(Boolean) ? schools : null;
 }
 
+// ── FR-025: Growth & Development ─────────────────────────────────────────────
+
+async function getBuildingPermitTrend(fips) {
+  if (!fips?.state || !fips?.county) return null;
+  try {
+    const censusKey = process.env.CENSUS_API_KEY;
+    const keyParam = censusKey ? `&key=${censusKey}` : '';
+    const currentYear = new Date().getFullYear() - 1;
+    const permitsByYear = [];
+
+    for (const year of [currentYear, currentYear - 1, currentYear - 2]) {
+      try {
+        const url =
+          `https://api.census.gov/data/timeseries/eits/bps` +
+          `?get=cell_value,data_type_code,category_code` +
+          `&for=county:${fips.county}&in=state:${fips.state}` +
+          `&time=${year}${keyParam}`;
+        const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        if (!Array.isArray(data) || data.length < 2) continue;
+        const headers = data[0];
+        const rows = data.slice(1);
+        const cvIdx  = headers.indexOf('cell_value');
+        const dtIdx  = headers.indexOf('data_type_code');
+        const catIdx = headers.indexOf('category_code');
+        let row = rows.find((r) => {
+          const cat = catIdx >= 0 ? String(r[catIdx] || '').toLowerCase() : '';
+          const dt  = dtIdx  >= 0 ? String(r[dtIdx]  || '').toLowerCase() : '';
+          return (cat === 'total' || cat === '') && dt.includes('estimate');
+        });
+        if (!row) row = rows.find((r) => dtIdx >= 0 && String(r[dtIdx] || '').toLowerCase().includes('estimate'));
+        if (row && cvIdx >= 0) {
+          const val = parseInt(row[cvIdx], 10);
+          if (!isNaN(val) && val >= 0) permitsByYear.push({ year, permits: val });
+        }
+      } catch {}
+    }
+
+    if (!permitsByYear.length) return null;
+    permitsByYear.sort((a, b) => b.year - a.year);
+    const current = permitsByYear[0];
+    const prior   = permitsByYear[1] || null;
+    let percentChange = null;
+    if (current && prior && prior.permits > 0) {
+      percentChange = Math.round((current.permits - prior.permits) / prior.permits * 100);
+    }
+    const trend =
+      percentChange === null ? 'stable'
+      : percentChange >= 10  ? 'rising'
+      : percentChange <= -10 ? 'declining'
+      : 'stable';
+    return {
+      current:      current.permits,
+      currentYear:  current.year,
+      prior:        prior?.permits ?? null,
+      priorYear:    prior?.year    ?? null,
+      percentChange,
+      trend,
+    };
+  } catch (err) {
+    console.error('[BPS]', err.message);
+    return null;
+  }
+}
+
+async function getNewConstructionContext(fips) {
+  if (!fips) return null;
+  try {
+    const acs = await fetchCensusACS(fips, ['B25034_001E', 'B25034_002E', 'B25034_003E']);
+    if (!acs) return null;
+    const total    = safeInt(acs.get('B25034_001E')) || 1;
+    const post2014 = safeInt(acs.get('B25034_002E'));
+    const post2010 = post2014 + safeInt(acs.get('B25034_003E'));
+    return { newConstructionPct: Math.round(post2010 / total * 100) };
+  } catch { return null; }
+}
+
+const COMMERCIAL_DEV_TYPES = [
+  { type: 'shopping_mall',    label: 'Shopping Center', icon: '🏬' },
+  { type: 'supermarket',      label: 'Grocery Store',   icon: '🛒' },
+  { type: 'department_store', label: 'Major Retail',    icon: '🏪' },
+  { type: 'gym',              label: 'Fitness Center',  icon: '💪' },
+  { type: 'movie_theater',    label: 'Entertainment',   icon: '🎬' },
+  { type: 'bank',             label: 'Financial',       icon: '🏦' },
+];
+
+async function getRecentDevelopmentActivity(lat, lng, googleMapsClient, googleMapsApiKey) {
+  const results = await Promise.allSettled(
+    COMMERCIAL_DEV_TYPES.map(({ type }) =>
+      googleMapsClient.placesNearby({
+        params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: 2400, type },
+      })
+    )
+  );
+  const seen = new Set();
+  const establishments = [];
+  for (let i = 0; i < COMMERCIAL_DEV_TYPES.length; i++) {
+    const r = results[i];
+    if (r.status !== 'fulfilled') continue;
+    for (const place of (r.value.data.results || []).filter((p) => p.business_status === 'OPERATIONAL').slice(0, 2)) {
+      if (seen.has(place.place_id)) continue;
+      seen.add(place.place_id);
+      establishments.push({
+        name:          place.name,
+        label:         COMMERCIAL_DEV_TYPES[i].label,
+        icon:          COMMERCIAL_DEV_TYPES[i].icon,
+        distanceMiles: haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng),
+      });
+    }
+  }
+  return establishments.sort((a, b) => a.distanceMiles - b.distanceMiles).slice(0, 6);
+}
+
+async function getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey) {
+  const [permitRes, newConstRes, activityRes] = await Promise.allSettled([
+    getBuildingPermitTrend(fips),
+    getNewConstructionContext(fips),
+    googleMapsClient
+      ? getRecentDevelopmentActivity(lat, lng, googleMapsClient, googleMapsApiKey)
+      : Promise.resolve([]),
+  ]);
+  return {
+    permits:         permitRes.status   === 'fulfilled' ? permitRes.value   : null,
+    newConstruction: newConstRes.status === 'fulfilled' ? newConstRes.value : null,
+    establishments:  activityRes.status === 'fulfilled' ? activityRes.value : [],
+    locationInfo,
+  };
+}
+
+// ── FR-026: Property Intelligence ────────────────────────────────────────────
+
+async function getSoilData(lat, lng) {
+  try {
+    const query = `
+      SELECT TOP 1 mu.muname, co.compname, co.drainagecl, co.hydgrp, co.hydricrating
+      FROM mapunit mu
+      JOIN component co ON mu.mukey = co.mukey
+      WHERE mu.mukey = (
+        SELECT mukey FROM SDA_Get_Mukey_from_intersection_with_WktWgs84('point(${lng} ${lat})')
+      )
+      ORDER BY co.majcompflag DESC, co.comppct_r DESC
+    `;
+    const resp = await fetch(
+      'https://sdmdataaccess.sc.egov.usda.gov/Tabular/SDMTabularService/post.rest',
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    `query=${encodeURIComponent(query)}&format=JSON`,
+        signal:  AbortSignal.timeout(15000),
+      }
+    );
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const table = data?.Table;
+    if (!table || !table.length) return null;
+    // SDA JSON returns data rows only (no header row) — positional per SELECT order:
+    // 0=muname 1=compname 2=drainagecl 3=hydgrp 4=hydricrating
+    const row = table[0];
+    if (!row) return null;
+    const drainagecl   = row[2] || null;
+    const hydricrating = row[4] || null;
+    return {
+      muname:           row[0] || null,
+      drainagecl,
+      hydricrating,
+      isHydric:         !!(hydricrating && String(hydricrating).toLowerCase().includes('yes')),
+      drainageCategory: getDrainageCategory(drainagecl),
+    };
+  } catch (err) {
+    console.error('[USDA Soil]', err.message);
+    return null;
+  }
+}
+
+function getDrainageCategory(drainagecl) {
+  if (!drainagecl) return null;
+  const d = drainagecl.toLowerCase();
+  if (d.includes('excessively'))      return { label: 'Excessively drained',      color: 'gold',       implication: 'Soil dries out quickly — low basement moisture risk, but may need irrigation for landscaping.' };
+  if (d.includes('moderately well'))  return { label: 'Moderately well drained',  color: 'lightgreen', implication: 'Drains well in most conditions; may be briefly wet after heavy rain.' };
+  if (d.includes('well drained') || d === 'well drained') return { label: 'Well drained', color: 'green', implication: 'Water drains readily. Low risk of basement moisture from soil conditions.' };
+  if (d.includes('somewhat poorly'))  return { label: 'Somewhat poorly drained',  color: 'orange',     implication: 'Stays wet for significant periods — may affect basement moisture and landscaping choices.' };
+  if (d.includes('very poorly'))      return { label: 'Very poorly drained',      color: 'red',        implication: 'Water stands near the surface most of the year. Significant moisture risk and likely wetland indicators.' };
+  if (d.includes('poorly'))           return { label: 'Poorly drained',           color: 'red',        implication: 'Wet soil most of the year. High basement moisture risk — thorough foundation inspection essential.' };
+  return { label: drainagecl, color: 'muted', implication: 'Consult a soil engineer for specific drainage implications at this location.' };
+}
+
+async function getBroadbandData(lat, lng) {
+  try {
+    const url =
+      `https://broadbandmap.fcc.gov/api/public/map/listAvailability` +
+      `?latitude=${lat}&longitude=${lng}&unit=location&limit=25&category=residential`;
+    const resp = await fetch(url, {
+      signal:  AbortSignal.timeout(12000),
+      headers: { Accept: 'application/json' },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const availability =
+      Array.isArray(data?.availability) ? data.availability :
+      Array.isArray(data?.data)         ? data.data         :
+      Array.isArray(data)               ? data              : [];
+    if (!availability.length) return null;
+
+    const TECH_MAP = {
+      10: 'DSL', 11: 'ADSL2+', 12: 'VDSL', 40: 'Cable', 41: 'DOCSIS 3.0',
+      42: 'DOCSIS 3.1+', 50: 'Fiber', 60: 'Satellite', 70: 'Fixed Wireless',
+      300: 'LTE Fixed Wireless', 400: 'Licensed Fixed Wireless', 500: 'Unlicensed Fixed Wireless',
+    };
+
+    let maxDownload = 0;
+    let hasFiber    = false;
+    const seenNames = new Set();
+    const providers = [];
+
+    for (const item of availability) {
+      const techCode = item.technology_code ?? item.tech_code ?? 0;
+      const download = Number(item.max_advertised_download_speed ?? item.download_speed ?? 0);
+      if (download > maxDownload) maxDownload = download;
+      if (techCode === 50) hasFiber = true;
+      const name = String(item.brand_name || item.doing_business_as || item.provider_name || '').trim();
+      if (name && !seenNames.has(name)) {
+        seenNames.add(name);
+        providers.push({
+          name,
+          tech:     TECH_MAP[techCode] || `Type ${techCode}`,
+          download,
+          upload:   Number(item.max_advertised_upload_speed ?? item.upload_speed ?? 0),
+        });
+      }
+    }
+    providers.sort((a, b) => b.download - a.download);
+    return { providers: providers.slice(0, 5), maxDownloadMbps: maxDownload, hasFiber, category: getBroadbandCategory(maxDownload, hasFiber) };
+  } catch (err) {
+    console.error('[FCC Broadband]', err.message);
+    return null;
+  }
+}
+
+function getBroadbandCategory(maxMbps, hasFiber) {
+  if (hasFiber || maxMbps >= 1000) return { label: 'Gigabit available',    color: 'green',      desc: 'Fiber or gigabit internet is available — ideal for remote work and large households.' };
+  if (maxMbps >= 200)              return { label: 'High-speed available', color: 'lightgreen', desc: 'Fast broadband is available. Most remote work and streaming needs are well-covered.' };
+  if (maxMbps >= 25)               return { label: 'Broadband available',  color: 'gold',       desc: 'Standard broadband is available. Sufficient for most households.' };
+  if (maxMbps > 0)                 return { label: 'Limited options',      color: 'orange',     desc: 'Limited speeds available. Verify connectivity before committing, especially for remote work.' };
+  return                               { label: 'Coverage unconfirmed',  color: 'muted',      desc: 'Internet availability not confirmed at this address via FCC data.' };
+}
+
+function getConstructionEraContext(year) {
+  if (!year || isNaN(year)) return null;
+  if (year >= 2010) return { era: 'Modern construction (2010s–present)', cautions: [] };
+  if (year >= 2000) return { era: '2000s construction', cautions: [] };
+  if (year >= 1980) return { era: '1980s–90s construction', cautions: ['Some homes from this era may contain polybutylene plumbing (recalled for failure risk)', 'Asbestos possible in textured surfaces or floor tiles if not previously remediated'] };
+  if (year >= 1978) return { era: 'Late 1970s construction', cautions: ['Pre-1980 construction may lack modern insulation standards', 'Aluminum wiring was common in this era — electrical inspection recommended'] };
+  if (year >= 1960) return { era: '1960s–70s construction', cautions: ['Pre-1978: lead paint likely in original finishes', 'Asbestos common in floor tiles, insulation, or textured ceilings', 'Galvanized plumbing may be near end of service life'] };
+  if (year >= 1940) return { era: '1940s–50s construction', cautions: ['Lead paint presumed in original surfaces', 'Original plumbing (galvanized or cast iron) may be aging', 'Knob-and-tube wiring possible if not updated', 'Asbestos in insulation and building materials is common'] };
+  return { era: 'Pre-1940 construction', cautions: ['Lead paint presumed in original surfaces', 'Plumbing and electrical may be original or patchwork-updated — verify', 'Asbestos common in original building materials', 'Structural updates vary widely — confirm with inspection'] };
+}
+
+async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
+  const [soilRes, broadbandRes, acsRes] = await Promise.allSettled([
+    getSoilData(lat, lng),
+    getBroadbandData(lat, lng),
+    fips
+      ? fetchCensusACS(fips, ['B25035_001E', 'B25034_001E', 'B25034_002E', 'B25034_003E'])
+      : Promise.resolve(null),
+  ]);
+
+  const soil      = soilRes.status      === 'fulfilled' ? soilRes.value      : null;
+  const broadband = broadbandRes.status === 'fulfilled' ? broadbandRes.value  : null;
+  const acs       = acsRes.status       === 'fulfilled' ? acsRes.value        : null;
+
+  let era = null;
+  if (acs) {
+    const medianYear  = parseInt(acs.get('B25035_001E'), 10);
+    const total       = safeInt(acs.get('B25034_001E')) || 1;
+    const post2014    = safeInt(acs.get('B25034_002E'));
+    const post2010    = post2014 + safeInt(acs.get('B25034_003E'));
+    era = {
+      medianYearBuilt:   isNaN(medianYear) ? null : medianYear,
+      newConstructionPct: Math.round(post2010 / total * 100),
+      context:           getConstructionEraContext(isNaN(medianYear) ? null : medianYear),
+    };
+  }
+
+  return { soil, broadband, era, locationInfo };
+}
+
 // ── Master fetch ──────────────────────────────────────────────────────────────
 
 async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
   const fips = await getCensusFIPS(lat, lng);
 
-  const [demographics, propertyData, walkability, emergency, environment, crime, schools] =
+  const [demographics, propertyData, walkability, emergency, environment, crime, schools, growth, propIntel] =
     await Promise.allSettled([
       getDemographics(lat, lng, fips),
       getPropertyData(fips, locationInfo),
@@ -800,17 +1087,21 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
       getEnvironmentalData(lat, lng, highwayDriveMinutes, fips, googleMapsClient, googleMapsApiKey),
       getCrimeData(locationInfo),
       getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
+      getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey),
+      getPropertyIntelligence(lat, lng, fips, locationInfo),
     ]);
 
   const val = (r) => (r.status === 'fulfilled' ? r.value : null);
   return {
     demographics: val(demographics),
     propertyData: val(propertyData),
-    walkability: val(walkability),
-    emergency: val(emergency),
-    environment: val(environment),
-    crime: val(crime),
-    schools: val(schools),
+    walkability:  val(walkability),
+    emergency:    val(emergency),
+    environment:  val(environment),
+    crime:        val(crime),
+    schools:      val(schools),
+    growth:       val(growth),
+    propIntel:    val(propIntel),
   };
 }
 
@@ -1473,16 +1764,250 @@ function buildDemographicsHTML(d) {
   return premiumCard('Community', 'Demographics & Community', body);
 }
 
+// FR-025: Growth & Development
+function buildGrowthAndDevelopmentHTML(growth) {
+  if (!growth) return '';
+  const { permits, newConstruction, establishments, locationInfo } = growth;
+  const county = locationInfo?.county || 'this county';
+
+  // ── Growth trend narrative ────────────────────────────────────────────────
+  let growthPara;
+  if (permits) {
+    const countStr = permits.current.toLocaleString();
+    const yearStr  = permits.currentYear ? ` in ${permits.currentYear}` : '';
+    const trendCtx =
+      permits.trend === 'rising'   ? `up ${Math.abs(permits.percentChange)}% from ${permits.priorYear || 'the prior year'}` :
+      permits.trend === 'declining'? `down ${Math.abs(permits.percentChange)}% from ${permits.priorYear || 'the prior year'}` :
+      `relatively stable compared to ${permits.priorYear || 'the prior year'}`;
+    const trendDesc =
+      permits.trend === 'rising'
+        ? `That's an active construction pace — new housing and commercial development are expanding in this area.`
+        : permits.trend === 'declining'
+        ? `Construction has slowed from recent levels. That can reflect a maturing market or broader economic conditions.`
+        : `Construction activity is holding steady — neither a boom nor a slowdown.`;
+    growthPara = `${esc(county)} issued ${countStr} building permits${yearStr}, ${trendCtx}. ${trendDesc}`;
+  } else if (newConstruction) {
+    const pct = newConstruction.newConstructionPct;
+    if (pct >= 20)      growthPara = `${pct}% of housing in this Census tract was built after 2010 — a significant share of relatively recent construction, indicating an active growth area.`;
+    else if (pct >= 10) growthPara = `About ${pct}% of housing in this Census tract was built after 2010, reflecting moderate new construction activity in the area.`;
+    else                growthPara = `Only ${pct}% of housing in this Census tract was built after 2010, indicating an established neighborhood with limited recent new construction.`;
+  } else {
+    growthPara = `Building permit trend data was not available for ${esc(county)} at this time. For current construction activity, contact the ${esc(county)} Planning and Zoning office directly.`;
+  }
+
+  // ── Commercial landscape ──────────────────────────────────────────────────
+  let activityPara = '';
+  let placesHTML   = '';
+  if (establishments?.length) {
+    const nearby      = establishments.filter((e) => e.distanceMiles <= 0.5);
+    const withinMile  = establishments.filter((e) => e.distanceMiles > 0.5 && e.distanceMiles <= 1);
+    if (nearby.length) {
+      activityPara = `Within a half mile: ${nearby.slice(0, 3).map((e) => esc(e.name)).join(', ')}. The commercial environment immediately surrounding this address is active and established.`;
+    } else if (withinMile.length) {
+      activityPara = `Within a mile: ${withinMile.slice(0, 3).map((e) => esc(e.name)).join(', ')}. The local commercial corridor is accessible without a long drive.`;
+    } else {
+      const e = establishments[0];
+      activityPara = `The nearest major commercial establishment is ${esc(e.name)} (${e.distanceMiles.toFixed(1)} mi). Commercial density in the immediate area is lower.`;
+    }
+    placesHTML = `
+      <div class="prem-growth-section">
+        <div class="prem-growth-label">Commercial Landscape Within 1.5 Miles</div>
+        <div class="prem-growth-places">
+          ${establishments.map((e) => `
+          <div class="prem-growth-place">
+            <span class="prem-growth-place-icon">${e.icon}</span>
+            <div class="prem-growth-place-info">
+              <div class="prem-growth-place-name">${esc(e.name)}</div>
+              <div class="prem-growth-place-cat">${esc(e.label)}</div>
+            </div>
+            <div class="prem-growth-place-dist">${e.distanceMiles.toFixed(1)} mi</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  // ── Pipeline note ─────────────────────────────────────────────────────────
+  const planningPara = `For development projects in the pipeline — approved applications, zoning changes, pending permits — check with ${esc(county)} Planning and Zoning. Those records are public but require a direct inquiry. Specific projects (a proposed apartment complex, a road widening, a new commercial pad) won't show up in any API; they live in the county's planning portal.`;
+
+  // ── Key Takeaway ──────────────────────────────────────────────────────────
+  let takeaway;
+  if (permits?.trend === 'rising' && permits.percentChange >= 20) {
+    takeaway = `${esc(county)} is in an active growth phase — building permits are up ${permits.percentChange}% year-over-year. Expect continued residential and commercial expansion near this area.`;
+  } else if (permits?.trend === 'declining' && permits.percentChange !== null && permits.percentChange <= -20) {
+    takeaway = `Construction activity in ${esc(county)} has slowed significantly (${permits.percentChange}%). Ask your agent about what's driving the change.`;
+  } else if (establishments?.length && establishments.filter((e) => e.distanceMiles <= 0.5).length >= 2) {
+    takeaway = `The immediate area has active commercial infrastructure within a half mile. For specific planned projects near this address, contact ${esc(county)} Planning and Zoning directly.`;
+  } else {
+    takeaway = `For the most current picture of planned development near this address, contact ${esc(county)} Planning and Zoning — their records show pending applications and approved projects that don't yet appear in any public data feed.`;
+  }
+
+  const sources = [];
+  if (permits) sources.push('U.S. Census Bureau Building Permits Survey');
+  else if (newConstruction) sources.push('U.S. Census ACS 5-year estimates');
+  if (establishments?.length) sources.push('Google Places');
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const body = `
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">${growthPara}</p>
+      ${activityPara ? `<p class="prem-narrative-body">${activityPara}</p>` : ''}
+      <p class="prem-narrative-body">${planningPara}</p>
+    </div>
+    ${placesHTML}
+    <div class="prem-sensory-takeaway">
+      <span class="prem-sensory-key">🔑</span>
+      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    </div>
+    <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Permit data is county-level — not neighborhood-specific. Specific planned projects require direct inquiry with the county planning department.</p>`;
+
+  return premiumCard('Development', 'Growth & Development', body);
+}
+
+// FR-026: Property Intelligence
+function buildPropertyIntelligenceHTML(propIntel) {
+  if (!propIntel) return '';
+  const { soil, broadband, era, locationInfo } = propIntel;
+  const county = locationInfo?.county || 'this county';
+
+  // ── Construction Era ──────────────────────────────────────────────────────
+  let eraPara;
+  let eraCautionsHTML = '';
+  if (era?.medianYearBuilt) {
+    const ctx = era.context;
+    eraPara = ctx
+      ? `${esc(ctx.era)}. The median year built for homes in this Census tract is ${era.medianYearBuilt}${era.newConstructionPct !== undefined ? `, with ${era.newConstructionPct}% of housing built after 2010` : ''}.`
+      : `The median year built for homes in this Census tract is ${era.medianYearBuilt}.`;
+    if (ctx?.cautions?.length) {
+      eraCautionsHTML = `
+        <div class="prem-intel-cautions">
+          <div class="prem-intel-caution-label">Inspection checklist for homes built in this era:</div>
+          <ul class="prem-intel-caution-list">
+            ${ctx.cautions.map((c) => `<li>${esc(c)}</li>`).join('')}
+          </ul>
+        </div>`;
+    }
+  } else {
+    eraPara = 'Construction era data was not available for this Census tract.';
+  }
+
+  // ── Soil & Drainage ───────────────────────────────────────────────────────
+  let soilPara;
+  let soilBadgeHTML = '';
+  if (!soil) {
+    soilPara = 'Soil survey data was not available for this location through the USDA Web Soil Survey.';
+  } else {
+    const name  = soil.muname || 'this soil type';
+    const drain = soil.drainageCategory;
+    const isUrban = !drain && (name.toLowerCase().includes('urban') || name.toLowerCase().includes('pits'));
+    soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? `, USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
+    if (drain) {
+      soilPara += esc(drain.implication);
+      soilBadgeHTML = `<span class="prem-badge prem-intel-soil-badge" style="${badgeColor(drain.color)}">${esc(drain.label)}</span>`;
+    } else if (isUrban) {
+      soilPara += `Urban land classifications don't carry standard drainage ratings — the soil profile has been altered by development. If you're concerned about drainage or foundation conditions, an on-site soil evaluation by a geotechnical engineer is the right approach.`;
+    } else if (!soil.drainagecl) {
+      soilPara += `No drainage classification is on record for this soil type — consult a soil engineer for site-specific drainage evaluation.`;
+    }
+    if (soil.isHydric) {
+      soilPara += ` USDA identifies this soil as hydric — a potential wetland indicator. Discuss foundation moisture, drainage feasibility, and any planned additions with your inspector.`;
+    }
+  }
+
+  // ── Broadband ─────────────────────────────────────────────────────────────
+  let broadbandPara;
+  let broadbandCardsHTML = '';
+  if (!broadband || !broadband.providers?.length) {
+    broadbandPara = broadband === null
+      ? 'Broadband availability data was not accessible for this address through the FCC Broadband Map at this time.'
+      : 'No internet providers were confirmed at this address through the FCC Broadband Map. Verify connectivity directly with local providers before closing.';
+  } else {
+    const cat = broadband.category;
+    broadbandPara = cat.desc;
+    if (broadband.maxDownloadMbps > 0) broadbandPara += ` Maximum advertised download: ${broadband.maxDownloadMbps} Mbps.`;
+    broadbandPara += broadband.providers.length > 1
+      ? ` ${broadband.providers.length} providers serve this address — competition gives you options if service quality is inconsistent.`
+      : ` Only one provider is confirmed at this address — worth verifying service reliability before committing.`;
+    broadbandCardsHTML = `
+      <div class="prem-intel-bb-providers">
+        <span class="prem-badge" style="${badgeColor(cat.color)}">${esc(cat.label)}</span>
+        ${broadband.providers.map((p) => `
+        <div class="prem-intel-bb-provider">
+          <span class="prem-intel-bb-name">${esc(p.name)}</span>
+          <span class="prem-intel-bb-tech">${esc(p.tech)}</span>
+          ${p.download ? `<span class="prem-intel-bb-speed">${p.download} Mbps</span>` : ''}
+        </div>`).join('')}
+      </div>`;
+  }
+
+  // ── Tax & Permit note ─────────────────────────────────────────────────────
+  const taxPermitPara = `Property tax history and permit records for this specific parcel are public records available from the ${esc(county)} Assessor and Building Department. One call before closing reveals the full permit history (including any unpermitted work), the tax assessment trajectory, and any open permits — information that doesn't appear in any public API.`;
+
+  // ── Key Takeaway ──────────────────────────────────────────────────────────
+  let takeaway;
+  if (soil?.isHydric) {
+    takeaway = 'USDA identifies this soil as hydric — a potential wetland indicator. Discuss foundation drainage and any planned additions with your inspector before closing.';
+  } else if (soil?.drainageCategory?.color === 'red') {
+    takeaway = `Soil drainage here is ${esc(soil.drainageCategory.label.toLowerCase())}. Ask your inspector specifically about basement moisture and discuss drainage with the seller.`;
+  } else if (broadband === null || !broadband?.providers?.length) {
+    takeaway = 'Internet connectivity at this address could not be confirmed through FCC data. If remote work or streaming is important, verify service options with local providers before committing.';
+  } else if (era?.medianYearBuilt && era.medianYearBuilt < 1978 && era.context?.cautions?.length) {
+    takeaway = `Homes in this tract average ${era.medianYearBuilt} — pre-1978 construction. Include a lead paint inspection in your due diligence scope.`;
+  } else if (broadband?.hasFiber || broadband?.maxDownloadMbps >= 1000) {
+    takeaway = 'Gigabit or fiber internet is available at this address — a meaningful advantage for remote workers and streaming-heavy households.';
+  } else {
+    takeaway = `Request the permit history and tax record for this specific parcel from the ${esc(county)} Building Department and Assessor's office before closing — it takes one call and can reveal unpermitted work or unexpected tax increases.`;
+  }
+
+  const sources = [
+    soil      ? 'USDA Web Soil Survey' : null,
+    broadband ? 'FCC National Broadband Map' : null,
+    era       ? 'U.S. Census ACS 5-year estimates (construction era)' : null,
+  ].filter(Boolean);
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  const body = `
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">County records, soil surveys, and broadband maps reveal factors specific to this property — ones that don't show up in a listing or a 20-minute showing, but affect ownership costs, livability, and decision-making.</p>
+    </div>
+    <div class="prem-intel-section">
+      <div class="prem-intel-label">Construction Era</div>
+      <p class="prem-narrative-body">${eraPara}</p>
+      ${eraCautionsHTML}
+    </div>
+    <div class="prem-intel-section">
+      <div class="prem-intel-label">Soil &amp; Drainage ${soilBadgeHTML}</div>
+      <p class="prem-narrative-body">${soilPara}</p>
+    </div>
+    <div class="prem-intel-section">
+      <div class="prem-intel-label">Internet Availability</div>
+      <p class="prem-narrative-body">${broadbandPara}</p>
+      ${broadbandCardsHTML}
+    </div>
+    <div class="prem-intel-section">
+      <div class="prem-intel-label">Tax &amp; Permit Records</div>
+      <p class="prem-narrative-body">${taxPermitPara}</p>
+    </div>
+    <div class="prem-sensory-takeaway">
+      <span class="prem-sensory-key">🔑</span>
+      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    </div>
+    <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Construction era is a tract-level Census ACS estimate — not specific to this parcel. Parcel-level permit and tax history requires direct inquiry with the county.</p>`;
+
+  return premiumCard('Property', 'Property Intelligence', body);
+}
+
 // All premium sections in display order
 function buildPremiumSectionsHTML(premium) {
   if (!premium) return '';
   return [
     buildSchoolRatingsHTML(premium.schools),
     buildCrimeHTML(premium.crime, premium.emergency),
+    buildGrowthAndDevelopmentHTML(premium.growth),
     buildSensoryEnvironmentalHTML(premium.environment),
     buildEmergencyServicesHTML(premium.emergency),
     buildWalkabilityHTML(premium.walkability),
     buildPropertyDataHTML(premium.propertyData),
+    buildPropertyIntelligenceHTML(premium.propIntel),
     buildDemographicsHTML(premium.demographics),
   ].join('');
 }

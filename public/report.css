@@ -1946,6 +1946,119 @@ body.compare-page {
 }
 .prem-community-item:last-child { border-bottom: none; }
 
+/* FR-025: Growth & Development */
+.prem-growth-section {
+  margin-top: 1rem;
+}
+.prem-growth-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+.prem-growth-places {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.prem-growth-place {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--surface-raised);
+  border-radius: 6px;
+}
+.prem-growth-place-icon { font-size: 1rem; flex-shrink: 0; }
+.prem-growth-place-info { flex: 1; min-width: 0; }
+.prem-growth-place-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prem-growth-place-cat {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+}
+.prem-growth-place-dist {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* FR-026: Property Intelligence */
+.prem-intel-section {
+  padding-bottom: 1.1rem;
+  margin-bottom: 1.1rem;
+  border-bottom: 1px solid var(--stone);
+}
+.prem-intel-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.prem-intel-label {
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.prem-intel-soil-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+}
+.prem-intel-cautions {
+  margin-top: 0.6rem;
+  background: rgba(184,149,106,0.08);
+  border: 1px solid rgba(184,149,106,0.2);
+  border-radius: 6px;
+  padding: 0.7rem 0.85rem;
+}
+.prem-intel-caution-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+.prem-intel-caution-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.prem-intel-caution-list li { margin-bottom: 0.2rem; }
+.prem-intel-bb-providers {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.prem-intel-bb-provider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  background: var(--surface-raised);
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+.prem-intel-bb-name { flex: 1; font-weight: 600; }
+.prem-intel-bb-tech  { color: var(--text-secondary); font-size: 0.75rem; }
+.prem-intel-bb-speed { font-weight: 600; color: var(--text-secondary); font-size: 0.75rem; }
+
 /* ── Keyframe animations ─────────────────────────────────────────────────── */
 
 @keyframes fadeSlideUp {
