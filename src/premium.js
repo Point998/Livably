@@ -2,7 +2,7 @@
 
 // Premium data module — FR-017 through FR-024 (excluding FR-022 paywall)
 
-const { getLocalDevelopmentIntel } = require('./development-intel');
+const { discoverDevelopments } = require('./development-discovery');
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
@@ -903,18 +903,19 @@ async function getRecentDevelopmentActivity(lat, lng, googleMapsClient, googleMa
 }
 
 async function getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey) {
-  const [permitRes, newConstRes, activityRes] = await Promise.allSettled([
+  const [permitRes, newConstRes, activityRes, discoveryRes] = await Promise.allSettled([
     getBuildingPermitTrend(fips),
     getNewConstructionContext(fips),
     googleMapsClient
       ? getRecentDevelopmentActivity(lat, lng, googleMapsClient, googleMapsApiKey)
       : Promise.resolve([]),
+    discoverDevelopments(locationInfo?.city, locationInfo?.state),
   ]);
   return {
-    permits:         permitRes.status   === 'fulfilled' ? permitRes.value   : null,
-    newConstruction: newConstRes.status === 'fulfilled' ? newConstRes.value : null,
-    establishments:  activityRes.status === 'fulfilled' ? activityRes.value : [],
-    namedProjects:   getLocalDevelopmentIntel(locationInfo?.city, locationInfo?.state),
+    permits:         permitRes.status    === 'fulfilled' ? permitRes.value    : null,
+    newConstruction: newConstRes.status  === 'fulfilled' ? newConstRes.value  : null,
+    establishments:  activityRes.status  === 'fulfilled' ? activityRes.value  : [],
+    namedProjects:   discoveryRes.status === 'fulfilled' ? discoveryRes.value : [],
     locationInfo,
   };
 }
@@ -1781,6 +1782,12 @@ function buildGrowthAndDevelopmentHTML(growth) {
     'Planned':            '#5c6bc0',
   };
 
+  const hasManual    = namedProjects.some((p) => !p.automated);
+  const hasAutomated = namedProjects.some((p) => p.automated);
+  const sectionLabel = hasManual
+    ? `Confirmed Projects Near ${esc(city || county)}`
+    : `Developments Reported Near ${esc(city || county)}`;
+
   let namedProjectsHTML = '';
   if (namedProjects.length) {
     const projectCards = namedProjects.map((p) => {
@@ -1795,15 +1802,21 @@ function buildGrowthAndDevelopmentHTML(growth) {
             </div>
             <div class="prem-growth-named-project-status" style="color:${color};border-color:${color}">${esc(p.status)}</div>
           </div>
-          ${p.timeline ? `<div class="prem-growth-named-project-timeline">Expected: ${esc(p.timeline)}</div>` : ''}
+          ${p.expectedOpening ? `<div class="prem-growth-named-project-timeline">Expected: ${esc(p.expectedOpening)}</div>` : ''}
           <div class="prem-growth-named-project-impact">${esc(p.impact)}</div>
+          ${p.automated ? `<div class="prem-growth-named-project-source">Source: ${esc(p.source || 'News report')}${p.sourceUrl ? ` · <a href="${esc(p.sourceUrl)}" target="_blank" rel="noopener noreferrer" class="prem-growth-source-link">view article</a>` : ''}</div>` : ''}
         </div>`;
     }).join('');
 
+    const automatedNote = hasAutomated && !hasManual
+      ? `<div class="prem-growth-automated-note">Projects discovered via news search — verify with ${esc(county)} Planning &amp; Zoning before making decisions.</div>`
+      : '';
+
     namedProjectsHTML = `
       <div class="prem-growth-section prem-growth-named-projects">
-        <div class="prem-growth-label">Confirmed Projects Near ${esc(city || county)}</div>
+        <div class="prem-growth-label">${sectionLabel}</div>
         ${projectCards}
+        ${automatedNote}
       </div>`;
   }
 

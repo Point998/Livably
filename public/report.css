@@ -2053,6 +2053,23 @@ body.compare-page {
   line-height: 1.5;
   color: var(--text-body);
 }
+.prem-growth-named-project-source {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.3rem;
+}
+.prem-growth-source-link {
+  color: var(--gold);
+  text-decoration: underline;
+}
+.prem-growth-automated-note {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--stone);
+}
 
 /* FR-026: Property Intelligence */
 .prem-intel-section {
