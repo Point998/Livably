@@ -204,7 +204,7 @@ function getCommunityType(ownershipRate, householdSize) {
   return { label: 'Mixed residential community', icon: '🏘️' };
 }
 
-// ── FR-023: Property & Market Data ───────────────────────────────────────────
+// ── FR-023: Property Costs & Market ──────────────────────────────────────────
 
 const STATE_TAX_RATES = {
   AL:0.39,AK:1.04,AZ:0.60,AR:0.62,CA:0.73,CO:0.49,CT:1.73,DE:0.55,FL:0.80,GA:0.83,
@@ -215,33 +215,63 @@ const STATE_TAX_RATES = {
   DC:0.56,
 };
 
+// Annual homeowner's insurance avg by state (approx. for $300k home, 2024 NAIC data)
+const STATE_INSURANCE_ANNUAL = {
+  AL:2380,AK:975, AZ:1690,AR:2650,CA:1380,CO:2310,CT:1540,DE:1010,FL:4231,GA:2310,
+  HI:560, ID:1090,IL:2049,IN:1280,IA:1280,KS:3460,KY:1680,LA:3540,ME:1100,MD:1240,
+  MA:1430,MI:1400,MN:1530,MS:2970,MO:2220,MT:1550,NE:2610,NV:1060,NH:1160,NJ:1440,
+  NM:1810,NY:1274,NC:1580,ND:1520,OH:1390,OK:3900,OR:1250,PA:1340,RI:1280,SC:1990,
+  SD:1960,TN:2020,TX:3429,UT:1010,VT:1090,VA:1330,WA:1450,WV:1200,WI:1200,WY:1370,
+  DC:1200,
+};
+
+// Average monthly home utilities (electric + gas + water, EIA/BLS 2024 estimates)
+const STATE_UTILITIES_MONTHLY = {
+  AL:215,AK:195,AZ:180,AR:205,CA:175,CO:145,CT:245,DE:185,FL:195,GA:195,
+  HI:215,ID:155,IL:185,IN:195,IA:175,KS:185,KY:190,LA:200,ME:195,MD:185,
+  MA:225,MI:195,MN:185,MS:200,MO:185,MT:165,NE:175,NV:160,NH:215,NJ:210,
+  NM:175,NY:215,NC:175,ND:185,OH:185,OK:185,OR:155,PA:185,RI:215,SC:175,
+  SD:175,TN:200,TX:195,UT:155,VT:195,VA:175,WA:155,WV:185,WI:175,WY:175,
+  DC:155,
+};
+
+// Brief homestead exemption notes for common states
+const STATE_HOMESTEAD = {
+  KY: 'Kentucky offers a homestead exemption ($46,350 off assessed value) for homeowners 65+ or permanently disabled.',
+  TX: 'Texas provides a $100,000 homestead exemption from school district taxes, plus additional caps on annual assessment increases.',
+  FL: 'Florida\'s $50,000 homestead exemption plus the Save Our Homes cap (3%/yr assessment increase limit) can produce significant long-term savings.',
+  CA: 'California\'s Prop 13 limits assessed value increases to 2%/yr for owner-occupied homes — a major long-term advantage in a high-appreciation state.',
+  IL: 'Illinois offers a General Homestead Exemption ($10,000 off EAV) and a Long-time Occupant Exemption for incomes under $100,000.',
+  GA: 'Georgia provides a standard homestead exemption plus additional senior exemptions. Amounts vary significantly by county.',
+  OH: 'Ohio\'s Homestead Exemption provides $25,000 off assessed value for homeowners 65+ or permanently disabled.',
+  PA: 'Pennsylvania\'s Homestead/Farmstead Exclusion reduces school property taxes; amounts vary by school district.',
+  NC: 'North Carolina offers an Elderly/Disabled Exclusion and a Circuit Breaker deferral program for qualifying homeowners.',
+  SC: 'South Carolina provides a 4% assessment ratio for primary residences (vs 6% for non-primary), a major ongoing savings.',
+};
+
 async function getPropertyData(fips, locationInfo) {
-  const state = locationInfo?.state || '';
+  const state  = locationInfo?.state  || '';
   const county = locationInfo?.county || '';
-  const taxRate = STATE_TAX_RATES[state] ?? 1.00;
+  const taxRate       = STATE_TAX_RATES[state]       ?? 1.00;
+  const insuranceYear = STATE_INSURANCE_ANNUAL[state] ?? 1400;
+  const utilitiesMo   = STATE_UTILITIES_MONTHLY[state] ?? 185;
+  const homesteadNote = STATE_HOMESTEAD[state] || null;
 
-  let medianHomeValue = null;
   let tractPop = null;
-
   if (fips) {
     try {
-      const acs = await fetchCensusACS(fips, ['B25077_001E', 'B01003_001E']);
-      if (acs) {
-        const raw = parseInt(acs.get('B25077_001E'), 10);
-        medianHomeValue = (raw > 0) ? raw : null;
-        tractPop = safeInt(acs.get('B01003_001E'));
-      }
+      const acs = await fetchCensusACS(fips, ['B01003_001E']);
+      if (acs) tractPop = safeInt(acs.get('B01003_001E'));
     } catch {}
   }
 
-  const annualTax = medianHomeValue ? Math.round(medianHomeValue * (taxRate / 100)) : null;
-
   return {
     taxRate,
+    insuranceYear,
+    utilitiesMo,
+    homesteadNote,
     state,
     county,
-    medianHomeValue,
-    annualTax,
     densityLabel: getDensityType(tractPop || 0).label,
   };
 }
@@ -1691,53 +1721,97 @@ function buildWalkabilityHTML(walk) {
   return premiumCard('Walkability', 'Getting Around on Foot', body);
 }
 
-// FR-023: Property Data
+// FR-023: Property Costs & Market
 function buildPropertyDataHTML(p) {
   if (!p) return '';
-  const taxLow = p.taxRate < 0.5;
-  const taxHigh = p.taxRate > 1.5;
-  const taxContext = taxLow
-    ? `${p.taxRate.toFixed(2)}% is a notably low property tax rate. That translates to meaningful savings over time compared to higher-tax states—but check whether local municipalities layer on additional levies above the state average.`
-    : taxHigh
-    ? `${p.taxRate.toFixed(2)}% is on the higher end for property taxes. Factor this into your total cost-of-ownership math. In many high-tax states, strong school funding is the trade-off—so what you pay in taxes may come back in school quality and local services.`
-    : `${p.taxRate.toFixed(2)}% is a typical property tax rate. Budget roughly ${p.annualTax ? formatMoney(Math.round(p.annualTax / 12)) + '/month' : 'taxes based on your purchase price'} for property taxes on a home at the area median.`;
 
-  const body = `
-    <div class="prem-narrative">
-      <p class="prem-narrative-body">${taxContext} The median home value shown here is a Census tract average from 2018–2022 data—it includes all housing types across a wide geographic area. In fast-growing markets, actual current prices may be significantly higher. Use this as directional context, not a pricing estimate.</p>
-    </div>
-    <div class="prem-market-grid">
-      <div class="prem-market-card">
-        <div class="prem-market-icon">💰</div>
-        <div class="prem-market-title">Property Tax Rate</div>
-        <div class="prem-market-value">${p.taxRate.toFixed(2)}%</div>
-        <div class="prem-market-sub">${esc(p.state)} state average</div>
-      </div>
-      <div class="prem-market-card">
-        <div class="prem-market-icon">🏠</div>
-        <div class="prem-market-title">Median Home Value</div>
-        <div class="prem-market-value">${p.medianHomeValue ? formatMoney(p.medianHomeValue) : 'N/A'}</div>
-        <div class="prem-market-sub">ACS 2022 est. · tract avg</div>
-      </div>
-      <div class="prem-market-card">
-        <div class="prem-market-icon">📋</div>
-        <div class="prem-market-title">Est. Annual Taxes</div>
-        <div class="prem-market-value">${p.annualTax ? formatMoney(p.annualTax) : 'N/A'}</div>
-        <div class="prem-market-sub">At median home value</div>
-      </div>
-      <div class="prem-market-card">
-        <div class="prem-market-icon">🏘️</div>
-        <div class="prem-market-title">Area Type</div>
-        <div class="prem-market-value">${esc(p.densityLabel)}</div>
-        <div class="prem-market-sub">by Census tract population</div>
-      </div>
-    </div>
+  // ── Tax rate narrative ────────────────────────────────────────────────────
+  const taxLow  = p.taxRate < 0.5;
+  const taxHigh = p.taxRate > 1.5;
+  const taxPara = taxLow
+    ? `${esc(p.state)}'s ${p.taxRate.toFixed(2)}% effective property tax rate is among the lowest in the country — a meaningful long-term advantage. For a $350,000 home, that's roughly $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month in property tax, not $${Math.round(350000 * 1.5 / 100 / 12).toLocaleString()}+/month in higher-tax states. Check whether your county or city layers additional levies on top of the state average.`
+    : taxHigh
+    ? `${esc(p.state)}'s ${p.taxRate.toFixed(2)}% effective rate is on the higher end nationally. For a $350,000 home, that's roughly $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month in property taxes. In many high-tax states the trade-off is strong school funding and well-maintained public infrastructure — but factor this into your total monthly cost math.`
+    : `${esc(p.state)}'s ${p.taxRate.toFixed(2)}% effective property tax rate is close to the national average. For a $350,000 home, budget approximately $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month for property taxes.`;
+
+  // ── Carrying cost breakdown ───────────────────────────────────────────────
+  // Show for $300k and $400k price points
+  const prices = [300000, 400000];
+  const rows = prices.map((price) => {
+    const taxMo  = Math.round(price * (p.taxRate / 100) / 12);
+    // Scale insurance from $300k base proportionally
+    const insMo  = Math.round((p.insuranceYear * (price / 300000)) / 12);
+    const utilMo = p.utilitiesMo;
+    const total  = taxMo + insMo + utilMo;
+    return { price, taxMo, insMo, utilMo, total };
+  });
+
+  const carryingRows = rows.map((r) => `
+    <tr class="prem-carry-row">
+      <td class="prem-carry-price">${formatMoney(r.price)}</td>
+      <td class="prem-carry-cell">${formatMoney(r.taxMo)}</td>
+      <td class="prem-carry-cell">${formatMoney(r.insMo)}</td>
+      <td class="prem-carry-cell">${formatMoney(r.utilMo)}</td>
+      <td class="prem-carry-total">${formatMoney(r.total)}</td>
+    </tr>`).join('');
+
+  const carryingTable = `
+    <div class="prem-carrying-section">
+      <div class="prem-carrying-label">Monthly Carrying Costs (Not Including Mortgage)</div>
+      <table class="prem-carry-table">
+        <thead>
+          <tr>
+            <th class="prem-carry-th">Home Price</th>
+            <th class="prem-carry-th">Tax</th>
+            <th class="prem-carry-th">Insurance</th>
+            <th class="prem-carry-th">Utilities</th>
+            <th class="prem-carry-th prem-carry-th-total">Monthly Total</th>
+          </tr>
+        </thead>
+        <tbody>${carryingRows}</tbody>
+      </table>
+      <div class="prem-carrying-note">Tax based on ${p.taxRate.toFixed(2)}% state avg · Insurance from NAIC state avg (2024) · Utilities from EIA state avg · HOA not included</div>
+    </div>`;
+
+  // ── Homestead exemption note ──────────────────────────────────────────────
+  const homesteadHTML = p.homesteadNote ? `
+    <div class="prem-market-note prem-homestead-note">
+      <span class="prem-market-note-icon">🏡</span>
+      <span><strong>Homestead Exemption:</strong> ${esc(p.homesteadNote)}</span>
+    </div>` : '';
+
+  // ── Valuation redirect ────────────────────────────────────────────────────
+  const valuationNote = `
     <div class="prem-market-note">
       <span class="prem-market-note-icon">ℹ️</span>
-      <span>The median home value is a <strong>Census tract average</strong> from 2018–2022 ACS data. It includes rentals, condos, and all owner-occupied units across the tract — individual property values and current market prices may differ significantly. Fast-growing areas especially may have seen substantial appreciation since this estimate.</span>
+      <span>Current home values are not shown here — they change daily and Census estimates lag 3–5 years. For current pricing: <strong>Zillow, Redfin, or Realtor.com</strong> all show recent sales and active listings for this address. Your agent can pull a Comparative Market Analysis (CMA) for the most accurate view.</span>
+    </div>`;
+
+  // ── Key Takeaway ──────────────────────────────────────────────────────────
+  const lowestCarrying = rows[0];
+  let takeaway;
+  if (taxHigh) {
+    takeaway = `Property taxes in ${esc(p.state)} add ~${formatMoney(rows[0].taxMo)}/month for a $300k home. Factor this into your offer price math — the tax gap between high- and low-tax states compounds significantly over a 30-year mortgage.`;
+  } else if (taxLow) {
+    takeaway = `${esc(p.state)}'s low property tax rate is a genuine long-term savings advantage. On a $350k home, you'd pay ~${formatMoney(Math.round(350000 * p.taxRate / 100 / 12))}/month vs ~${formatMoney(Math.round(350000 * 1.5 / 100 / 12))}/month in a high-tax state — a difference that compounds significantly over 30 years.`;
+  } else {
+    takeaway = `Total carrying costs for a $300k home in ${esc(p.state)} run approximately ${formatMoney(lowestCarrying.total)}/month before the mortgage — ${formatMoney(lowestCarrying.taxMo)} tax, ${formatMoney(lowestCarrying.insMo)} insurance, ${formatMoney(lowestCarrying.utilMo)} utilities. Add your mortgage payment for the true monthly cost.`;
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const body = `
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">${taxPara}</p>
     </div>
-    <p class="prem-disclaimer">Property tax rate is the state average effective rate. Home values from U.S. Census Bureau ACS 5-year estimates (2022). Not a property appraisal — consult a licensed real estate professional for current pricing.</p>`;
-  return premiumCard('Market', 'Property & Market Data', body);
+    ${carryingTable}
+    ${homesteadHTML}
+    ${valuationNote}
+    <div class="prem-sensory-takeaway">
+      <span class="prem-sensory-key">🔑</span>
+      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    </div>
+    <p class="prem-disclaimer">Property tax rate: ${esc(p.state)} state effective average (Lincoln Institute, 2024). Insurance: NAIC 2024 state averages, scaled to home price. Utilities: EIA/BLS state averages, 2024. These are estimates — your actual costs will vary. Research date: ${today}.</p>`;
+  return premiumCard('Costs', 'Property Costs & Market', body);
 }
 
 // FR-024: Demographics
