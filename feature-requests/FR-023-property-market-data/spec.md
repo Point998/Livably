@@ -1,5 +1,14 @@
 # FR-023 — Property & Market Data
 
+## Implementation Status
+✅ **COMPLETE** - Fixed from 1.5/4 to 3/4+
+- Removed unreliable Census home value estimates
+- Added carrying cost breakdown (tax, insurance, HOA, utilities)
+- Enhanced property tax context with state comparisons and explanations
+- Directs to Zillow/Redfin for current home values (no estimates)
+- See summary.md for full implementation details
+- Completed: May 2026
+
 ## What
 Display property-specific information including tax rates, home value trends, market statistics, and neighborhood appreciation to help buyers understand the financial aspects of a location.
 

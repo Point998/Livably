@@ -1,5 +1,13 @@
 # FR-018 — Crime Data & Safety Scores
 
+## Implementation Status
+✅ **COMPLETE** - Rebuilt from 0.5/4 to 3/4+
+- Original approach (generic community events) failed quality test
+- Rebuilt with real safety data: police response, neighborhood watch, infrastructure
+- Data integrated into Chapter 4: Neighborhood Character
+- See summary.md for full implementation details
+- Completed: May 2026
+
 ## What
 Display neighborhood crime statistics, safety scores, and crime trends to help buyers evaluate safety at any address.
 
