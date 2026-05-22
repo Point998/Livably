@@ -410,7 +410,7 @@ async function getEnvironmentalData(lat, lng, _highwayDriveMinutes, fips, google
   const v = (r) => (r.status === 'fulfilled' ? r.value : null);
   return {
     airQuality:     v(airResult),
-    floodRisk:      v(floodResult),   // retained for future Chapter 6
+    floodRisk:      v(floodResult),
     airports:       v(airportsResult),
     roadNoise:      v(roadNoiseResult),
     rail:           v(railResult),
@@ -446,11 +446,11 @@ function getAQICategory(aqi) {
   return            { label: 'Very Unhealthy',                       color: 'red',    description: 'Health alert — everyone may be affected.' };
 }
 
-// Flood risk (retained for future Chapter 6) ──────────────────────────────────
+// ── Chapter 6: Climate & Weather Risks ───────────────────────────────────────
 
 async function getFloodRisk(lat, lng) {
   const url =
-    `https://hazards.fema.gov/gis/nfhl/services/public/NFHL/MapServer/28/query` +
+    `https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query` +
     `?geometry=${lng},${lat}&geometryType=esriGeometryPoint` +
     `&spatialRel=esriSpatialRelIntersects&outFields=FLD_ZONE,STUDY_TYP&returnGeometry=false&f=json`;
   const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
@@ -474,6 +474,132 @@ function interpretFloodZone(zone) {
     C:  { risk: 'Minimal',   insuranceRequired: false, description: 'Minimal flood hazard.' },
   };
   return map[zone] || { risk: 'Unknown', insuranceRequired: false, description: 'Flood zone data unavailable.' };
+}
+
+// State-level tornado frequency tier (NOAA historical average, tornadoes/year)
+const TORNADO_TIER = (() => {
+  const high   = ['TX','KS','OK','NE','IA','SD','ND','MO','MS','AL','AR','TN','KY','IN','IL','OH'];
+  const mod    = ['FL','GA','SC','NC','VA','WV','CO','WY','MT','MN','WI','MI','LA'];
+  const low    = ['CA','OR','WA','ID','NV','AZ','NM','UT','AK','HI','ME','NH','VT','MA','RI','CT','NY','NJ','PA','DE','MD','DC'];
+  return (state) => {
+    if (high.includes(state))  return { tier: 'High',     color: 'orange', note: `${state} averages among the highest tornado frequency in the US. Verify home has an interior shelter or basement.` };
+    if (mod.includes(state))   return { tier: 'Moderate', color: 'gold',   note: `${state} sees periodic tornado activity. Most homes here are built with standard storm shutters — ask about storm shelter access.` };
+    if (low.includes(state))   return { tier: 'Low',      color: 'green',  note: `${state} has low historical tornado frequency.` };
+    return                            { tier: 'Unknown',  color: 'muted',  note: 'Check NOAA Storm Events for this area.' };
+  };
+})();
+
+function buildClimateChapterHTML(environment, locationInfo) {
+  if (!environment) return '';
+  const flood  = environment.floodRisk;
+  const state  = locationInfo?.state || null;
+  const county = locationInfo?.county || 'this county';
+  const tornado = state ? TORNADO_TIER(state) : null;
+
+  // ── Flood section ─────────────────────────────────────────────────────────
+  let floodPara = '';
+  let floodAction = '';
+  let floodBadgeColor = 'green';
+  if (flood) {
+    const zone = flood.zone || 'X';
+    const risk = flood.risk || 'Minimal';
+    if (risk === 'High' || risk === 'Very High') {
+      floodBadgeColor = 'red';
+      floodPara = `This parcel falls in FEMA Flood Zone <strong>${esc(zone)}</strong> — a high-risk area with a 1% annual flood chance. Over a 30-year mortgage that translates to a <strong>26% probability of at least one flood event</strong>. Flood insurance is federally required for federally-backed mortgages on this property. NFIP policies for Zone A/AE properties typically run <strong>$1,500–$3,500/year</strong>, though elevation can significantly change that figure. Request an elevation certificate from the seller — it's the single best tool for accurately quoting flood insurance and potentially reducing the premium.`;
+      floodAction = 'Get flood insurance quotes before your inspection period ends — the premium varies widely based on the elevation certificate, and a surprise here can change your offer math.';
+    } else if (risk === 'Moderate') {
+      floodBadgeColor = 'gold';
+      floodPara = `This parcel is in FEMA Flood Zone <strong>${esc(zone)}</strong> — a moderate-risk area (0.2% annual flood chance, or roughly 6% over a 30-year mortgage). Flood insurance is not federally required here, but <strong>25% of NFIP claims come from outside high-risk zones</strong>. A preferred-risk policy in moderate zones typically costs $300–$700/year and is worth considering if the property has low-lying areas or sits near a drainage channel.`;
+      floodAction = "Confirm your zone at msc.fema.gov — boundaries shift over time and one parcel can differ from the neighbor's. A flood insurance quote takes 15 minutes and locks in your cost picture before closing.";
+    } else {
+      floodBadgeColor = 'green';
+      floodPara = `This parcel is in FEMA Flood Zone <strong>${esc(zone)}</strong> — outside high-risk flood areas. No federally required flood insurance for this address. That said, <strong>25% of NFIP claims still come from Zone X properties</strong> — mostly from heavy rainfall events and local drainage issues rather than river flooding. A preferred-risk policy in Zone X runs around $300–$500/year if you want a cushion.`;
+      floodAction = 'Verify your exact zone at msc.fema.gov using the specific parcel address — flood maps are updated periodically and this is the authoritative source.';
+    }
+  } else {
+    floodPara = 'Flood zone data could not be retrieved for this address. Verify directly with FEMA\'s Flood Map Service Center at <strong>msc.fema.gov</strong> before closing — this is the only authoritative parcel-level source.';
+    floodBadgeColor = 'muted';
+    floodAction = 'Look up this address at msc.fema.gov before your inspection period closes. Flood zone status affects your insurance requirement and cost.';
+  }
+
+  // ── Tornado section ───────────────────────────────────────────────────────
+  const tornadoHTML = tornado ? `
+    <div class="prem-climate-row">
+      <div class="prem-climate-row-label">
+        🌪️ Tornado Frequency
+        <span class="prem-badge" style="${badgeColor(tornado.color)}">${esc(tornado.tier)}</span>
+      </div>
+      <p class="prem-climate-row-body">${esc(tornado.note)}</p>
+    </div>` : '';
+
+  // ── Action checklist ──────────────────────────────────────────────────────
+  const actions = [
+    {
+      icon: '🗺️',
+      label: 'Verify your flood zone at msc.fema.gov',
+      detail: floodAction,
+    },
+    {
+      icon: '📋',
+      label: 'Request the elevation certificate',
+      detail: "Ask the seller's agent for the Elevation Certificate (EC) if one exists. It determines your flood insurance premium more than anything else — a 2-foot elevation advantage can cut a premium by 50%.",
+    },
+    {
+      icon: '💰',
+      label: 'Get a flood insurance quote before your deadline',
+      detail: "Contact your homeowner's insurance agent or visit floodsmart.gov for NFIP quotes. Flood insurance has a 30-day waiting period before it takes effect — get quotes during inspection, not at closing.",
+    },
+    {
+      icon: '🏠',
+      label: 'Ask about storm shelter and drainage',
+      detail: `Ask the seller about the property's drainage and whether neighbors have experienced basement or yard flooding after heavy rain. In ${esc(county)}, local drainage patterns often matter more than the FEMA zone designation.`,
+    },
+  ];
+
+  const actionsHTML = actions.map((a) => `
+    <div class="prem-safety-action">
+      <span class="prem-safety-action-icon">${a.icon}</span>
+      <div class="prem-safety-action-text">
+        <div class="prem-safety-action-label">${esc(a.label)}</div>
+        <div class="prem-safety-action-detail">${a.detail}</div>
+      </div>
+    </div>`).join('');
+
+  // ── Key Takeaway ──────────────────────────────────────────────────────────
+  let takeaway;
+  if (!flood) {
+    takeaway = 'Flood zone data was unavailable — look up this address at msc.fema.gov before closing. It\'s a 2-minute check that can reveal a $1,500–$3,500/year insurance requirement you won\'t see anywhere else in the listing.';
+  } else if (flood.risk === 'High' || flood.risk === 'Very High') {
+    takeaway = `Zone ${esc(flood.zone)} is a federally designated high-risk flood area. Flood insurance is required and will cost $1,500–$3,500/year minimum. Get the elevation certificate and insurance quote before your inspection period ends — this number changes your total monthly cost.`;
+  } else if (flood.risk === 'Moderate') {
+    takeaway = `Zone ${esc(flood.zone)} is a moderate-risk area — no federal requirement, but a preferred-risk policy is cheap here ($300–$700/year). Verify the boundary at msc.fema.gov; flood map updates can shift a parcel from X to AE without any visible change to the property.`;
+  } else {
+    takeaway = `Zone ${esc(flood.zone)}: outside high-risk flood areas — no flood insurance required. Confirm at msc.fema.gov to lock in that status. Zone X properties still account for 1 in 4 flood insurance claims, usually from heavy rain rather than river overflow.`;
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const floodBadge = flood ? `<span class="prem-badge" style="${badgeColor(floodBadgeColor)}">Zone ${esc(flood.zone)} · ${esc(flood.risk)} Risk</span>` : `<span class="prem-badge" style="${badgeColor('muted')}">Zone Unknown</span>`;
+
+  const body = `
+    <div class="prem-climate-flood">
+      <div class="prem-climate-flood-head">
+        🌊 Flood Zone ${floodBadge}
+      </div>
+      <div class="prem-narrative">
+        <p class="prem-narrative-lead">${floodPara}</p>
+      </div>
+    </div>
+    ${tornadoHTML}
+    <div class="prem-safety-actions">
+      <div class="prem-safety-actions-label">4 Things to Verify Before You Close</div>
+      ${actionsHTML}
+    </div>
+    <div class="prem-sensory-takeaway">
+      <span class="prem-sensory-key">🔑</span>
+      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    </div>
+    <p class="prem-disclaimer">Flood zone: FEMA National Flood Hazard Layer, parcel-level. Tornado frequency: NOAA Storm Events Database historical averages by state. Insurance cost estimates: NFIP rate ranges, 2024. Research date: ${today}. Verify all data directly with FEMA and your insurance agent before closing.</p>`;
+  return premiumCard('Climate', 'Climate & Weather Risks', body);
 }
 
 // Airport analysis (Google Places) ───────────────────────────────────────────
@@ -776,7 +902,7 @@ async function getEJScreen(lat, lng) {
 
 // ── FR-018: Safety & Emergency Response ──────────────────────────────────────
 
-async function getCrimeData(locationInfo) {
+async function getSafetyLocationContext(locationInfo) {
   const { state, city, county } = locationInfo || {};
   if (!state) return null;
   return { state, city, county };
@@ -1136,14 +1262,14 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
 async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
   const fips = await getCensusFIPS(lat, lng);
 
-  const [demographics, propertyData, walkability, emergency, environment, crime, schools, growth, propIntel] =
+  const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel] =
     await Promise.allSettled([
       getDemographics(lat, lng, fips),
       getPropertyData(fips, locationInfo),
       getWalkabilityScore(lat, lng, googleMapsClient, googleMapsApiKey),
       getEmergencyServices(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
       getEnvironmentalData(lat, lng, highwayDriveMinutes, fips, googleMapsClient, googleMapsApiKey),
-      getCrimeData(locationInfo),
+      getSafetyLocationContext(locationInfo),
       getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
       getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey),
       getPropertyIntelligence(lat, lng, fips, locationInfo),
@@ -1156,10 +1282,11 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
     walkability:  val(walkability),
     emergency:    val(emergency),
     environment:  val(environment),
-    crime:        val(crime),
+    safetyLocation: val(safetyLocation),
     schools:      val(schools),
     growth:       val(growth),
     propIntel:    val(propIntel),
+    locationInfo,
   };
 }
 
@@ -1911,7 +2038,7 @@ function buildDemographicsHTML(d) {
         const inc = d.income.median;
         if (inc > 100000) return `Median household income of ${formatMoney(inc)} indicates an affluent area. That usually correlates with well-maintained properties, strong local tax base, and active investment in schools and public services.`;
         if (inc > 60000) return `Median household income of ${formatMoney(inc)} puts this solidly in the middle tier—a working and professional community with financial stability. The range of incomes typically produces diverse, grounded neighborhoods.`;
-        return `Median household income of ${formatMoney(inc)} reflects a more modest economic profile. That can mean a tight-knit community with deep roots, or it can mean deferred maintenance and stretched local services—visit in person to get a feel for which describes this area.`;
+        return `Median household income of ${formatMoney(inc)} is below the national median. Communities at this income level vary widely — what matters most is what you observe during visits: how properties are maintained, how long neighbors have lived there, and whether the community has an active civic presence.`;
       })()
     : null;
 
@@ -2298,16 +2425,26 @@ function buildPropertyIntelligenceHTML(propIntel) {
 // All premium sections in display order
 function buildPremiumSectionsHTML(premium) {
   if (!premium) return '';
+  // Chapter order per CLAUDE.md standard tier spec:
+  // (Ch 2 Daily Life is in app.js before this block)
+  // Ch 3: Schools & Education
+  // Ch 1/4: Safety & Emergency Response (Health & Safety + Neighborhood safety)
+  // Ch 4: Demographics & Community (Neighborhood Character)
+  // Ch 5: Growth & Development
+  // Ch 6: Climate & Weather Risks
+  // Ch 7: Property Intelligence
+  // Ch 8: Sensory & Environmental
+  // Supplemental: Walkability, Property Costs & Market
   return [
     buildSchoolRatingsHTML(premium.schools),
-    buildCrimeHTML(premium.crime, premium.emergency),
+    buildCrimeHTML(premium.safetyLocation, premium.emergency),
+    buildDemographicsHTML(premium.demographics),
     buildGrowthAndDevelopmentHTML(premium.growth),
+    buildClimateChapterHTML(premium.environment, premium.locationInfo),
+    buildPropertyIntelligenceHTML(premium.propIntel),
     buildSensoryEnvironmentalHTML(premium.environment),
-    buildEmergencyServicesHTML(premium.emergency),
     buildWalkabilityHTML(premium.walkability),
     buildPropertyDataHTML(premium.propertyData),
-    buildPropertyIntelligenceHTML(premium.propIntel),
-    buildDemographicsHTML(premium.demographics),
   ].join('');
 }
 

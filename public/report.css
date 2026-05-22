@@ -1726,6 +1726,39 @@ body.compare-page {
   line-height: 1.5;
 }
 
+/* Climate & Weather Risks */
+.prem-climate-flood {
+  margin-bottom: 1.25rem;
+}
+.prem-climate-flood-head {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.prem-climate-row {
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--border);
+}
+.prem-climate-row-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.prem-climate-row-body {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0;
+}
+
 /* FR-027: Sensory & Environmental */
 .prem-sensory-section {
   padding-bottom: 1.25rem;
