@@ -351,13 +351,21 @@ async function findNearestHospital(originLatLng) {
   return result;
 }
 
-// Excludes retail health clinics (Little Clinic, MinuteClinic) that are not true urgent care.
+// Returns true for places that are primarily a pharmacy, drug store, or retail store —
+// indicating an in-store health clinic rather than a standalone urgent care facility.
+function isRetailEmbeddedHealth(place) {
+  const types = place.types || [];
+  return types.includes('pharmacy') ||
+         types.includes('drug_store') ||
+         types.includes('store') ||
+         types.includes('supermarket') ||
+         types.includes('grocery_or_supermarket');
+}
+
 async function findNearestUrgentCare(originLatLng) {
   const cacheKey = `urgentcare:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
-
-  const retailClinicExclusions = ['little clinic', 'minuteclinic', 'minute clinic', 'cvs health', 'walgreens health'];
 
   let placesResponse = await googleMapsClient.placesNearby({
     params: {
@@ -369,7 +377,7 @@ async function findNearestUrgentCare(originLatLng) {
   });
 
   let placeResults = (placesResponse.data.results || []).filter(
-    (place) => !isExcludedPlaceName(place.name, retailClinicExclusions),
+    (place) => !isRetailEmbeddedHealth(place),
   );
 
   if (!placeResults.length) {
@@ -382,7 +390,7 @@ async function findNearestUrgentCare(originLatLng) {
       },
     });
     placeResults = (placesResponse.data.results || []).filter(
-      (place) => !isExcludedPlaceName(place.name, retailClinicExclusions),
+      (place) => !isRetailEmbeddedHealth(place),
     );
   }
 
@@ -664,7 +672,6 @@ async function findNearestCoffeeShop(originLatLng) {
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
 
-  const exclusions = ['sheetz', 'circle k', '7-eleven', '7 eleven', 'speedway', 'wawa', 'pilot', 'love\'s'];
   const placesResponse = await googleMapsClient.textSearch({
     params: {
       key: googleMapsApiKey,
@@ -673,9 +680,11 @@ async function findNearestCoffeeShop(originLatLng) {
       radius: 8000,
     },
   });
-  const filtered = (placesResponse.data.results || []).filter(
-    (p) => !isExcludedPlaceName(p.name, exclusions),
-  );
+  // Exclude gas stations and convenience stores by place type — chain-name-independent
+  const filtered = (placesResponse.data.results || []).filter((p) => {
+    const types = p.types || [];
+    return !types.includes('gas_station') && !types.includes('convenience_store');
+  });
   if (!filtered.length) throw new Error('No coffee shop found near that address.');
 
   // Sort by actual drive time — textSearch ranks by relevance, not distance (see BUG-002)
