@@ -670,19 +670,36 @@ async function findNearestCoffeeShop(originLatLng) {
       key: googleMapsApiKey,
       query: 'coffee shop',
       location: originLatLng,
-      radius: 15000,
+      radius: 8000,
     },
   });
-  const place = (placesResponse.data.results || []).filter(
+  const filtered = (placesResponse.data.results || []).filter(
     (p) => !isExcludedPlaceName(p.name, exclusions),
-  )[0];
-  if (!place) throw new Error('No coffee shop found near that address.');
-  const result = {
-    name: place.name,
-    address: place.formatted_address || place.vicinity || place.name,
-    location: place.geometry.location,
-    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
-  };
+  );
+  if (!filtered.length) throw new Error('No coffee shop found near that address.');
+
+  // Sort by actual drive time — textSearch ranks by relevance, not distance (see BUG-002)
+  const candidates = filtered.slice(0, 8);
+  const withDriveTimes = await Promise.all(
+    candidates.map(async (place) => {
+      try {
+        const driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location);
+        return {
+          name: place.name,
+          address: place.formatted_address || place.vicinity || place.name,
+          location: place.geometry.location,
+          driveTimeMinutes,
+        };
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  const valid = withDriveTimes.filter(Boolean);
+  valid.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
+  const result = valid[0];
+  if (!result) throw new Error('No coffee shop found near that address.');
   placesCache.set(cacheKey, result);
   return result;
 }
@@ -725,6 +742,15 @@ function escapeHtml(str) {
 
 function formatDriveTime(minutes) {
   return `${minutes} min`;
+}
+
+const STATE_ABBRS = new Set(['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC']);
+
+function toTitleCase(str) {
+  return str.replace(/\w+/g, (word) => {
+    if (word.length === 2 && STATE_ABBRS.has(word.toUpperCase())) return word.toUpperCase();
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  });
 }
 
 function parseAddressParts(address) {
@@ -1292,7 +1318,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
         var data = JSON.parse(document.getElementById('map-data').textContent);
         var home = { lat: data.home.lat, lng: data.home.lng };
         var map = new google.maps.Map(document.getElementById('map'), {
-          center: home, zoom: 12,
+          center: home, zoom: 15,
           mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
           styles: [
             { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
@@ -1309,9 +1335,6 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
           transit:    '#9B9080',
           custom:     '#7A8FAD',
         };
-
-        var bounds = new google.maps.LatLngBounds();
-        bounds.extend(home);
 
         new google.maps.Marker({
           position: home, map: map, title: 'Your address', zIndex: 20,
@@ -1344,7 +1367,6 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
 
         data.services.forEach(function (svc) {
           var pos = { lat: svc.lat, lng: svc.lng };
-          bounds.extend(pos);
           var color = CAT_COLORS[svc.category] || '#9B9080';
           var marker = new google.maps.Marker({
             position: pos, map: map, title: svc.name,
@@ -1357,12 +1379,6 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
           marker._svc = svc;
           marker.addListener('click', function () { showDetail(svc); });
           svcMarkers.push(marker);
-        });
-
-        map.fitBounds(bounds);
-        var listener = google.maps.event.addListener(map, 'idle', function () {
-          if (map.getZoom() > 15) map.setZoom(15);
-          google.maps.event.removeListener(listener);
         });
 
         // Category toggle filtering
@@ -1614,7 +1630,7 @@ function buildLoadingHTML(address) {
 }
 
 app.get('/report', async (req, res) => {
-  const address = req.query.address;
+  const address = req.query.address ? toTitleCase(req.query.address.trim()) : '';
   const isFetch = req.query.fetch === '1';
 
   if (!address) {
@@ -2110,7 +2126,7 @@ let activePDFs = 0;
 const MAX_CONCURRENT_PDFS = 3;
 
 app.get('/report/pdf', async (req, res) => {
-  const address = req.query.address;
+  const address = req.query.address ? toTitleCase(req.query.address.trim()) : '';
   if (!address) return res.status(400).send('Address required');
 
   while (activePDFs >= MAX_CONCURRENT_PDFS) {
