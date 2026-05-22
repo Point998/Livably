@@ -782,39 +782,64 @@ async function getCrimeData(locationInfo) {
   return { state, city, county };
 }
 
-// ── FR-017: Nearby Schools ────────────────────────────────────────────────────
+// ── FR-017: Schools & Education ──────────────────────────────────────────────
 
 async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime) {
-  const searches = [
+  const publicSearches = [
     { level: 'Elementary', query: 'public elementary school', exclude: ['preschool','pre-school','daycare','montessori','private'] },
     { level: 'Middle',     query: 'middle school',            exclude: ['elementary','preschool'] },
     { level: 'High',       query: 'high school',              exclude: ['middle','elementary','junior high'] },
   ];
 
-  const results = await Promise.allSettled(
-    searches.map(async ({ level, query, exclude }) => {
-      const resp = await googleMapsClient.textSearch({
-        params: { key: googleMapsApiKey, query, location: `${lat},${lng}`, radius: 20000 },
-      });
-      const places = (resp.data.results || []).filter(
-        (p) => !exclude.some((ex) => (p.name || '').toLowerCase().includes(ex))
-      );
-      const place = places[0];
-      if (!place) return null;
-      let driveTimeMinutes = null;
-      try { driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location); } catch {}
-      return {
-        level,
+  const [publicResults, privateResult] = await Promise.allSettled([
+    Promise.allSettled(
+      publicSearches.map(async ({ level, query, exclude }) => {
+        const resp = await googleMapsClient.textSearch({
+          params: { key: googleMapsApiKey, query, location: `${lat},${lng}`, radius: 20000 },
+        });
+        const places = (resp.data.results || []).filter(
+          (p) => !exclude.some((ex) => (p.name || '').toLowerCase().includes(ex))
+        );
+        const place = places[0];
+        if (!place) return null;
+        let driveTimeMinutes = null;
+        try { driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location); } catch {}
+        return {
+          level,
+          name: place.name,
+          address: place.formatted_address || place.vicinity || place.name,
+          distanceMiles: haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng).toFixed(1),
+          driveTimeMinutes,
+        };
+      })
+    ),
+    googleMapsClient.textSearch({
+      params: { key: googleMapsApiKey, query: 'private school', location: `${lat},${lng}`, radius: 16000 },
+    }),
+  ]);
+
+  const publicSchools = publicResults.status === 'fulfilled'
+    ? publicResults.value.map((r) => (r.status === 'fulfilled' ? r.value : null))
+    : [];
+
+  let privateSchools = [];
+  if (privateResult.status === 'fulfilled') {
+    const skipWords = ['preschool', 'pre-school', 'daycare', 'day care', 'montessori'];
+    const places = (privateResult.value.data.results || [])
+      .filter((p) => !skipWords.some((w) => (p.name || '').toLowerCase().includes(w)))
+      .slice(0, 5);
+    for (const place of places) {
+      privateSchools.push({
         name: place.name,
         address: place.formatted_address || place.vicinity || place.name,
         distanceMiles: haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng).toFixed(1),
-        driveTimeMinutes,
-      };
-    })
-  );
+      });
+    }
+    privateSchools.sort((a, b) => parseFloat(a.distanceMiles) - parseFloat(b.distanceMiles));
+  }
 
-  const schools = results.map((r) => (r.status === 'fulfilled' ? r.value : null));
-  return schools.some(Boolean) ? schools : null;
+  if (!publicSchools.some(Boolean) && !privateSchools.length) return null;
+  return { public: publicSchools, private: privateSchools };
 }
 
 // ── FR-025: Growth & Development ─────────────────────────────────────────────
@@ -1138,41 +1163,6 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
   };
 }
 
-// ── FR-017: School highlights by level ───────────────────────────────────────
-
-const SCHOOL_HIGHLIGHTS = {
-  Elementary: [
-    { icon: '🎨', label: 'Arts & Music' },
-    { icon: '📚', label: 'Library Program' },
-    { icon: '🏃', label: 'Physical Education' },
-    { icon: '🧪', label: 'Science Exploration' },
-    { icon: '🎭', label: 'After-School Clubs' },
-    { icon: '👨‍👩‍👧', label: 'Parent Community' },
-  ],
-  Middle: [
-    { icon: '🔬', label: 'STEM Labs' },
-    { icon: '🎭', label: 'Performing Arts' },
-    { icon: '⚽', label: 'Intramural Sports' },
-    { icon: '🎵', label: 'Band & Choir' },
-    { icon: '🏛️', label: 'Student Government' },
-    { icon: '📚', label: 'Research Library' },
-  ],
-  High: [
-    { icon: '🎓', label: 'AP & Honors' },
-    { icon: '🏆', label: 'Varsity Athletics' },
-    { icon: '🎨', label: 'Fine Arts' },
-    { icon: '💻', label: 'Career & Tech' },
-    { icon: '🌍', label: 'Clubs & Activities' },
-    { icon: '📚', label: 'College Prep' },
-  ],
-};
-
-const SCHOOL_SUPPORT = {
-  Elementary: ['Full-time school counselor', 'Special education support', 'Gifted & enrichment programs', 'Before & after school care'],
-  Middle: ['Guidance counselors', 'IEP & 504 services', 'Academic tutoring', 'Enrichment activities'],
-  High: ['College counseling', 'Academic advisors', 'AP & honors support', 'Career guidance center', 'Tutoring services'],
-};
-
 // ── FR-021: Pedestrian environment by walkability score ───────────────────────
 
 function getPedestrianFeatures(score) {
@@ -1225,35 +1215,38 @@ function premiumCard(label, title, bodyHTML) {
   </div>`;
 }
 
-// FR-017: Schools
+// FR-017: Schools & Education
 function buildSchoolRatingsHTML(schools) {
   if (!schools) return '';
-  const nearest = schools.find((s) => s != null);
+  const publicSchools  = schools.public  || [];
+  const privateSchools = schools.private || [];
+  const nearest = publicSchools.find((s) => s != null);
 
+  // ── Assigned school alert ─────────────────────────────────────────────────
+  const assignedAlertHTML = `
+    <div class="prem-school-assigned-alert">
+      <div class="prem-school-assigned-icon">⚠️</div>
+      <div class="prem-school-assigned-text">
+        <strong>Nearest school is not necessarily your assigned school.</strong>
+        Attendance boundaries don't follow distance logic — a school 0.5 miles away may serve a different zone. Before making any decision based on a specific school, call the district office with your exact address.
+        <div class="prem-school-assigned-action">Action: Call <strong>the district office</strong> with your address and ask which school your parcel is zoned to — takes 5 minutes.</div>
+      </div>
+    </div>`;
+
+  // ── Lead narrative ────────────────────────────────────────────────────────
   const narrativeHTML = nearest ? `
     <div class="prem-narrative">
-      <p class="prem-narrative-lead">The nearest ${nearest.level.toLowerCase()} school is ${nearest.driveTimeMinutes} minute${nearest.driveTimeMinutes !== 1 ? 's' : ''} away—${nearest.driveTimeMinutes <= 5 ? 'close enough that walking or biking is realistic on good weather days' : nearest.driveTimeMinutes <= 10 ? 'a quick drive that fits easily into any morning routine' : nearest.driveTimeMinutes <= 15 ? 'a manageable commute once you know the route' : 'a commute worth timing on a real school morning'}. The information below is a starting point, not the full picture.</p>
-      <p class="prem-narrative-body">The questions that matter most and are hardest to find online: average class size (smaller is generally better, especially in grades K–3), after-school care availability and its cutoff time (a dealbreaker for many working parents), and how active the parent community is. None of those appear in any directory—you find them by scheduling a tour on a regular school day and talking to parents at afternoon pickup.</p>
-      <p class="prem-narrative-note">Don't assume the nearest school is your assigned school. Attendance boundaries don't always follow distance logic. Call the district office with your specific address—it takes 5 minutes and eliminates guesswork before you make a decision based on the wrong school.</p>
+      <p class="prem-narrative-lead">The nearest public ${nearest.level.toLowerCase()} school is ${nearest.driveTimeMinutes != null ? `${nearest.driveTimeMinutes} minute${nearest.driveTimeMinutes !== 1 ? 's' : ''} away` : `${nearest.distanceMiles} miles away`}—${nearest.driveTimeMinutes != null && nearest.driveTimeMinutes <= 5 ? 'close enough that walking or biking is realistic on good weather days' : nearest.driveTimeMinutes != null && nearest.driveTimeMinutes <= 10 ? 'a quick drive that fits easily into any morning routine' : nearest.driveTimeMinutes != null && nearest.driveTimeMinutes <= 15 ? 'a manageable commute once you know the route' : 'a commute worth timing on a real school morning'}. The listings below show the nearest school at each level — not your assigned school.</p>
+      <p class="prem-narrative-body">What the data doesn't tell you: average class size, after-school care cutoff times, or how active the parent community is. These are often the deciding factors for families, and none appear in any public directory. Schedule a tour on a regular school day and talk to parents at afternoon pickup — that's where you get the real picture.</p>
     </div>` : '';
 
-  const items = schools.map((s) => {
-    if (!s) return `<div class="prem-school-card prem-school-na"><p class="prem-na">No school found nearby.</p></div>`;
-
-    const hlData = SCHOOL_HIGHLIGHTS[s.level] || SCHOOL_HIGHLIGHTS.Elementary;
-    const highlights = hlData.map((h) =>
-      `<div class="prem-school-highlight"><span class="prem-school-hl-icon">${h.icon}</span><span class="prem-school-hl-label">${esc(h.label)}</span></div>`
-    ).join('');
-
-    const supportData = SCHOOL_SUPPORT[s.level] || SCHOOL_SUPPORT.Elementary;
-    const support = supportData.map((item) =>
-      `<span class="prem-school-support-item">${esc(item)}</span>`
-    ).join('');
-
+  // ── Public school cards ───────────────────────────────────────────────────
+  const publicItems = publicSchools.map((s) => {
+    if (!s) return '';
     return `
     <div class="prem-school-card">
       <div class="prem-school-header">
-        <div class="prem-school-level">${esc(s.level)} School</div>
+        <div class="prem-school-level">Public ${esc(s.level)} School</div>
         <div class="prem-school-name">${esc(s.name)}</div>
         <div class="prem-school-addr">${esc(s.address)}</div>
         <div class="prem-school-meta">
@@ -1261,22 +1254,87 @@ function buildSchoolRatingsHTML(schools) {
           ${s.driveTimeMinutes != null ? `<span class="prem-school-time">${s.driveTimeMinutes} min drive</span>` : ''}
         </div>
       </div>
-      <div class="prem-school-opportunities">
-        <div class="prem-school-opp-label">Typical Programs &amp; Activities</div>
-        <div class="prem-school-highlights">${highlights}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  // ── Private school section ────────────────────────────────────────────────
+  let privateHTML = '';
+  if (privateSchools.length > 0) {
+    const privateItems = privateSchools.map((s) => `
+      <div class="prem-school-choice-item">
+        <div class="prem-school-choice-name">${esc(s.name)}</div>
+        <div class="prem-school-choice-meta">${esc(s.distanceMiles)} mi away · ${esc(s.address)}</div>
+      </div>`).join('');
+    privateHTML = `
+    <div class="prem-school-choice-section">
+      <div class="prem-school-choice-label">Private Schools Within 10 Miles</div>
+      ${privateItems}
+      <p class="prem-school-choice-note">Contact each school directly for tuition, enrollment, and admissions timelines. Most private schools require applications 6–12 months before the school year starts.</p>
+    </div>`;
+  }
+
+  // ── Questions to ask checklist ────────────────────────────────────────────
+  const checklistHTML = `
+    <div class="prem-safety-actions">
+      <div class="prem-safety-actions-label">4 Questions to Ask Before You Close</div>
+      <div class="prem-safety-action">
+        <div class="prem-safety-action-icon">🏫</div>
+        <div>
+          <div class="prem-safety-action-label">Confirm your assigned school</div>
+          <div class="prem-safety-action-detail">Call the district office with your exact address — ask which school your specific parcel is zoned to at each level. Boundaries can split streets.</div>
+        </div>
       </div>
-      <div class="prem-school-support-section">
-        <div class="prem-school-opp-label">Student Support Services</div>
-        <div class="prem-school-support">${support}</div>
+      <div class="prem-safety-action">
+        <div class="prem-safety-action-icon">📐</div>
+        <div>
+          <div class="prem-safety-action-label">Ask about boundary stability</div>
+          <div class="prem-safety-action-detail">Ask the district: "Have boundaries changed in the last 5 years?" and "Are any redistricting plans in review?" Kids switching schools mid-elementary is a real disruption.</div>
+        </div>
+      </div>
+      <div class="prem-safety-action">
+        <div class="prem-safety-action-icon">⏰</div>
+        <div>
+          <div class="prem-safety-action-label">Check after-school care availability</div>
+          <div class="prem-safety-action-detail">Ask the school's front office: Is on-site care available? What are the pickup cutoff times and cost? This is often a dealbreaker for working parents and has a waitlist.</div>
+        </div>
+      </div>
+      <div class="prem-safety-action">
+        <div class="prem-safety-action-icon">👥</div>
+        <div>
+          <div class="prem-safety-action-label">Talk to current parents</div>
+          <div class="prem-safety-action-detail">Walk the school at afternoon pickup. Ask parents what they wish they'd known. Class size, teacher turnover, and community involvement don't appear in any public database.</div>
+        </div>
       </div>
     </div>`;
-  }).join('');
+
+  // ── Key Takeaway ──────────────────────────────────────────────────────────
+  let takeawayText = '';
+  if (nearest && nearest.driveTimeMinutes != null) {
+    takeawayText = nearest.driveTimeMinutes <= 5
+      ? `The nearest public ${nearest.level.toLowerCase()} school is just ${nearest.driveTimeMinutes} minutes away — but confirm your assigned school with the district before treating that as your actual option.`
+      : nearest.driveTimeMinutes <= 12
+      ? `Public schools are within a reasonable drive, but your assigned school may differ from the nearest one. Confirm your zone before factoring any specific school into your decision.`
+      : `School commutes here are on the longer side. Confirm your assigned school with the district — and explore private options if public commute times are a concern.`;
+  } else if (publicSchools.some(Boolean)) {
+    takeawayText = 'Schools are accessible in this area. Before relying on any specific school, verify your assigned zone with the district — nearest school and assigned school are often different.';
+  }
+
+  const takeawayHTML = takeawayText ? `
+    <div class="prem-sensory-takeaway">
+      <div class="prem-sensory-takeaway-label">Key Takeaway</div>
+      <p>${esc(takeawayText)}</p>
+    </div>` : '';
 
   const body = `
+    ${assignedAlertHTML}
     ${narrativeHTML}
-    ${items}
-    <p class="prem-disclaimer">Programs shown are typical for this school level — contact the school directly to confirm specific offerings. School assignment requires verification with the local school district.</p>`;
-  return premiumCard('Schools', 'Nearby Schools', body);
+    <div class="prem-school-section-label">Nearest Public Schools</div>
+    ${publicItems || '<p class="prem-na">No public schools found within search radius.</p>'}
+    ${privateHTML}
+    ${checklistHTML}
+    ${takeawayHTML}`;
+
+  return premiumCard('Schools', 'Schools & Education', body);
 }
 
 // FR-018: Safety & Emergency Response

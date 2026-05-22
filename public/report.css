@@ -1564,6 +1564,75 @@ body.compare-page {
   color: var(--text-secondary);
 }
 
+.prem-school-assigned-alert {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  background: rgba(184, 146, 42, 0.08);
+  border: 1.5px solid var(--gold);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.25rem;
+}
+.prem-school-assigned-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem; }
+.prem-school-assigned-text {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  line-height: 1.55;
+}
+.prem-school-assigned-text strong { color: var(--text-primary); }
+.prem-school-assigned-action {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.5);
+  border-radius: 4px;
+  padding: 0.35rem 0.6rem;
+}
+.prem-school-section-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+  margin-top: 0.25rem;
+}
+.prem-school-choice-section {
+  border-top: 1px solid var(--stone);
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+.prem-school-choice-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bronze);
+  margin-bottom: 0.65rem;
+}
+.prem-school-choice-item {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--stone);
+}
+.prem-school-choice-item:last-of-type { border-bottom: none; }
+.prem-school-choice-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 0.15rem;
+}
+.prem-school-choice-meta {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+.prem-school-choice-note {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+  font-style: italic;
+}
+
 /* Shared narrative blocks across premium sections */
 .prem-narrative {
   margin-bottom: 1.25rem;
