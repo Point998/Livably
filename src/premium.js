@@ -1105,6 +1105,397 @@ async function getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsC
   };
 }
 
+// ── FR-031: What Will Grow Here ───────────────────────────────────────────────
+
+const FROST_DATE_TABLE = {
+  '1':  { lastSpring: 'June 15', firstFall: 'August 1',   days: 47  },
+  '2':  { lastSpring: 'June 1',  firstFall: 'August 15',  days: 75  },
+  '2a': { lastSpring: 'June 1',  firstFall: 'August 15',  days: 75  },
+  '2b': { lastSpring: 'June 1',  firstFall: 'August 15',  days: 75  },
+  '3':  { lastSpring: 'May 20',  firstFall: 'September 10', days: 113 },
+  '3a': { lastSpring: 'May 25',  firstFall: 'September 1', days: 99  },
+  '3b': { lastSpring: 'May 15',  firstFall: 'September 15', days: 123 },
+  '4':  { lastSpring: 'May 7',   firstFall: 'September 22', days: 138 },
+  '4a': { lastSpring: 'May 7',   firstFall: 'September 22', days: 138 },
+  '4b': { lastSpring: 'May 1',   firstFall: 'September 25', days: 147 },
+  '5':  { lastSpring: 'April 25', firstFall: 'October 5',  days: 163 },
+  '5a': { lastSpring: 'April 25', firstFall: 'October 5',  days: 163 },
+  '5b': { lastSpring: 'April 15', firstFall: 'October 15', days: 183 },
+  '6':  { lastSpring: 'April 10', firstFall: 'October 20', days: 193 },
+  '6a': { lastSpring: 'April 10', firstFall: 'October 20', days: 193 },
+  '6b': { lastSpring: 'April 15', firstFall: 'October 15', days: 183 },
+  '7':  { lastSpring: 'March 25', firstFall: 'November 5', days: 225 },
+  '7a': { lastSpring: 'March 25', firstFall: 'November 5', days: 225 },
+  '7b': { lastSpring: 'March 15', firstFall: 'November 15', days: 245 },
+  '8':  { lastSpring: 'March 1',  firstFall: 'December 1', days: 275 },
+  '8a': { lastSpring: 'March 1',  firstFall: 'December 1', days: 275 },
+  '8b': { lastSpring: 'February 15', firstFall: 'December 15', days: 303 },
+  '9':  { lastSpring: 'February 1',  firstFall: 'December 20', days: 322 },
+  '9a': { lastSpring: 'February 1',  firstFall: 'December 20', days: 322 },
+  '9b': { lastSpring: 'January 20',  firstFall: 'December 31', days: 345 },
+  '10': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
+  '10a': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
+  '10b': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
+  '11': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
+  '11a': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
+  '11b': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
+  '12': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
+  '13': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
+};
+
+// Genera/species to exclude from native plant results (weedy, toxic, or undesirable)
+const NATIVE_PLANT_EXCLUDE = new Set([
+  'ambrosia', 'toxicodendron', 'conium', 'solanum carolinense',
+  'urtica', 'arctium', 'phytolacca', 'robinia pseudoacacia',
+  'cynanchum laeve', 'packera glabella', 'ageratina altissima',
+]);
+
+// Common names to exclude from native plants
+const NATIVE_PLANT_EXCLUDE_NAMES = ['ragweed', 'poison ivy', 'poison oak', 'poison sumac',
+  'hemlock', 'horsenettle', 'pokeweed', 'stinging nettle', 'black locust'];
+
+// Introduced species that are benign — exclude from "invasive" list
+const BENIGN_INTRODUCED = new Set([
+  'trifolium repens', 'trifolium pratense', 'cichorium intybus', 'glechoma hederacea',
+  'lamium purpureum', 'veronica persica', 'medicago lupulina',
+  'stellaria media', 'taraxacum officinale', 'plantago major',
+  'poa annua', 'capsella bursa-pastoris', 'cerastium fontanum',
+  'tussilago farfara', 'sherardia arvensis', 'geranium molle',
+  'lolium perenne', 'dactylis glomerata', 'phleum pratense',
+  'trifolium incarnatum', 'trifolium hybridum', 'lamium amplexicaule',
+  'vicia sativa', 'veronica arvensis', 'ornithogalum umbellatum',
+  'potentilla indica', 'ajuga reptans', 'rumex acetosella',
+  'hypericum perforatum', 'lotus corniculatus', 'achillea millefolium',
+]);
+
+// Mammals to exclude from "yard wildlife" list (domestic, feral, or aquatic-only species)
+const DOMESTIC_MAMMALS = new Set([
+  'felis catus', 'canis lupus familiaris', 'sus scrofa domesticus',
+  'myocastor coypus',  // Coypu/Nutria — aquatic invasive, not a yard animal
+]);
+
+const STATE_EXTENSION = {
+  AL: { name: 'Alabama Cooperative Extension System', url: 'www.aces.edu' },
+  AK: { name: 'University of Alaska Cooperative Extension', url: 'www.uaf.edu/ces' },
+  AZ: { name: 'University of Arizona Cooperative Extension', url: 'extension.arizona.edu' },
+  AR: { name: 'University of Arkansas Cooperative Extension', url: 'www.uaex.uada.edu' },
+  CA: { name: 'UC Cooperative Extension', url: 'ucanr.edu' },
+  CO: { name: 'Colorado State University Extension', url: 'extension.colostate.edu' },
+  CT: { name: 'UConn Extension', url: 'extension.uconn.edu' },
+  DE: { name: 'University of Delaware Cooperative Extension', url: 'sites.udel.edu/extension' },
+  FL: { name: 'UF/IFAS Extension', url: 'extension.ifas.ufl.edu' },
+  GA: { name: 'UGA Cooperative Extension', url: 'extension.uga.edu' },
+  HI: { name: 'University of Hawaii Cooperative Extension', url: 'www.ctahr.hawaii.edu/site/Ext.aspx' },
+  ID: { name: 'University of Idaho Extension', url: 'www.uidaho.edu/extension' },
+  IL: { name: 'University of Illinois Extension', url: 'extension.illinois.edu' },
+  IN: { name: 'Purdue Extension', url: 'extension.purdue.edu' },
+  IA: { name: 'Iowa State University Extension', url: 'www.extension.iastate.edu' },
+  KS: { name: 'K-State Research and Extension', url: 'www.ksre.k-state.edu' },
+  KY: { name: 'UK Cooperative Extension Service', url: 'extension.ca.uky.edu' },
+  LA: { name: 'LSU AgCenter', url: 'www.lsuagcenter.com' },
+  ME: { name: 'University of Maine Cooperative Extension', url: 'extension.umaine.edu' },
+  MD: { name: 'University of Maryland Extension', url: 'extension.umd.edu' },
+  MA: { name: 'UMass Extension', url: 'ag.umass.edu/extension' },
+  MI: { name: 'MSU Extension', url: 'www.canr.msu.edu/outreach' },
+  MN: { name: 'University of Minnesota Extension', url: 'extension.umn.edu' },
+  MS: { name: 'Mississippi State University Extension', url: 'extension.msstate.edu' },
+  MO: { name: 'University of Missouri Extension', url: 'extension.missouri.edu' },
+  MT: { name: 'Montana State University Extension', url: 'www.msuextension.org' },
+  NE: { name: 'Nebraska Extension', url: 'extension.unl.edu' },
+  NV: { name: 'University of Nevada Cooperative Extension', url: 'www.unce.unr.edu' },
+  NH: { name: 'UNH Cooperative Extension', url: 'extension.unh.edu' },
+  NJ: { name: 'Rutgers Cooperative Extension', url: 'njaes.rutgers.edu' },
+  NM: { name: 'NMSU Cooperative Extension Service', url: 'extension.nmsu.edu' },
+  NY: { name: 'Cornell Cooperative Extension', url: 'cce.cornell.edu' },
+  NC: { name: 'NC State Extension', url: 'www.ces.ncsu.edu' },
+  ND: { name: 'NDSU Extension', url: 'www.ndsu.edu/extension' },
+  OH: { name: 'Ohio State University Extension', url: 'extension.osu.edu' },
+  OK: { name: 'Oklahoma Cooperative Extension Service', url: 'extension.okstate.edu' },
+  OR: { name: 'Oregon State University Extension Service', url: 'extension.oregonstate.edu' },
+  PA: { name: 'Penn State Extension', url: 'extension.psu.edu' },
+  RI: { name: 'URI Cooperative Extension', url: 'web.uri.edu/coopext' },
+  SC: { name: 'Clemson Cooperative Extension', url: 'www.clemson.edu/extension' },
+  SD: { name: 'SDSU Extension', url: 'extension.sdstate.edu' },
+  TN: { name: 'UT Extension', url: 'extension.tennessee.edu' },
+  TX: { name: 'Texas A&M AgriLife Extension', url: 'agrilifeextension.tamu.edu' },
+  UT: { name: 'USU Extension', url: 'extension.usu.edu' },
+  VT: { name: 'UVM Extension', url: 'www.uvm.edu/extension' },
+  VA: { name: 'Virginia Cooperative Extension', url: 'ext.vt.edu' },
+  WA: { name: 'WSU Extension', url: 'extension.wsu.edu' },
+  WV: { name: 'WVU Extension Service', url: 'extension.wvu.edu' },
+  WI: { name: 'UW-Extension', url: 'fyi.extension.wisc.edu' },
+  WY: { name: 'University of Wyoming Extension', url: 'www.uwyo.edu/uwext' },
+  DC: { name: 'University of the District of Columbia Extension', url: 'udc.edu/causes/cooperative-extension' },
+};
+
+async function getHardinessZone(zip) {
+  if (!zip) return null;
+  try {
+    const resp = await fetch(`https://phzmapi.org/${encodeURIComponent(zip)}.json`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data?.zone) return null;
+    const zone = data.zone.toLowerCase().trim();
+    const frost = FROST_DATE_TABLE[zone] || FROST_DATE_TABLE[zone.replace(/[ab]$/, '')] || null;
+    return {
+      zone: data.zone,
+      tempRange: data.temperature_range || null,
+      frost,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function iNatSpeciesCounts(lat, lng, radiusKm, taxonId, flags, perPage) {
+  try {
+    const params = new URLSearchParams({
+      lat: lat.toFixed(4),
+      lng: lng.toFixed(4),
+      radius: radiusKm,
+      taxon_id: taxonId,
+      quality_grade: 'research',
+      per_page: perPage,
+      order_by: 'count',
+    });
+    if (flags.native)     params.set('native', 'true');
+    if (flags.introduced) params.set('introduced', 'true');
+    const resp = await fetch(`https://api.inaturalist.org/v1/observations/species_counts?${params}`, {
+      signal: AbortSignal.timeout(12000),
+      headers: { Accept: 'application/json' },
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.results || [];
+  } catch {
+    return [];
+  }
+}
+
+function filterNativePlants(results) {
+  return results
+    .filter((r) => {
+      const t = r.taxon;
+      const sci = (t.name || '').toLowerCase();
+      const common = (t.preferred_common_name || '').toLowerCase();
+      if (!t.preferred_common_name) return false; // skip obscure species
+      if (t.rank !== 'species') return false;
+      // Exclude by genus or full species name
+      const genus = sci.split(' ')[0];
+      if (NATIVE_PLANT_EXCLUDE.has(sci) || NATIVE_PLANT_EXCLUDE.has(genus)) return false;
+      // Exclude by common name keywords
+      if (NATIVE_PLANT_EXCLUDE_NAMES.some((kw) => common.includes(kw))) return false;
+      return true;
+    })
+    .slice(0, 6)
+    .map((r) => ({ name: r.taxon.preferred_common_name, sci: r.taxon.name, count: r.count }));
+}
+
+function filterInvasivePlants(results) {
+  return results
+    .filter((r) => {
+      const t = r.taxon;
+      const sci = (t.name || '').toLowerCase();
+      if (!t.preferred_common_name) return false;
+      if (t.rank !== 'species') return false;
+      if (BENIGN_INTRODUCED.has(sci)) return false;
+      return true;
+    })
+    .slice(0, 5)
+    .map((r) => ({ name: r.taxon.preferred_common_name, sci: r.taxon.name, count: r.count }));
+}
+
+function filterWildlife(results) {
+  return results
+    .filter((r) => {
+      const sci = (r.taxon.name || '').toLowerCase();
+      return r.taxon.preferred_common_name && !DOMESTIC_MAMMALS.has(sci);
+    })
+    .slice(0, 6)
+    .map((r) => ({ name: r.taxon.preferred_common_name, sci: r.taxon.name, count: r.count }));
+}
+
+function filterBirds(results) {
+  return results
+    .filter((r) => r.taxon.preferred_common_name)
+    .slice(0, 6)
+    .map((r) => ({ name: r.taxon.preferred_common_name, sci: r.taxon.name, count: r.count }));
+}
+
+async function getGardenData(lat, lng, locationInfo) {
+  const zip = locationInfo?.zip || '';
+  const [zoneRes, nativePlantsRes, invasivePlantsRes, wildlifeRes, birdsRes] =
+    await Promise.allSettled([
+      getHardinessZone(zip),
+      iNatSpeciesCounts(lat, lng, 16, 47126, { native: true }, 30),
+      iNatSpeciesCounts(lat, lng, 32, 47126, { introduced: true }, 25),
+      iNatSpeciesCounts(lat, lng, 16, 40151, {}, 15),
+      iNatSpeciesCounts(lat, lng, 16, 3, {}, 20),
+    ]);
+
+  const val = (r, fallback) => r.status === 'fulfilled' ? r.value : fallback;
+
+  return {
+    hardinessZone: val(zoneRes, null),
+    nativePlants:  filterNativePlants(val(nativePlantsRes, [])),
+    invasivePlants: filterInvasivePlants(val(invasivePlantsRes, [])),
+    wildlife:      filterWildlife(val(wildlifeRes, [])),
+    birds:         filterBirds(val(birdsRes, [])),
+  };
+}
+
+function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
+  if (!gardenData) return '';
+
+  const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const county = locationInfo?.county || '';
+  const state = locationInfo?.state || '';
+  const ext = STATE_EXTENSION[state] || null;
+  const { hardinessZone, nativePlants, invasivePlants, wildlife, birds } = gardenData;
+
+  // ── Growing Conditions ──
+  let conditionsPara = '';
+  if (hardinessZone) {
+    const { zone, tempRange, frost } = hardinessZone;
+    const zoneNote = tempRange ? ` (average winter low: ${tempRange}°F)` : '';
+    conditionsPara = `This property sits in USDA Hardiness Zone ${esc(zone)}${zoneNote}. `;
+    if (frost) {
+      conditionsPara += `The last spring frost typically falls around <strong>${esc(frost.lastSpring)}</strong> and the first fall frost arrives around <strong>${esc(frost.firstFall)}</strong> — giving you a growing season of roughly ${frost.days} days. `;
+      if (frost.days >= 180) {
+        conditionsPara += `That's enough time for tomatoes, peppers, squash, and most vegetables to complete a full cycle.`;
+      } else if (frost.days >= 120) {
+        conditionsPara += `That's enough time for fast-maturing vegetables and most annuals, though warm-season crops need a head start indoors.`;
+      } else {
+        conditionsPara += `It's a shorter season — focus on cold-hardy crops and varieties bred for quick maturity.`;
+      }
+    }
+  } else {
+    conditionsPara = `Hardiness zone data was not available for this address. You can look up your zone at the USDA Plant Hardiness Zone Map at planthardiness.ars.usda.gov.`;
+  }
+
+  // ── Soil ──
+  let soilPara = '';
+  if (soil) {
+    const name = soil.muname || 'this soil type';
+    const drain = soil.drainageCategory;
+    soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? ` — USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
+    if (drain && drain.color !== 'muted') {
+      soilPara += esc(drain.implication) + ' ';
+    }
+    if (drain?.color === 'green' || drain?.color === 'lightgreen') {
+      soilPara += `A layer of compost before planting and you're in good shape.`;
+    } else if (drain?.color === 'orange' || drain?.color === 'red') {
+      soilPara += `Raised beds are a practical solution for vegetable gardens — they let you control drainage regardless of the native soil conditions.`;
+    }
+  }
+
+  // ── Native Plants ──
+  let nativePlantsHTML = '';
+  if (nativePlants.length > 0) {
+    const items = nativePlants.map((p) =>
+      `<li class="grow-plant-item"><span class="grow-plant-name">${esc(p.name)}</span> <em class="grow-plant-sci">(${esc(p.sci)})</em></li>`
+    ).join('\n');
+    nativePlantsHTML = `
+    <div class="grow-subsection">
+      <div class="grow-subsection-label">🌿 What Grows Naturally Here</div>
+      <p class="prem-narrative-body">These native plants thrive in this region without much help — they've been doing it for centuries. They're adapted to your soil, your rainfall, and your winters, which means less maintenance and more resilience once established.</p>
+      <ul class="grow-plant-list">${items}
+      </ul>
+    </div>`;
+  }
+
+  // ── Invasive Plants ──
+  let invasivePlantsHTML = '';
+  if (invasivePlants.length > 0) {
+    const items = invasivePlants.map((p) =>
+      `<li class="grow-plant-item"><span class="grow-plant-name">${esc(p.name)}</span> <em class="grow-plant-sci">(${esc(p.sci)})</em></li>`
+    ).join('\n');
+    invasivePlantsHTML = `
+    <div class="grow-subsection">
+      <div class="grow-subsection-label">⚠️ What to Avoid</div>
+      <p class="prem-narrative-body">These introduced plants are frequently observed in this area and cause real problems — they outcompete native plants, can damage trees and structures, or spread aggressively once established. Worth knowing before you plant anything from a nursery.</p>
+      <ul class="grow-plant-list">${items}
+      </ul>
+    </div>`;
+  }
+
+  // ── Wildlife ──
+  let wildlifeHTML = '';
+  if (wildlife.length > 0 || birds.length > 0) {
+    let wildlifePara = '';
+    if (wildlife.length > 0) {
+      const mammalNames = wildlife.slice(0, 4).map((w) => esc(w.name)).join(', ');
+      wildlifePara += `Common mammals observed in this area include ${mammalNames}. `;
+      if (wildlife.some((w) => w.name.toLowerCase().includes('deer'))) {
+        wildlifePara += `If deer are active nearby, plan any vegetable garden or ornamental plantings with deer-resistant species or fencing. `;
+      }
+    }
+    if (birds.length > 0) {
+      const birdNames = birds.slice(0, 5).map((b) => esc(b.name)).join(', ');
+      wildlifePara += `Common backyard birds in this area include ${birdNames}. A simple feeder and a water source will bring them close.`;
+    }
+    wildlifeHTML = `
+    <div class="grow-subsection">
+      <div class="grow-subsection-label">🦌 Wildlife You'll Share the Yard With</div>
+      <p class="prem-narrative-body">${wildlifePara}</p>
+    </div>`;
+  }
+
+  // ── Extension Office CTA ──
+  let extCTA = '';
+  if (ext) {
+    const countyLabel = county ? `${esc(county)}` : esc(state);
+    extCTA = `<p class="grow-ext-cta">Your local Cooperative Extension office offers free soil testing and planting guides specific to your county. For ${countyLabel}: <strong>${esc(ext.name)}</strong> — <a href="https://${ext.url}" target="_blank" rel="noopener noreferrer">${esc(ext.url)}</a></p>`;
+  } else {
+    extCTA = `<p class="grow-ext-cta">Your local Cooperative Extension office offers free soil testing and planting guides specific to your county — search for your state's land-grant university extension service for county-specific resources.</p>`;
+  }
+
+  // ── Opportunity paragraph ──
+  let opportunityPara = '';
+  if (hardinessZone && hardinessZone.frost) {
+    const { days } = hardinessZone.frost;
+    if (days >= 200) {
+      opportunityPara = `A well-maintained yard in this zone with native plantings can become genuinely beautiful with relatively little effort. The growing season is long, rainfall is typically reliable in this region, and native plants require almost no intervention once established.`;
+    } else if (days >= 130) {
+      opportunityPara = `A well-chosen native garden in this zone rewards low-maintenance effort — the plants are built for these winters and summers, and they'll return every year without replanting. The growing season gives you time for most of what you'd want to grow.`;
+    } else {
+      opportunityPara = `This is a shorter growing season, but the region's native plants are perfectly matched to it. Focus on cold-hardy perennials and native shrubs — they'll come back each year and don't need babying.`;
+    }
+  }
+
+  const sources = [
+    hardinessZone ? 'USDA Plant Hardiness Zone Map (phzmapi.org)' : null,
+    nativePlants.length > 0 ? 'iNaturalist research-grade observations' : null,
+    soil ? 'USDA Web Soil Survey' : null,
+  ].filter(Boolean).join('; ');
+
+  const body = `
+    <p class="prem-narrative-lead">${conditionsPara}</p>
+    ${soilPara ? `
+    <div class="grow-subsection">
+      <div class="grow-subsection-label">🪱 Your Soil</div>
+      <p class="prem-narrative-body">${soilPara}</p>
+    </div>` : ''}
+    ${nativePlantsHTML}
+    ${invasivePlantsHTML}
+    ${wildlifeHTML}
+    ${opportunityPara ? `
+    <div class="grow-subsection">
+      <div class="grow-subsection-label">✨ The Opportunity</div>
+      <p class="prem-narrative-body">${opportunityPara}</p>
+      ${extCTA}
+    </div>` : extCTA}
+    <div class="prem-sensory-takeaway">
+      <span class="prem-sensory-key">🔑</span>
+      <p><strong>Key Takeaway:</strong> ${hardinessZone ? `Zone ${esc(hardinessZone.zone)} gives you ${hardinessZone.frost ? `a ${hardinessZone.frost.days}-day growing season` : 'a defined growing season'}. Native plants adapted to this region require the least effort and give back the most.` : 'Native plants adapted to your region require the least effort and give back the most.'}</p>
+    </div>
+    <p class="prem-disclaimer">Hardiness zone: USDA phzmapi.org, ZIP-code level. Frost dates are 30-year climate normals correlated with USDA hardiness zone. ${sources ? `Sources: ${esc(sources)}. ` : ''}Wildlife observations: iNaturalist research-grade, 10-mile radius. Research date: ${today}.</p>`;
+
+  return premiumCard('Your Yard', 'What Will Grow Here', body);
+}
+
 // ── FR-026: Property Intelligence ────────────────────────────────────────────
 
 async function getSoilData(lat, lng) {
@@ -1267,7 +1658,7 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
 async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
   const fips = await getCensusFIPS(lat, lng);
 
-  const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel] =
+  const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel, gardenData] =
     await Promise.allSettled([
       getDemographics(lat, lng, fips),
       getPropertyData(fips, locationInfo),
@@ -1278,6 +1669,7 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
       getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
       getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey),
       getPropertyIntelligence(lat, lng, fips, locationInfo),
+      getGardenData(lat, lng, locationInfo),
     ]);
 
   const val = (r) => (r.status === 'fulfilled' ? r.value : null);
@@ -1291,6 +1683,7 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
     schools:      val(schools),
     growth:       val(growth),
     propIntel:    val(propIntel),
+    gardenData:   val(gardenData),
     locationInfo,
   };
 }
@@ -2436,6 +2829,7 @@ function buildPremiumSectionsHTML(premium) {
     buildDemographicsHTML(premium.demographics),
     buildGrowthAndDevelopmentHTML(premium.growth),
     buildClimateChapterHTML(premium.environment, premium.locationInfo),
+    buildWhatWillGrowHTML(premium.gardenData, premium.propIntel?.soil, premium.locationInfo),
     buildPropertyIntelligenceHTML(premium.propIntel),
     buildSensoryEnvironmentalHTML(premium.environment),
     buildWalkabilityHTML(premium.walkability),

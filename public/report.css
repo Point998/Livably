@@ -2644,3 +2644,58 @@ body.compare-page {
 .ch01-takeaway-key { font-size: 1rem; flex-shrink: 0; }
 .ch01-takeaway p { font-size: 0.9rem; color: #333; margin: 0; line-height: 1.55; }
 .ch01-disclaimer { font-size: 0.75rem; color: #999; margin-top: 0.5rem; }
+
+/* ── FR-031: What Will Grow Here ─────────────────────────────────────────── */
+.grow-subsection {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #f0ede7;
+}
+.grow-subsection-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--bronze);
+  margin-bottom: 0.6rem;
+}
+.grow-plant-list {
+  list-style: none;
+  margin: 0.5rem 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.grow-plant-item {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+  padding: 0.4rem 0.6rem;
+  background: rgba(250, 248, 244, 0.8);
+  border-radius: 4px;
+  border-left: 2px solid var(--bronze);
+}
+.grow-plant-name {
+  font-weight: 600;
+}
+.grow-plant-sci {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-style: italic;
+  margin-left: 0.25rem;
+}
+.grow-ext-cta {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin: 0.9rem 0 0 0;
+  padding: 0.75rem 0.9rem;
+  background: rgba(184,146,42,0.06);
+  border-radius: 4px;
+}
+.grow-ext-cta a {
+  color: var(--bronze);
+  text-decoration: none;
+}
+.grow-ext-cta a:hover { text-decoration: underline; }

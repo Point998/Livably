@@ -1848,6 +1848,7 @@ app.get('/report', async (req, res) => {
         city:   comps.find((c) => c.types.includes('locality'))?.long_name || '',
         state:  comps.find((c) => c.types.includes('administrative_area_level_1'))?.short_name || '',
         county: comps.find((c) => c.types.includes('administrative_area_level_2'))?.long_name || '',
+        zip:    comps.find((c) => c.types.includes('postal_code'))?.long_name || '',
       };
     } catch {}
 
