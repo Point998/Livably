@@ -2462,3 +2462,83 @@ body.compare-page {
   .footer-actions { flex-direction: column; align-items: stretch; }
   .btn-pdf        { text-align: center; }
 }
+
+/* ── Premium upgrade CTA ────────────────────────────────────────────────────── */
+.upgrade-cta {
+  border: 2px solid var(--accent-primary);
+  background: linear-gradient(160deg, var(--bg-cream) 0%, #fff8e8 100%);
+}
+.upgrade-cta-header { margin-bottom: 1.5rem; }
+.upgrade-cta-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0.25rem 0 0.75rem;
+}
+.upgrade-cta-intro {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+.upgrade-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+.upgrade-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: rgba(255,255,255,0.7);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+}
+.upgrade-feature-icon { font-size: 1.25rem; flex-shrink: 0; margin-top: 0.05rem; }
+.upgrade-feature-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+.upgrade-feature-desc { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; }
+.upgrade-cta-action { text-align: center; }
+.upgrade-price-block { margin-bottom: 1rem; }
+.upgrade-price {
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+.upgrade-price-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.1rem;
+}
+.upgrade-btn {
+  display: inline-block;
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.85rem 2rem;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s;
+}
+.upgrade-btn:hover { background: #a07820; }
+.upgrade-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.upgrade-note {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+}
+@media (max-width: 480px) {
+  .upgrade-features { grid-template-columns: 1fr; }
+}

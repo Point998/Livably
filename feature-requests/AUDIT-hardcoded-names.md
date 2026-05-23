@@ -109,7 +109,7 @@ These were all examined and confirmed to use generic descriptors, place API type
 
 ## Test Results
 
-Tested all 6 addresses after changes. Results recorded below.
+### Original 5-address test (2026-05-22, commit d70cb25)
 
 ### Address 1: 100 Wishing Well Path Unit 2306 Georgetown KY 40324 (Georgetown, KY)
 - **Coffee:** Dutch Bros Coffee — 12 min ✅
@@ -130,6 +130,22 @@ Tested all 6 addresses after changes. Results recorded below.
 ### Address 5: 321 Oak Ave Tupelo MS 38801 (Tupelo, MS — no Little Clinic)
 - **Coffee:** LOCAL LIFE cafe — 9 min ✅ (independent local shop)
 - **Urgent care:** Verona Family Medicine and Urgent Care — 4 min ✅
+
+---
+
+### Session re-test (2026-05-22, 3 primary session addresses)
+
+### Address 6: 100 Wishing Well Path Unit 2306 Georgetown KY 40324
+- **Coffee:** Dutch Bros Coffee — 12 min ✅ (standalone drive-through coffee, not gas station type)
+- **Urgent care:** Centerpoint Walk-In Clinic - Georgetown — 3 min ✅ (true standalone urgent care)
+
+### Address 7: 456 Rural Route 1 Harlan KY 40831
+- **Coffee:** Starbucks Coffee Company — 4 min ✅ (standalone café type, not gas_station or convenience_store)
+- **Urgent care:** Hometown Urgent Care — 6 min ✅ (standalone urgent care, not retail-embedded)
+
+### Address 8: 123 Main St Louisville KY 40202
+- **Coffee:** Pearl Street Game & Coffee House — 4 min ✅ (independent café, no gas station slippage)
+- **Urgent care:** Norton Prompt Care - Arena Plaza — 1 min ✅ (standalone urgent care facility)
 
 ---
 
