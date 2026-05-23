@@ -1023,6 +1023,187 @@ function buildInsightSectionHTML(icon, title, subtitle, narrative) {
     </div>`;
 }
 
+function buildKeyInsightsHTML(hospital, school, highwayRamp, premium) {
+  const findings = [];
+  const env = premium?.environment;
+
+  // 1. Flood zone — most actionable first
+  const flood = env?.floodRisk;
+  if (flood) {
+    if (flood.risk === 'High' || flood.risk === 'Very High') {
+      findings.push({ bucket: 'Things to Check', cls: 'check',
+        text: `This parcel falls in FEMA Flood Zone ${flood.zone} — flood insurance is federally required and typically adds $1,500–$4,000/year to your carrying costs. Get a quote before you make an offer.` });
+    } else if (flood.risk === 'Minimal' || flood.risk === 'Unknown' && flood.zone === 'X') {
+      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
+        text: `This address falls outside FEMA's high-risk flood zones (Zone X) — flood insurance is not federally required and the parcel-level risk is minimal.` });
+    } else {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `This parcel is in FEMA Flood Zone ${flood.zone} — a moderate-risk area. Flood insurance isn't required here but is worth pricing before closing.` });
+    }
+  }
+
+  // 2. School assignment
+  if (school) {
+    findings.push({ bucket: 'Things to Check', cls: 'check',
+      text: `The nearest school is ${school.name} (${school.driveTimeMinutes} min) — your assigned school requires direct verification with the district. "Nearest" doesn't always mean "assigned."` });
+  }
+
+  // 3. Hospital distance
+  if (hospital) {
+    if (hospital.driveTimeMinutes > 20) {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `The nearest full-service ER is ${hospital.name}, ${hospital.driveTimeMinutes} minutes away — worth discussing with any household members who have health conditions that may require fast emergency access.` });
+    } else if (hospital.driveTimeMinutes <= 10) {
+      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
+        text: `${hospital.name} is ${hospital.driveTimeMinutes} minutes away — a full-service emergency department within quick reach.` });
+    } else {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `The nearest full-service ER, ${hospital.name}, is ${hospital.driveTimeMinutes} minutes away — reasonable for most situations, but know your route in advance.` });
+    }
+  }
+
+  // 4. Highway access
+  if (highwayRamp) {
+    if (highwayRamp.driveTimeMinutes > 20) {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `${highwayRamp.name} access is ${highwayRamp.driveTimeMinutes} minutes away — regional travel or airport runs will take meaningfully longer from this address.` });
+    } else if (highwayRamp.driveTimeMinutes <= 8) {
+      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
+        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} minutes away — quick highway access for regional travel and commutes.` });
+    } else {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `${highwayRamp.name} access is ${highwayRamp.driveTimeMinutes} minutes away — a moderate drive that adds up on regular regional trips.` });
+    }
+  }
+
+  // 5. Radon (prefer) or Airport
+  const radon = env?.radon;
+  const airports = env?.airports;
+  if (radon && radon.zone === 1) {
+    findings.push({ bucket: 'Things to Check', cls: 'check',
+      text: `This county is EPA Radon Zone 1 (high potential) — a $15–$30 radon test before closing is strongly recommended. Mitigation systems run $800–$2,500 if levels are elevated.` });
+  } else if (airports && airports.length && airports[0].distanceMiles < 10) {
+    const a = airports[0];
+    findings.push({ bucket: 'Things to Consider', cls: 'consider',
+      text: `${a.name} is ${a.distanceMiles.toFixed(1)} miles away — visit the property at 6–9am on a weekday before committing to assess actual aircraft noise levels.` });
+  } else if (radon) {
+    const zLabel = radon.zone === 2 ? 'Zone 2 (moderate)' : 'Zone 3 (lower risk)';
+    findings.push({ bucket: 'Things to Consider', cls: 'consider',
+      text: `This county is EPA Radon ${zLabel} — a quick $15–$30 radon test remains a worthwhile precaution before purchase.` });
+  }
+
+  if (!findings.length) return '';
+  const top = findings.slice(0, 5);
+
+  const rowsHTML = top.map((f) => `
+    <div class="key-insight-row">
+      <span class="key-insight-bucket ki-${escapeHtml(f.cls)}">${escapeHtml(f.bucket)}</span>
+      <p class="key-insight-text">${escapeHtml(f.text)}</p>
+    </div>`).join('');
+
+  return `
+  <div class="chapter-card key-insights-card">
+    <div class="chapter-header">
+      <div class="chapter-label">Before You Read Further</div>
+      <div class="chapter-title">At a Glance</div>
+    </div>
+    <div class="chapter-body">
+      <p class="key-insights-intro">Five things worth knowing before you dig into the details.</p>
+      ${rowsHTML}
+    </div>
+  </div>`;
+}
+
+function buildHealthSafetyChapterHTML(hospital, emergency) {
+  if (!hospital && !emergency) return '';
+  const fire   = emergency?.fire;
+  const police = emergency?.police;
+
+  // ── ER narrative ────────────────────────────────────────────────────────────
+  let erHTML = '';
+  if (hospital) {
+    const mins = hospital.driveTimeMinutes;
+    const narrative =
+      mins <= 10
+        ? `${escapeHtml(hospital.name)} is ${mins} minutes away — a full-service emergency department within quick reach. For cardiac events or serious trauma, that proximity matters.`
+        : mins <= 20
+          ? `${escapeHtml(hospital.name)} is ${mins} minutes away. That's workable for most emergencies, though not the fastest access. Drive the route on a weekday morning before you close — traffic patterns at 8am can add several minutes.`
+          : `${escapeHtml(hospital.name)} is ${mins} minutes away — extended for a time-critical emergency. This doesn't disqualify a property, but it raises the importance of smoke detectors, CO alarms, and basic first aid readiness in the household.`;
+    erHTML = `<p class="ch01-er-text">${narrative}</p>`;
+  }
+
+  // ── Station rows ─────────────────────────────────────────────────────────────
+  function stationRow(icon, label, station) {
+    if (!station) return '';
+    const { estimate, category } = station.response;
+    const badgeStyle = category.color === 'green'  ? 'background:#e8f5ee;color:#2a6640'
+                     : category.color === 'gold'   ? 'background:#fdf3dc;color:#7a5c10'
+                     : category.color === 'orange' ? 'background:#fff0e0;color:#8a4f10'
+                     :                               'background:#fee;color:#8a1010';
+    return `
+      <div class="ch01-station-row">
+        <span class="ch01-station-icon">${icon}</span>
+        <div class="ch01-station-info">
+          <span class="ch01-station-name">${escapeHtml(station.name)}</span>
+          <span class="ch01-station-dist">${station.distanceMiles} mi</span>
+        </div>
+        <span class="ch01-response-badge" style="${badgeStyle}">~${estimate} min · ${escapeHtml(category.label)}</span>
+      </div>`;
+  }
+
+  const stationsHTML = [stationRow('🚒', 'Fire', fire), stationRow('🚔', 'Police/EMS', police)].join('');
+
+  // ── Key Takeaway ─────────────────────────────────────────────────────────────
+  let takeaway;
+  const erMins  = hospital?.driveTimeMinutes;
+  const fireMins = fire?.response?.estimate;
+  if (fireMins > 12) {
+    takeaway = `Fire response of ~${fireMins} min means a fire can spread significantly before suppression arrives. Ask your insurance agent for the ISO PPC rating for this address — it directly affects your fire coverage premium and is address-specific.`;
+  } else if (erMins > 20) {
+    takeaway = `The nearest full-service ER is ${erMins} minutes away. Make sure every adult in the household knows the route, and keep a basic first aid kit stocked.`;
+  } else if (fireMins <= 5 && erMins <= 10) {
+    takeaway = `Fast fire response (~${fireMins} min) and a close ER (${erMins} min) are genuine safety assets here. Still ask your insurance agent for the ISO PPC rating — it's address-specific and free to look up.`;
+  } else {
+    takeaway = `Response times and ER access are within normal range for this area. Confirm the ISO fire protection class with your insurance agent before closing — it sets your fire coverage rate and takes one phone call.`;
+  }
+
+  // ── Things to Check ──────────────────────────────────────────────────────────
+  const checks = [
+    { icon: '🔐', label: 'Get the ISO fire protection rating', detail: 'Ask your homeowner\'s insurance agent for the ISO PPC rating for this specific address. It\'s free, takes one phone call, and directly determines your annual fire coverage cost. Ratings 1–4 are excellent; 8–10 indicate limited coverage and higher premiums.' },
+    { icon: '🏥', label: 'Drive the ER route before you close', detail: `${hospital ? `${escapeHtml(hospital.name)} is your nearest full-service ER.` : 'Locate your nearest full-service ER.'} Drive the actual route on a weekday morning — GPS timing and real traffic at 8am can differ. Know which entrance to use for emergencies.` },
+    { icon: '🔥', label: 'Test detectors on move-in day', detail: 'Confirm working smoke detectors in every bedroom and hallway and a working CO detector on each floor. Replace batteries regardless of what the seller says. A $20 investment.' },
+  ];
+
+  const checksHTML = checks.map((c) => `
+    <div class="ch01-check-row">
+      <span class="ch01-check-icon">${c.icon}</span>
+      <div class="ch01-check-text">
+        <div class="ch01-check-label">${escapeHtml(c.label)}</div>
+        <p class="ch01-check-detail">${c.detail}</p>
+      </div>
+    </div>`).join('');
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  return `
+  <div class="chapter-card">
+    <div class="chapter-header">
+      <div class="chapter-label">Chapter 1</div>
+      <div class="chapter-title">Health &amp; Safety</div>
+    </div>
+    <div class="chapter-body">
+      ${erHTML}
+      ${stationsHTML ? `<div class="ch01-stations">${stationsHTML}</div>` : ''}
+      ${checksHTML ? `<div class="ch01-checks"><div class="ch01-checks-label">Things to Check</div>${checksHTML}</div>` : ''}
+      <div class="ch01-takeaway">
+        <span class="ch01-takeaway-key">🔑</span>
+        <p><strong>Key Takeaway:</strong> ${escapeHtml(takeaway)}</p>
+      </div>
+      <p class="ch01-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}.</p>
+    </div>
+  </div>`;
+}
+
 function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation) {
   const daily = generateDailyConveniencesNarrative(grocery, pharmacy, gasStation);
   const peace = generatePeaceOfMindNarrative(hospital, urgentCare);
@@ -1262,6 +1443,8 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
   const premiumSectionsHTML = buildPremiumSectionsHTML(premium || null, isPremium === true, reportId);
+  const keyInsightsHTML = buildKeyInsightsHTML(hospital, school, highwayRamp, premium);
+  const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, premium?.emergency);
 
   const safeAddrJS = JSON.stringify(address).replace(/</g, '\\u003c');
   const saveHistoryScriptHTML = `
@@ -1455,6 +1638,8 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     </div>
   </div>
   <div class="report-content">
+    ${keyInsightsHTML}
+    ${healthSafetyChapterHTML}
     ${insightsCardHTML}
     <div class="chapter-card">
       <div class="chapter-header">
