@@ -408,11 +408,16 @@ async function getEnvironmentalData(lat, lng, _highwayDriveMinutes, fips, google
       getEJScreen(lat, lng),
     ]);
   const v = (r) => (r.status === 'fulfilled' ? r.value : null);
+  let roadNoise = v(roadNoiseResult);
+  if (!roadNoise && _highwayDriveMinutes != null) {
+    const estDnl = _highwayDriveMinutes <= 5 ? 65 : _highwayDriveMinutes <= 15 ? 55 : 45;
+    roadNoise = { dnl: estDnl, source: 'estimated from highway proximity', category: getDNLCategory(estDnl), nearestRoad: null };
+  }
   return {
     airQuality:     v(airResult),
     floodRisk:      v(floodResult),
     airports:       v(airportsResult),
-    roadNoise:      v(roadNoiseResult),
+    roadNoise,
     rail:           v(railResult),
     lightPollution: v(lightResult),
     waterQuality:   v(waterResult),
@@ -1671,7 +1676,7 @@ function buildSensoryEnvironmentalHTML(env) {
 
   let waterPara;
   if (!waterQuality) {
-    waterPara = 'The serving water utility for this address could not be confirmed through EPA records. Contact the local water utility directly and request their Consumer Confidence Report before closing.';
+    waterPara = 'EPA drinking water records were not accessible for this address. Check historical water quality at <a href="https://www.ewg.org/tapwater/" target="_blank" rel="noopener">EWG\'s Tap Water Database</a> (search by zip code) and request your utility\'s Consumer Confidence Report before closing.';
   } else if (!waterQuality.violations?.length) {
     waterPara = `Water here is supplied by ${esc(waterQuality.systemName)}. EPA Safe Drinking Water records show no health-based violations in the last five years — a clean record. You can request the annual Consumer Confidence Report from the utility for full detail.`;
   } else {
@@ -1695,7 +1700,7 @@ function buildSensoryEnvironmentalHTML(env) {
 
   let ejPara;
   if (!ejscreen) {
-    ejPara = 'EPA environmental screening data was not available for this address.';
+    ejPara = 'EPA environmental screening (EJSCREEN) data was not accessible via API. Check environmental hazard proximity at <a href="https://ejscreen.epa.gov/mapper/" target="_blank" rel="noopener">EPA EJSCREEN</a> — search this address to see Superfund site proximity, air toxics, and chemical facility flags for this location.';
   } else if (ejscreen.flagged) {
     const flags = [];
     if (ejscreen.superfundPct > 75) flags.push(`${ejscreen.superfundPct}th percentile nationally for proximity to Superfund sites`);
@@ -2344,7 +2349,7 @@ function buildPropertyIntelligenceHTML(propIntel) {
   let broadbandCardsHTML = '';
   if (!broadband || !broadband.providers?.length) {
     broadbandPara = broadband === null
-      ? 'Broadband availability data was not accessible for this address through the FCC Broadband Map at this time.'
+      ? 'FCC broadband availability data was not accessible for this address. Verify internet service before closing: check the <a href="https://broadbandmap.fcc.gov/" target="_blank" rel="noopener">FCC National Broadband Map</a> by searching this address, or search "[zip code] internet providers" for local ISP options.'
       : 'No internet providers were confirmed at this address through the FCC Broadband Map. Verify connectivity directly with local providers before closing.';
   } else {
     const cat = broadband.category;
@@ -2366,7 +2371,8 @@ function buildPropertyIntelligenceHTML(propIntel) {
   }
 
   // ── Tax & Permit note ─────────────────────────────────────────────────────
-  const taxPermitPara = `Property tax history and permit records for this specific parcel are public records available from the ${esc(county)} Assessor and Building Department. One call before closing reveals the full permit history (including any unpermitted work), the tax assessment trajectory, and any open permits — information that doesn't appear in any public API.`;
+  const assessorSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${county} county assessor property records`)}`;
+  const taxPermitPara = `Property tax history and permit records for this specific parcel are public records available from the <a href="${assessorSearchUrl}" target="_blank" rel="noopener">${esc(county)} Assessor</a> and Building Department. One call before closing reveals the full permit history (including any unpermitted work), the tax assessment trajectory, and any open permits — information that doesn't appear in any public API.`;
 
   // ── Key Takeaway ──────────────────────────────────────────────────────────
   let takeaway;
