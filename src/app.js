@@ -577,6 +577,15 @@ async function findNearestHighwayOnRamp(originLatLng) {
 // Returns nearest school by distance.
 // Note: nearest by distance is not the assigned school for the parcel.
 // Assigned school requires verification with the school district.
+const SCHOOL_PLACE_TYPES = new Set(['school', 'primary_school', 'secondary_school', 'university']);
+const SCHOOL_NAME_TERMS = /school|elementary|middle|high\s+school|academy|college|university|institute|charter|magnet|preparatory|prep\s+school|learning\s+center|educational/i;
+
+function isValidSchoolPlace(p) {
+  const hasSchoolType = (p.types || []).some((t) => SCHOOL_PLACE_TYPES.has(t));
+  const hasSchoolName = SCHOOL_NAME_TERMS.test(p.name || '');
+  return hasSchoolType && hasSchoolName;
+}
+
 async function findNearestSchool(originLatLng) {
   const cacheKey = `school:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
@@ -593,7 +602,8 @@ async function findNearestSchool(originLatLng) {
 
   let placeResults = placesResponse.data.results || [];
 
-  if (!placeResults.length) {
+  // Fallback to text search if placesNearby returned nothing or no valid school
+  if (!placeResults.some(isValidSchoolPlace)) {
     placesResponse = await googleMapsClient.textSearch({
       params: {
         key: googleMapsApiKey,
@@ -605,7 +615,8 @@ async function findNearestSchool(originLatLng) {
     placeResults = placesResponse.data.results || [];
   }
 
-  const place = placeResults[0];
+  // Require both a school place type AND a school-related name
+  const place = placeResults.find(isValidSchoolPlace);
   if (!place) {
     throw new Error('No school found near that address.');
   }

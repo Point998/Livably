@@ -219,11 +219,17 @@ const GENERIC_WORDS = new Set([
 // Trailer phrases that indicate a truncated headline — strip them
 const TITLE_TRAILER_RE = /\.\s+(?:here['']s what|when will|what to know|what you should|find out|details inside|more on).*$/i;
 
+// Single-word article artifacts that are never valid project names
+const NAME_ARTIFACT_WORDS = new Set([
+  'official', 'breaking', 'update', 'report', 'news',
+  'announces', 'announced', 'exclusive', 'video', 'photos',
+]);
+
 function extractProjectName(title, city) {
   // Strip trailing source attribution "Title - Source Name"
   let t = title.replace(/\s+-\s+[\w][\w .]{2,40}$/, '').trim();
-  // Strip noise prefixes
-  t = t.replace(/^(?:breaking|update|exclusive|video|photos?|report):\s*/i, '').trim();
+  // Strip noise prefixes (with or without colon)
+  t = t.replace(/^(?:official|breaking|update|exclusive|video|photos?|report|news|announces?|announced)[:,]?\s*/i, '').trim();
   // Strip truncation trailers
   t = t.replace(TITLE_TRAILER_RE, '').trim();
 
@@ -232,7 +238,7 @@ function extractProjectName(title, city) {
     if (m) {
       // Some patterns have the project in group 1, others group 2 — take the last populated group
       const raw = (m[2] || m[1] || '').replace(/^(?:a|an|the|new)\s+/i, '').trim();
-      if (raw.length >= 3 && raw.length <= 70 && !GENERIC_WORDS.has(raw.toLowerCase())) {
+      if (raw.length >= 4 && raw.length <= 70 && !GENERIC_WORDS.has(raw.toLowerCase()) && !NAME_ARTIFACT_WORDS.has(raw.toLowerCase())) {
         return raw;
       }
     }
@@ -244,7 +250,10 @@ function extractProjectName(title, city) {
     .replace(/\s{2,}/g, ' ')
     .trim()
     .slice(0, 70);
-  return fallback.length >= 5 ? fallback : null;
+  if (fallback.length < 4) return null;
+  // Reject if the fallback is itself just an artifact word
+  if (NAME_ARTIFACT_WORDS.has(fallback.toLowerCase())) return null;
+  return fallback;
 }
 
 // Require at least one development-specific signal to filter out general news
