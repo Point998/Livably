@@ -68,22 +68,6 @@ function updateReportAccess(reportId) {
   }
 }
 
-function isReportPremium(reportId) {
-  if (!reportId) return false;
-  return loadReports()[reportId]?.premium === true;
-}
-
-function markReportAsPremium(reportId, stripeSessionId) {
-  ensureReportsFile();
-  const reports = loadReports();
-  if (reports[reportId]) {
-    reports[reportId].premium = true;
-    reports[reportId].stripeSessionId = stripeSessionId;
-    reports[reportId].upgradedAt = new Date().toISOString();
-    fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
-  }
-}
-
 app.use(express.static(path.join(__dirname, '../public')));
 
 function getNextTuesday8am() {
@@ -1382,7 +1366,7 @@ function buildHeroQuickStatsHTML(grocery, coffeeShop, premium, elementarySchool,
       </div>`).join('');
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium, isPremium }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -1437,7 +1421,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
-  const premiumSectionsHTML = buildPremiumSectionsHTML(premium || null, isPremium === true, reportId);
+  const premiumSectionsHTML = buildPremiumSectionsHTML(premium || null);
   const keyInsightsHTML = buildKeyInsightsHTML(hospital, school, highwayRamp, premium);
   const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, premium?.emergency);
 
@@ -1939,114 +1923,15 @@ app.get('/report', async (req, res) => {
 
     let reportId = null;
     try { reportId = saveReport(address); } catch {}
-    const isPremium = isReportPremium(reportId);
-
     logRequest(address, 'success', Date.now() - _reqStart);
     logAnalysis();
-    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium, isPremium }));
+    return res.send(buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }));
   } catch (error) {
     const { type, title, message, retryAfter } = classifyError(error);
     logError('report', address, error);
     logRequest(address, 'error', Date.now() - _reqStart, type);
     logAnalysis();
     return res.send(buildErrorHTML(type, title, message, address, retryAfter));
-  }
-});
-
-// ── Stripe / Premium routes ───────────────────────────────────────────────────
-
-const STRIPE_SECRET_KEY       = process.env.STRIPE_SECRET_KEY;
-const STRIPE_PUBLISHABLE_KEY  = process.env.STRIPE_PUBLISHABLE_KEY;
-const STRIPE_WEBHOOK_SECRET   = process.env.STRIPE_WEBHOOK_SECRET;
-const DOMAIN                  = process.env.DOMAIN || 'http://localhost:3000';
-const PREMIUM_PRICE_CENTS     = 2499; // $24.99
-
-// Raw-body parser for webhook signature verification (must be before json middleware)
-app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-  if (!STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: 'Stripe not configured' });
-  const sig = req.headers['stripe-signature'];
-  try {
-    // Manual HMAC-SHA256 verification (no stripe npm package required)
-    const parts = sig.split(',').reduce((acc, part) => {
-      const [k, v] = part.split('=');
-      acc[k] = v;
-      return acc;
-    }, {});
-    const signedPayload = `${parts.t}.${req.body.toString()}`;
-    const expected = crypto.createHmac('sha256', STRIPE_WEBHOOK_SECRET).update(signedPayload).digest('hex');
-    if (expected !== parts.v1) return res.status(400).send('Signature mismatch');
-
-    const event = JSON.parse(req.body.toString());
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const reportId = session.metadata?.reportId;
-      if (reportId) markReportAsPremium(reportId, session.id);
-    }
-    res.json({ received: true });
-  } catch (err) {
-    console.error('[Webhook]', err.message);
-    res.status(400).send(`Webhook error: ${err.message}`);
-  }
-});
-
-app.post('/create-checkout-session', express.json(), async (req, res) => {
-  if (!STRIPE_SECRET_KEY) {
-    return res.status(503).json({ error: 'Payment processing is temporarily unavailable. Please try again later.' });
-  }
-  const { reportId } = req.body;
-  if (!reportId) return res.status(400).json({ error: 'Missing reportId' });
-  const report = getReport(reportId);
-  if (!report) return res.status(404).json({ error: 'Report not found' });
-
-  try {
-    const params = new URLSearchParams({
-      'payment_method_types[0]': 'card',
-      'line_items[0][price_data][currency]': 'usd',
-      'line_items[0][price_data][product_data][name]': 'Livably Premium Report',
-      'line_items[0][price_data][product_data][description]': `Premium insights for ${report.address}`,
-      'line_items[0][price_data][unit_amount]': String(PREMIUM_PRICE_CENTS),
-      'line_items[0][quantity]': '1',
-      'mode': 'payment',
-      'success_url': `${DOMAIN}/report/premium/${reportId}?session_id={CHECKOUT_SESSION_ID}`,
-      'cancel_url': `${DOMAIN}/r/${reportId}`,
-      'metadata[reportId]': reportId,
-    });
-
-    const stripeResp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
-    const session = await stripeResp.json();
-    if (!stripeResp.ok) return res.status(stripeResp.status).json({ error: session.error?.message || 'Stripe error' });
-    res.json({ url: session.url });
-  } catch (err) {
-    console.error('[Stripe checkout]', err.message);
-    res.status(500).json({ error: 'Payment session creation failed. Please try again.' });
-  }
-});
-
-app.get('/report/premium/:reportId', async (req, res) => {
-  if (!STRIPE_SECRET_KEY) return res.redirect(`/r/${req.params.reportId}`);
-  const { reportId } = req.params;
-  const sessionId = req.query.session_id;
-  if (!sessionId) return res.status(400).send('Missing session_id');
-
-  try {
-    const stripeResp = await fetch(`https://api.stripe.com/v1/checkout/sessions/${sessionId}`, {
-      headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
-    });
-    const session = await stripeResp.json();
-    if (session.payment_status === 'paid') {
-      markReportAsPremium(reportId, sessionId);
-    }
-    return res.redirect(`/r/${reportId}`);
-  } catch (err) {
-    console.error('[Premium redirect]', err.message);
-    return res.redirect(`/r/${reportId}`);
   }
 });
 
