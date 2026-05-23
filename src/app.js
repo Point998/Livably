@@ -688,30 +688,25 @@ async function findNearestCoffeeShop(originLatLng) {
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
 
-  const placesResponse = await googleMapsClient.textSearch({
+  const placesResponse = await googleMapsClient.placesNearby({
     params: {
       key: googleMapsApiKey,
-      query: 'coffee shop',
       location: originLatLng,
-      radius: 8000,
+      rankby: 'distance',
+      type: 'cafe',
     },
   });
-  // Exclude gas stations and convenience stores by place type — chain-name-independent
-  const filtered = (placesResponse.data.results || []).filter((p) => {
-    const types = p.types || [];
-    return !types.includes('gas_station') && !types.includes('convenience_store');
-  });
-  if (!filtered.length) throw new Error('No coffee shop found near that address.');
 
-  // Sort by actual drive time — textSearch ranks by relevance, not distance (see BUG-002)
-  const candidates = filtered.slice(0, 8);
+  const candidates = (placesResponse.data.results || []).slice(0, 5);
+  if (!candidates.length) throw new Error('No coffee shop found near that address.');
+
   const withDriveTimes = await Promise.all(
     candidates.map(async (place) => {
       try {
         const driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location);
         return {
           name: place.name,
-          address: place.formatted_address || place.vicinity || place.name,
+          address: place.vicinity || place.formatted_address || place.name,
           location: place.geometry.location,
           driveTimeMinutes,
         };
