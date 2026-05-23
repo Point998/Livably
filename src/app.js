@@ -430,9 +430,13 @@ async function findNearestHighwayOnRamp(originLatLng) {
   const locationLabel = city && state ? `${city}, ${state}` : originLatLng;
 
   const interstates = [
-    'I-75', 'I-64', 'I-65', 'I-71', 'I-70', 'I-40', 'I-80', 'I-90',
-    'I-95', 'I-85', 'I-10', 'I-20', 'I-25', 'I-35', 'I-55', 'I-57',
-    'I-77', 'I-78', 'I-81', 'I-83', 'I-87', 'I-93', 'I-94', 'I-96',
+    'I-5',  'I-8',  'I-10', 'I-11', 'I-12', 'I-15', 'I-16', 'I-17', 'I-19',
+    'I-20', 'I-22', 'I-24', 'I-25', 'I-26', 'I-27', 'I-29', 'I-30', 'I-35',
+    'I-37', 'I-38', 'I-39', 'I-40', 'I-41', 'I-43', 'I-44', 'I-49', 'I-55',
+    'I-57', 'I-59', 'I-64', 'I-65', 'I-69', 'I-70', 'I-71', 'I-72', 'I-73',
+    'I-74', 'I-75', 'I-76', 'I-77', 'I-78', 'I-79', 'I-80', 'I-81', 'I-82',
+    'I-83', 'I-84', 'I-85', 'I-86', 'I-87', 'I-88', 'I-89', 'I-90', 'I-93',
+    'I-94', 'I-95', 'I-96', 'I-97', 'I-99',
   ];
 
   const geocodeResults = await Promise.all(
@@ -773,7 +777,7 @@ function formatResearchDate() {
 function buildGrocerySection(stores) {
   const label = '<div class="dest-label">Grocery Stores</div>';
   if (!stores || !stores.length) {
-    return `<div class="dest-section">${label}<p class="dest-note">Not available.</p></div>`;
+    return `<div class="dest-section">${label}<p class="dest-note">Grocery store data was not available for this address. <a href="https://www.google.com/maps/search/grocery+store+near+me" target="_blank" rel="noopener">Search Google Maps</a> for nearby options.</p></div>`;
   }
   const items = stores.map((s) => `
       <div class="grocery-item">
@@ -791,7 +795,8 @@ function buildGrocerySection(stores) {
 function buildDestSection(label, result) {
   const labelHTML = `<div class="dest-label">${label}</div>`;
   if (!result) {
-    return `<div class="dest-section">${labelHTML}<p class="dest-note">Not available.</p></div>`;
+    const searchQuery = encodeURIComponent(`${label} near me`);
+    return `<div class="dest-section">${labelHTML}<p class="dest-note">Data not available for this address. <a href="https://www.google.com/maps/search/${searchQuery}" target="_blank" rel="noopener">Search Google Maps</a> for nearby options.</p></div>`;
   }
   const noteHTML = result.note ? `<p class="dest-note">${escapeHtml(result.note)}</p>` : '';
   return `<div class="dest-section">
@@ -810,7 +815,7 @@ function buildDestSection(label, result) {
 function buildSchoolSection(school) {
   const label = '<div class="dest-label">School (Nearest by Distance)</div>';
   if (!school) {
-    return `<div class="dest-section">${label}<p class="dest-note">Not available.</p></div>`;
+    return `<div class="dest-section">${label}<p class="dest-note">School data was not available for this address. Contact the local school district office directly to confirm which school serves this address.</p></div>`;
   }
   const disclaimer = school.note || 'Assigned school for this address requires verification directly with the school district.';
   return `<div class="dest-section">

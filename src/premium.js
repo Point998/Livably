@@ -186,10 +186,10 @@ async function getDemographics(lat, lng, fips) {
 
 function getIncomeLevel(median) {
   if (!median || median <= 0) return { label: 'Data unavailable', color: 'muted' };
-  if (median > 100000) return { label: 'Upper income', color: 'green' };
-  if (median > 70000) return { label: 'Above average', color: 'lightgreen' };
-  if (median > 50000) return { label: 'Middle income', color: 'gold' };
-  return { label: 'Below average', color: 'orange' };
+  if (median > 100000) return { label: 'Above $100k median', color: 'gold' };
+  if (median > 70000) return { label: 'Above national median', color: 'gold' };
+  if (median > 50000) return { label: 'Near national median', color: 'gold' };
+  return { label: 'Below national median', color: 'gold' };
 }
 
 function getEducationLevel(collegePct) {
@@ -2434,9 +2434,14 @@ function buildDemographicsHTML(d) {
   const incomeNarrative = d.income.median
     ? (() => {
         const inc = d.income.median;
-        if (inc > 100000) return `Median household income of ${formatMoney(inc)} indicates an affluent area. That usually correlates with well-maintained properties, strong local tax base, and active investment in schools and public services.`;
-        if (inc > 60000) return `Median household income of ${formatMoney(inc)} puts this solidly in the middle tier—a working and professional community with financial stability. The range of incomes typically produces diverse, grounded neighborhoods.`;
-        return `Median household income of ${formatMoney(inc)} is below the national median. Communities at this income level vary widely — what matters most is what you observe during visits: how properties are maintained, how long neighbors have lived there, and whether the community has an active civic presence.`;
+        const nationalMedian = 74580;
+        const diff = Math.round(Math.abs(inc - nationalMedian) / 1000) * 1000;
+        const rel = inc > nationalMedian
+          ? `${formatMoney(diff)} above the national median of ${formatMoney(nationalMedian)}`
+          : inc < nationalMedian
+          ? `${formatMoney(diff)} below the national median of ${formatMoney(nationalMedian)}`
+          : `at the national median`;
+        return `Median household income in this Census tract is ${formatMoney(inc)} — ${rel}. Income data here is Census tract level (ACS 5-year estimates) and reflects the broader area, not this specific block or street.`;
       })()
     : null;
 
@@ -2458,9 +2463,6 @@ function buildDemographicsHTML(d) {
 
   if (d.community.ownershipRate > 70) synthesisParts.push('high owner-occupancy');
   else if (d.community.ownershipRate < 45) synthesisParts.push('predominantly renter');
-
-  if (d.income.median && d.income.median > 90000) synthesisParts.push('affluent household incomes');
-  else if (d.income.median && d.income.median < 45000) synthesisParts.push('modest household incomes');
 
   if (d.education.collegePct > 50) synthesisParts.push('college-educated workforce');
 
