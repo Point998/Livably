@@ -604,12 +604,12 @@ function buildClimateChapterHTML(environment, locationInfo) {
       <div class="prem-safety-actions-label">4 Things to Verify Before You Close</div>
       ${actionsHTML}
     </div>
-    <div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Flood zone: FEMA National Flood Hazard Layer, parcel-level. Tornado frequency: NOAA Storm Events Database historical averages by state. Insurance cost estimates: NFIP rate ranges, 2024. Research date: ${today}. Verify all data directly with FEMA and your insurance agent before closing.</p>`;
-  return premiumCard('Climate', 'Climate & Weather Risks', body);
+  return premiumCard('Climate', 'Climate & Weather Risks', body, 'var(--amber)');
 }
 
 // Airport analysis (Google Places) ───────────────────────────────────────────
@@ -1497,13 +1497,13 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
       <p class="prem-narrative-body">${opportunityPara}</p>
       ${extCTA}
     </div>` : extCTA}
-    <div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${hardinessZone ? `Zone ${esc(hardinessZone.zone)} gives you ${hardinessZone.frost ? `a ${hardinessZone.frost.days}-day growing season` : 'a defined growing season'}. Native plants adapted to this region require the least effort and give back the most.` : 'Native plants adapted to your region require the least effort and give back the most.'}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${hardinessZone ? `Zone ${esc(hardinessZone.zone)} gives you ${hardinessZone.frost ? `a ${hardinessZone.frost.days}-day growing season` : 'a defined growing season'}. Native plants adapted to this region require the least effort and give back the most.` : 'Native plants adapted to your region require the least effort and give back the most.'}</div>
     </div>
     <p class="prem-disclaimer">Hardiness zone: USDA phzmapi.org, ZIP-code level. Frost dates are 30-year climate normals correlated with USDA hardiness zone. ${sources ? `Sources: ${esc(sources)}. ` : ''}Wildlife observations: iNaturalist research-grade, 10-mile radius. Research date: ${today}.</p>`;
 
-  return premiumCard('Your Yard', 'What Will Grow Here', body);
+  return premiumCard('Your Yard', 'What Will Grow Here', body, 'var(--forest)');
 }
 
 // ── FR-026: Property Intelligence ────────────────────────────────────────────
@@ -1737,9 +1737,10 @@ function badgeColor(color) {
   return map[color] || map.muted;
 }
 
-function premiumCard(label, title, bodyHTML) {
+function premiumCard(label, title, bodyHTML, color) {
+  const colorAttr = color ? ` style="--chapter-color: ${color}"` : '';
   return `
-  <div class="chapter-card">
+  <div class="chapter-card"${colorAttr}>
     <div class="chapter-header">
       <div class="chapter-label">${esc(label)}</div>
       <div class="chapter-title">${esc(title)}</div>
@@ -1855,9 +1856,9 @@ function buildSchoolRatingsHTML(schools) {
   }
 
   const takeawayHTML = takeawayText ? `
-    <div class="prem-sensory-takeaway">
-      <div class="prem-sensory-takeaway-label">Key Takeaway</div>
-      <p>${esc(takeawayText)}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${esc(takeawayText)}</div>
     </div>` : '';
 
   const body = `
@@ -1869,7 +1870,7 @@ function buildSchoolRatingsHTML(schools) {
     ${checklistHTML}
     ${takeawayHTML}`;
 
-  return premiumCard('Schools', 'Schools & Education', body);
+  return premiumCard('Schools', 'Schools & Education', body, 'var(--forest)');
 }
 
 // FR-018: Safety & Emergency Response
@@ -1971,12 +1972,12 @@ function buildCrimeHTML(crime, emergency) {
       <div class="prem-safety-actions-label">4 Things to Research Before You Close</div>
       ${actionsHTML}
     </div>
-    <div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}. For current safety data, contact ${city ? esc(city) + ' Police or' : ''} ${esc(county)} Emergency Management.</p>`;
-  return premiumCard('Safety', 'Safety & Emergency Response', body);
+  return premiumCard('Safety', 'Safety & Emergency Response', body, 'var(--rust)');
 }
 
 // FR-027: Sensory & Environmental
@@ -2161,13 +2162,13 @@ function buildSensoryEnvironmentalHTML(env) {
 
   const body =
     sectionA + sectionB + sectionC +
-    `<div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    `<div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>` +
     `<p class="prem-disclaimer">Sources: ${sources}. Research date: ${today}. Light pollution is estimated, not satellite-measured.</p>`;
 
-  return premiumCard('Environment', 'Sensory & Environmental', body);
+  return premiumCard('Environment', 'Sensory & Environmental', body, 'var(--rust)');
 }
 
 // FR-020: Emergency Services
@@ -2214,7 +2215,7 @@ function buildEmergencyServicesHTML(emergency) {
     : serviceCard('🚔', 'Police', emergency.police) +
       serviceCard('🚒', 'Fire Department', emergency.fire) +
       `<p class="prem-disclaimer">Response times are estimates based on distance to nearest stations. Actual times vary. Contact local emergency services for official data.</p>`;
-  return premiumCard('Emergency Services', 'Emergency Response', body);
+  return premiumCard('Emergency Services', 'Emergency Response', body, 'var(--rust)');
 }
 
 // FR-021: Walkability
@@ -2319,7 +2320,7 @@ function buildWalkabilityHTML(walk) {
     ${destHTML}
     ${featHTML}
     <p class="prem-disclaimer">Walkability is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
-  return premiumCard('Walkability', 'Getting Around on Foot', body);
+  return premiumCard('Walkability', 'Getting Around on Foot', body, 'var(--teal)');
 }
 
 // FR-023: Property Costs & Market
@@ -2407,12 +2408,12 @@ function buildPropertyDataHTML(p) {
     ${carryingTable}
     ${homesteadHTML}
     ${valuationNote}
-    <div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Property tax rate: ${esc(p.state)} state effective average (Lincoln Institute, 2024). Insurance: NAIC 2024 state averages, scaled to home price. Utilities: EIA/BLS state averages, 2024. These are estimates — your actual costs will vary. Research date: ${today}.</p>`;
-  return premiumCard('Costs', 'Property Costs & Market', body);
+  return premiumCard('Costs', 'Property Costs & Market', body, 'var(--gold)');
 }
 
 // FR-024: Demographics
@@ -2534,12 +2535,12 @@ function buildDemographicsHTML(d) {
         ${d.community.avgHHSize ? `<div class="prem-community-item">👥 ${d.community.avgHHSize} avg household size</div>` : ''}
       </div>
     </div>
-    <div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Data: U.S. Census Bureau American Community Survey 5-year estimates (2022). Census tract level. Provided for informational purposes only; not to be used as a basis for housing discrimination.</p>`;
-  return premiumCard('Community', 'Demographics & Community', body);
+  return premiumCard('Community', 'Demographics & Community', body, 'var(--amber)');
 }
 
 // FR-025: Growth & Development
@@ -2690,13 +2691,13 @@ function buildGrowthAndDevelopmentHTML(growth) {
       <p class="prem-narrative-body">${planningPara}</p>
     </div>
     ${placesHTML}
-    <div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Permit data is county-level — not neighborhood-specific. Specific planned projects require direct inquiry with the county planning department.</p>`;
 
-  return premiumCard('Development', 'Growth & Development', body);
+  return premiumCard('Development', 'Growth & Development', body, 'var(--teal)');
 }
 
 // FR-026: Property Intelligence
@@ -2826,13 +2827,13 @@ function buildPropertyIntelligenceHTML(propIntel) {
       <div class="prem-intel-label">Tax &amp; Permit Records</div>
       <p class="prem-narrative-body">${taxPermitPara}</p>
     </div>
-    <div class="prem-sensory-takeaway">
-      <span class="prem-sensory-key">🔑</span>
-      <p><strong>Key Takeaway:</strong> ${takeaway}</p>
+    <div class="key-takeaway">
+      <span class="kt-icon">🔑</span>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Construction era is a tract-level Census ACS estimate — not specific to this parcel. Parcel-level permit and tax history requires direct inquiry with the county.</p>`;
 
-  return premiumCard('Property', 'Property Intelligence', body);
+  return premiumCard('Property', 'Property Intelligence', body, 'var(--gold)');
 }
 
 function buildPremiumSectionsHTML(premium) {

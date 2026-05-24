@@ -848,7 +848,7 @@ function buildSchoolSection(school) {
         </div>
         <div class="drive-time">${formatDriveTime(school.driveTimeMinutes)}</div>
       </div>
-      <p class="dest-note"><span class="bucket-tag">Things to Check</span>${escapeHtml(disclaimer)}</p>
+      <div class="bucket-check"><div class="bucket-label">Things to Check</div><div class="bucket-text">${escapeHtml(disclaimer)}</div></div>
     </div>`;
 }
 
@@ -1107,7 +1107,7 @@ function buildKeyInsightsHTML(hospital, school, highwayRamp, premium) {
     </div>`).join('');
 
   return `
-  <div class="chapter-card key-insights-card">
+  <div class="chapter-card key-insights-card" style="--chapter-color: var(--gold)">
     <div class="chapter-header">
       <div class="chapter-label">Before You Read Further</div>
       <div class="chapter-title">At a Glance</div>
@@ -1191,7 +1191,7 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   return `
-  <div class="chapter-card">
+  <div class="chapter-card" style="--chapter-color: var(--rust)">
     <div class="chapter-header">
       <div class="chapter-label">Chapter 1</div>
       <div class="chapter-title">Health &amp; Safety</div>
@@ -1200,9 +1200,9 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
       ${erHTML}
       ${stationsHTML ? `<div class="ch01-stations">${stationsHTML}</div>` : ''}
       ${checksHTML ? `<div class="ch01-checks"><div class="ch01-checks-label">Things to Check</div>${checksHTML}</div>` : ''}
-      <div class="ch01-takeaway">
-        <span class="ch01-takeaway-key">🔑</span>
-        <p><strong>Key Takeaway:</strong> ${escapeHtml(takeaway)}</p>
+      <div class="key-takeaway">
+        <span class="kt-icon">🔑</span>
+        <div class="kt-body"><strong>Key Takeaway:</strong> ${escapeHtml(takeaway)}</div>
       </div>
       <p class="ch01-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}.</p>
     </div>
@@ -1233,7 +1233,7 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
   if (!sectionsHTML.trim() && !calloutsHTML.trim()) return '';
 
   return `
-  <div class="chapter-card">
+  <div class="chapter-card" style="--chapter-color: var(--teal)">
     <div class="chapter-header">
       <div class="chapter-label">Things to Know</div>
       <div class="chapter-title">What Daily Life Looks Like Here</div>
@@ -1300,7 +1300,7 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
     : '';
 
   return `
-  <div class="chapter-card">
+  <div class="chapter-card" style="--chapter-color: var(--forest)">
     <div class="chapter-header">
       <div class="chapter-label">Additional Places</div>
       <div class="chapter-title">More Nearby Destinations</div>
@@ -1352,7 +1352,7 @@ function buildTrafficCardHTML(trafficData) {
     .map((t, i) => (i > 0 ? '<div class="traffic-section-divider"></div>' : '') + buildTrafficItemHTML(t.name, t.traffic))
     .join('');
   return `
-  <div class="chapter-card">
+  <div class="chapter-card" style="--chapter-color: var(--amber)">
     <div class="chapter-header">
       <div class="chapter-label">Drive Times</div>
       <div class="chapter-title">Traffic Patterns</div>
@@ -1618,15 +1618,28 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <\/script>
   <script src="https://maps.googleapis.com/maps/api/js?key=${escapeHtml(googleMapsApiKey)}&callback=initMap" async defer><\/script>` : '';
 
+  const safeAddrShort = escapeHtml(address.length > 50 ? address.slice(0, 47) + '…' : address);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Livably Report — ${escapeHtml(address)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/report.css">
 </head>
 <body class="report-page">
+  <!-- Sticky nav — becomes visible on scroll -->
+  <nav class="report-nav no-print" id="reportNav" aria-hidden="true">
+    <div class="nav-logo">Liv<span class="logo-gold">ably</span></div>
+    <div class="nav-address">${safeAddrShort}</div>
+    <a id="navPdfLink" href="#" class="nav-pdf-btn"
+       onclick="this.href='/report/pdf'+location.search.replace(/[?&]fetch=1/,'');return true;">PDF</a>
+  </nav>
+
   <div class="hero">${heroMapHTML}
     <div class="hero-info-card">
       <div class="hero-card-brand">Liv<span class="logo-gold">ably</span></div>
@@ -1637,16 +1650,17 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     </div>${heroShareHTML}
     <div class="hero-scroll-indicator" aria-hidden="true">
       <span>Explore</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M12 5v14m0 0l7-7m-7 7l-7-7"/>
       </svg>
     </div>
   </div>
+
   <div class="report-content">
     ${keyInsightsHTML}
     ${healthSafetyChapterHTML}
     ${insightsCardHTML}
-    <div class="chapter-card">
+    <div class="chapter-card" style="--chapter-color: var(--teal)">
       <div class="chapter-header">
         <div class="chapter-label">Core Services</div>
         <div class="chapter-title">Daily Reachability</div>
@@ -1664,7 +1678,27 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
       </div>
       <a href="/" class="back-link no-print">← Back to address form</a>
     </footer>
-  </div>${mapScriptsHTML}${shareScriptHTML}${saveHistoryScriptHTML}
+  </div>
+
+  <script>
+    // Sticky nav — appears after scrolling past hero
+    (function () {
+      var nav = document.getElementById('reportNav');
+      if (!nav) return;
+      var threshold = window.innerHeight * 0.7;
+      function onScroll() {
+        if (window.scrollY > threshold) {
+          nav.classList.add('scrolled');
+          nav.removeAttribute('aria-hidden');
+        } else {
+          nav.classList.remove('scrolled');
+          nav.setAttribute('aria-hidden', 'true');
+        }
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+    })();
+  <\/script>
+  ${mapScriptsHTML}${shareScriptHTML}${saveHistoryScriptHTML}
   <script src="/ui.js" defer><\/script>
 </body>
 </html>`;
@@ -1745,26 +1779,43 @@ function buildLoadingHTML(address) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Livably — Loading…</title>
+  <title>Livably — Building your report…</title>
   <link rel="stylesheet" href="/report.css">
 </head>
 <body class="loading-page" data-address="${escapeHtml(address)}">
   <div class="loading-container">
     <div class="loading-logo">Liv<span class="logo-gold">ably</span></div>
-    <div class="loading-spinner"></div>
-    <p class="loading-message" id="loading-msg">Finding your address...</p>
+    <div class="loading-address">${escapeHtml(address)}</div>
+    <div class="loading-progress-track">
+      <div class="loading-progress-fill" id="loading-progress"></div>
+    </div>
+    <p class="loading-message" id="loading-msg">Finding your address…</p>
   </div>
   <script>
     (function () {
       var messages = [
-        'Finding your address...',
-        'Locating nearby services...',
-        'Calculating drive times...',
-        'Generating your report...'
+        'Finding your address…',
+        'Checking your flood zone…',
+        'Finding the nearest emergency room…',
+        'Calculating 8am Tuesday drive times…',
+        'Identifying native plants for your yard…',
+        'Locating nearby schools…',
+        'Checking air quality and radon zone…',
+        'Building your report…'
       ];
       var msgEl = document.getElementById('loading-msg');
+      var progressEl = document.getElementById('loading-progress');
       var idx = 0;
       var address = document.body.dataset.address;
+
+      // Animate progress bar
+      var progressPct = 5;
+      var maxAutoProgress = 85;
+      progressEl.style.width = progressPct + '%';
+      var progressInterval = setInterval(function () {
+        progressPct = Math.min(progressPct + (Math.random() * 6 + 2), maxAutoProgress);
+        progressEl.style.width = progressPct + '%';
+      }, 2200);
 
       var cycleInterval = setInterval(function () {
         msgEl.style.opacity = '0';
@@ -1772,8 +1823,8 @@ function buildLoadingHTML(address) {
           idx = (idx + 1) % messages.length;
           msgEl.textContent = messages[idx];
           msgEl.style.opacity = '1';
-        }, 300);
-      }, 2500);
+        }, 280);
+      }, 2200);
 
       setTimeout(function () {
         clearInterval(cycleInterval);
@@ -1781,8 +1832,8 @@ function buildLoadingHTML(address) {
         setTimeout(function () {
           msgEl.textContent = 'This is taking longer than usual…';
           msgEl.style.opacity = '1';
-        }, 300);
-      }, 15000);
+        }, 280);
+      }, 18000);
 
       function startCountdown(retryFn) {
         var secs = 30;
@@ -1818,22 +1869,29 @@ function buildLoadingHTML(address) {
             var errorMeta = doc.querySelector('meta[name="livably-error"]');
             if (errorMeta && errorMeta.getAttribute('content') === 'RATE_LIMIT') {
               clearInterval(cycleInterval);
+              clearInterval(progressInterval);
               startCountdown(doFetch);
               return;
             }
-            document.head.innerHTML = doc.head.innerHTML;
-            document.body.className = doc.body.className;
-            document.body.innerHTML = doc.body.innerHTML;
-            reExecScripts(document.head);
-            reExecScripts(document.body);
+            // Complete progress bar before swapping DOM
+            clearInterval(progressInterval);
+            if (progressEl) progressEl.style.width = '100%';
+            setTimeout(function () {
+              document.head.innerHTML = doc.head.innerHTML;
+              document.body.className = doc.body.className;
+              document.body.innerHTML = doc.body.innerHTML;
+              reExecScripts(document.head);
+              reExecScripts(document.body);
+            }, 300);
           })
           .catch(function () {
             clearInterval(cycleInterval);
+            clearInterval(progressInterval);
             msgEl.style.opacity = '0';
             setTimeout(function () {
               msgEl.innerHTML = 'Connection issue. <a href="' + location.pathname + location.search + '">Try again</a>';
               msgEl.style.opacity = '1';
-            }, 300);
+            }, 280);
           });
       }
 
