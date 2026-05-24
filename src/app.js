@@ -1028,97 +1028,6 @@ function buildInsightSectionHTML(icon, title, subtitle, narrative) {
     </div>`;
 }
 
-function buildKeyInsightsHTML(hospital, school, highwayRamp, premium) {
-  const findings = [];
-  const env = premium?.environment;
-
-  // 1. Flood zone — most actionable first
-  const flood = env?.floodRisk;
-  if (flood) {
-    if (flood.risk === 'High' || flood.risk === 'Very High') {
-      findings.push({ bucket: 'Things to Check', cls: 'check',
-        text: `This parcel falls in FEMA Flood Zone ${flood.zone} — flood insurance is federally required and typically adds $1,500–$4,000/year to your carrying costs. Get a quote before you make an offer.` });
-    } else if (flood.risk === 'Minimal' || flood.risk === 'Unknown' && flood.zone === 'X') {
-      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
-        text: `This address falls outside FEMA's high-risk flood zones (Zone X) — flood insurance is not federally required and the parcel-level risk is minimal.` });
-    } else {
-      findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `This parcel is in FEMA Flood Zone ${flood.zone} — a moderate-risk area. Flood insurance isn't required here but is worth pricing before closing.` });
-    }
-  }
-
-  // 2. School assignment
-  if (school) {
-    findings.push({ bucket: 'Things to Check', cls: 'check',
-      text: `The nearest school is ${school.name} (${school.driveTimeMinutes} min) — your assigned school requires direct verification with the district. "Nearest" doesn't always mean "assigned."` });
-  }
-
-  // 3. Hospital distance
-  if (hospital) {
-    if (hospital.driveTimeMinutes > 20) {
-      findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `The nearest full-service ER is ${hospital.name}, ${hospital.driveTimeMinutes} minutes away — worth discussing with any household members who have health conditions that may require fast emergency access.` });
-    } else if (hospital.driveTimeMinutes <= 10) {
-      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
-        text: `${hospital.name} is ${hospital.driveTimeMinutes} minutes away — a full-service emergency department within quick reach.` });
-    } else {
-      findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `The nearest full-service ER, ${hospital.name}, is ${hospital.driveTimeMinutes} minutes away — reasonable for most situations, but know your route in advance.` });
-    }
-  }
-
-  // 4. Highway access
-  if (highwayRamp) {
-    if (highwayRamp.driveTimeMinutes > 20) {
-      findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `${highwayRamp.name} access is ${highwayRamp.driveTimeMinutes} minutes away — regional travel or airport runs will take meaningfully longer from this address.` });
-    } else if (highwayRamp.driveTimeMinutes <= 8) {
-      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
-        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} minutes away — quick highway access for regional travel and commutes.` });
-    } else {
-      findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `${highwayRamp.name} access is ${highwayRamp.driveTimeMinutes} minutes away — a moderate drive that adds up on regular regional trips.` });
-    }
-  }
-
-  // 5. Radon (prefer) or Airport
-  const radon = env?.radon;
-  const airports = env?.airports;
-  if (radon && radon.zone === 1) {
-    findings.push({ bucket: 'Things to Check', cls: 'check',
-      text: `This county is EPA Radon Zone 1 (high potential) — a $15–$30 radon test before closing is strongly recommended. Mitigation systems run $800–$2,500 if levels are elevated.` });
-  } else if (airports && airports.length && airports[0].distanceMiles < 10) {
-    const a = airports[0];
-    findings.push({ bucket: 'Things to Consider', cls: 'consider',
-      text: `${a.name} is ${a.distanceMiles.toFixed(1)} miles away — visit the property at 6–9am on a weekday before committing to assess actual aircraft noise levels.` });
-  } else if (radon) {
-    const zLabel = radon.zone === 2 ? 'Zone 2 (moderate)' : 'Zone 3 (lower risk)';
-    findings.push({ bucket: 'Things to Consider', cls: 'consider',
-      text: `This county is EPA Radon ${zLabel} — a quick $15–$30 radon test remains a worthwhile precaution before purchase.` });
-  }
-
-  if (!findings.length) return '';
-  const top = findings.slice(0, 5);
-
-  const rowsHTML = top.map((f) => `
-    <div class="key-insight-row">
-      <span class="key-insight-bucket ki-${escapeHtml(f.cls)}">${escapeHtml(f.bucket)}</span>
-      <p class="key-insight-text">${escapeHtml(f.text)}</p>
-    </div>`).join('');
-
-  return `
-  <div class="chapter-card key-insights-card" style="--chapter-color: var(--gold)">
-    <div class="chapter-header">
-      <div class="chapter-label">Before You Read Further</div>
-      <div class="chapter-title">At a Glance</div>
-    </div>
-    <div class="chapter-body">
-      <p class="key-insights-intro">Five things worth knowing before you dig into the details.</p>
-      ${rowsHTML}
-    </div>
-  </div>`;
-}
-
 function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
   const findings = [];
   const env = premium?.environment;
@@ -1263,23 +1172,37 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
+  const erSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:96" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" style="--path-len:96"/></svg>`;
+
   return `
-  <div class="chapter-card" style="--chapter-color: var(--rust)">
-    <div class="chapter-header">
-      <div class="chapter-label">Chapter 1</div>
-      <div class="chapter-title">Health &amp; Safety</div>
-    </div>
-    <div class="chapter-body">
-      ${erHTML}
-      ${stationsHTML ? `<div class="ch01-stations">${stationsHTML}</div>` : ''}
-      ${checksHTML ? `<div class="ch01-checks"><div class="ch01-checks-label">Things to Check</div>${checksHTML}</div>` : ''}
-      <div class="key-takeaway">
-        <span class="kt-icon">🔑</span>
-        <div class="kt-body"><strong>Key Takeaway:</strong> ${escapeHtml(takeaway)}</div>
+  <section class="chapter" data-ch="health">
+    <div class="chapter-inner">
+      <div class="chapter-num" aria-hidden="true">01</div>
+      <header class="chapter-hd">
+        <div class="chapter-eyebrow">
+          <span class="chapter-icon">${erSvg}</span>
+          Health &amp; Safety
+        </div>
+        <h2 class="chapter-title">When it matters most, proximity is everything.</h2>
+      </header>
+      <p class="chapter-intro">Emergency access shapes real outcomes. These are the numbers that matter most if something goes wrong.</p>
+      <div class="chapter-body">
+        <div class="chapter-left">
+          ${erHTML}
+          ${checksHTML ? `<div class="ch01-checks"><div class="ch01-checks-label">Things to Check Before You Close</div>${checksHTML}</div>` : ''}
+          <div class="key-takeaway">
+            <span class="kt-icon">🔑</span>
+            <div class="kt-body"><strong>Key Takeaway:</strong> ${escapeHtml(takeaway)}</div>
+          </div>
+          <p class="ch01-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}.</p>
+        </div>
+        <div class="chapter-right">
+          ${stationsHTML ? `<div class="snapshot-card"><div class="snapshot-card-label">Emergency Response</div><div class="ch01-stations">${stationsHTML}</div></div>` : ''}
+        </div>
       </div>
-      <p class="ch01-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}.</p>
     </div>
-  </div>`;
+  </section>
+  <div class="chapter-rule"></div>`;
 }
 
 function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation) {
@@ -1305,17 +1228,31 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
 
   if (!sectionsHTML.trim() && !calloutsHTML.trim()) return '';
 
+  const sunSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:120" aria-hidden="true"><circle cx="12" cy="12" r="5" style="--path-len:32"/><line x1="12" y1="1" x2="12" y2="3" style="--path-len:16"/><line x1="12" y1="21" x2="12" y2="23" style="--path-len:16"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" style="--path-len:12"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" style="--path-len:12"/><line x1="1" y1="12" x2="3" y2="12" style="--path-len:16"/><line x1="21" y1="12" x2="23" y2="12" style="--path-len:16"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" style="--path-len:12"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" style="--path-len:12"/></svg>`;
+
   return `
-  <div class="chapter-card" style="--chapter-color: var(--teal)">
-    <div class="chapter-header">
-      <div class="chapter-label">Things to Know</div>
-      <div class="chapter-title">What Daily Life Looks Like Here</div>
+  <section class="chapter chapter--alt" data-ch="daily">
+    <div class="chapter-inner">
+      <div class="chapter-num" aria-hidden="true">02</div>
+      <header class="chapter-hd">
+        <div class="chapter-eyebrow">
+          <span class="chapter-icon">${sunSvg}</span>
+          Daily Life
+        </div>
+        <h2 class="chapter-title">What living here actually feels like.</h2>
+      </header>
+      <p class="chapter-intro">The stuff you'd only learn after living here for two years — or by reading this.</p>
+      <div class="chapter-body">
+        <div class="chapter-left">
+          ${sectionsHTML}
+        </div>
+        <div class="chapter-right">
+          ${calloutsHTML}
+        </div>
+      </div>
     </div>
-    <div class="chapter-body insights-body">
-      <p class="insights-intro">The stuff you'd only learn after living here for two years—or by reading this.</p>
-      ${sectionsHTML}${calloutsHTML}
-    </div>
-  </div>`;
+  </section>
+  <div class="chapter-rule"></div>`;
 }
 
 const CUSTOM_DEST_ICONS = { work: '💼', family: '🏠', medical: '⚕️', recreation: '⛳', other: '📍' };
@@ -1340,13 +1277,22 @@ function buildCustomDestinationsCardHTML(customDestinations) {
   }).join('');
 
   return `
-  <div class="custom-dests-card">
-    <div class="custom-dests-card-header">
-      <div class="custom-dests-card-eyebrow">Your Places</div>
-      <div class="custom-dests-card-title">Custom Destinations</div>
+  <section class="chapter chapter--alt" data-ch="custom">
+    <div class="chapter-inner">
+      <div class="chapter-num" aria-hidden="true">★</div>
+      <header class="chapter-hd">
+        <div class="chapter-eyebrow">Your Places</div>
+        <h2 class="chapter-title">Custom Destinations</h2>
+      </header>
+      <div class="chapter-body">
+        <div class="chapter-left">
+          ${itemsHTML}
+        </div>
+        <div class="chapter-right"></div>
+      </div>
     </div>
-    ${itemsHTML}
-  </div>`;
+  </section>
+  <div class="chapter-rule"></div>`;
 }
 
 function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
@@ -1373,16 +1319,12 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
     : '';
 
   return `
-  <div class="chapter-card" style="--chapter-color: var(--forest)">
-    <div class="chapter-header">
-      <div class="chapter-label">Additional Places</div>
-      <div class="chapter-title">More Nearby Destinations</div>
-    </div>
-    <div class="chapter-body">
-      ${narrativeHTML}
-      ${buildDestSection('Elementary School', elementarySchool)}
-      ${buildDestSection('Park', park)}
-      ${buildDestSection('Coffee Shop', coffeeShop)}
+  <div class="chapter-inner" style="max-width:var(--inner-max);margin:0 auto;padding:40px var(--inner-pad);">
+    ${narrativeHTML}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2px;background:var(--ink-10);border-radius:12px;overflow:hidden">
+      ${elementarySchool ? `<div style="background:var(--white);padding:20px">${buildDestSection('Elementary School', elementarySchool)}</div>` : ''}
+      ${park ? `<div style="background:var(--white);padding:20px">${buildDestSection('Park', park)}</div>` : ''}
+      ${coffeeShop ? `<div style="background:var(--white);padding:20px">${buildDestSection('Coffee Shop', coffeeShop)}</div>` : ''}
     </div>
   </div>`;
 }
@@ -1424,45 +1366,26 @@ function buildTrafficCardHTML(trafficData) {
   const sectionsHTML = trafficData
     .map((t, i) => (i > 0 ? '<div class="traffic-section-divider"></div>' : '') + buildTrafficItemHTML(t.name, t.traffic))
     .join('');
+  const waveSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><polyline points="2 12 6 4 10 20 14 8 18 16 22 12" style="--path-len:80"/></svg>`;
+
   return `
-  <div class="chapter-card" style="--chapter-color: var(--amber)">
-    <div class="chapter-header">
-      <div class="chapter-label">Drive Times</div>
-      <div class="chapter-title">Traffic Patterns</div>
+  <section class="chapter" data-ch="traffic">
+    <div class="chapter-inner">
+      <div class="chapter-num" aria-hidden="true">04</div>
+      <header class="chapter-hd">
+        <div class="chapter-eyebrow">
+          <span class="chapter-icon">${waveSvg}</span>
+          Traffic Patterns
+        </div>
+        <h2 class="chapter-title">Drive times shift. Know the range before you commit.</h2>
+      </header>
+      <p class="chapter-intro">Drive times aren't fixed — they shift significantly based on when you leave. The "Worst" time is the one to internalize if you're planning a regular commute.</p>
     </div>
-    <div class="chapter-body traffic-body">
-      <p class="traffic-intro">Drive times aren't fixed—they shift significantly based on when you leave. The bars below show how your commute varies across rush hour, midday, and weekends so you can build a realistic picture of daily travel. If you're considering a regular commute, the "Worst" time is the one to internalize.</p>
+    <div class="chapter-full">
       ${sectionsHTML}
     </div>
-  </div>`;
-}
-
-function buildHeroQuickStatsHTML(grocery, coffeeShop, premium, elementarySchool, school) {
-  const stats = [];
-
-  if (coffeeShop?.driveTimeMinutes != null) {
-    stats.push({ icon: '☕', label: 'Coffee nearby', value: `${coffeeShop.driveTimeMinutes} min drive` });
-  }
-  if (grocery?.length) {
-    stats.push({ icon: '🛒', label: 'Groceries', value: `${grocery[0].driveTimeMinutes} min drive` });
-  }
-  const walk = premium?.walkability;
-  if (walk?.category?.label) {
-    stats.push({ icon: '🚶', label: 'Walkability', value: walk.category.label });
-  }
-  const nearestSchool = elementarySchool || school;
-  if (nearestSchool?.driveTimeMinutes != null) {
-    stats.push({ icon: '🏫', label: 'Nearest school', value: `${nearestSchool.driveTimeMinutes} min drive` });
-  }
-
-  return stats.slice(0, 4).map(({ icon, label, value }) => `
-      <div class="hero-stat">
-        <div class="hero-stat-icon">${icon}</div>
-        <div class="hero-stat-text">
-          <span class="hero-stat-label">${escapeHtml(label)}</span>
-          <span class="hero-stat-value">${escapeHtml(value)}</span>
-        </div>
-      </div>`).join('');
+  </section>
+  <div class="chapter-rule"></div>`;
 }
 
 function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }) {
@@ -1547,6 +1470,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/report.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer><\/script>
 </head>
 <body class="report-page">
   <!-- Sticky nav — becomes visible on scroll -->
@@ -1575,15 +1499,27 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <div class="report-content">
     ${healthSafetyChapterHTML}
     ${insightsCardHTML}
-    <div class="chapter-card" style="--chapter-color: var(--teal)">
-      <div class="chapter-header">
-        <div class="chapter-label">Core Services</div>
-        <div class="chapter-title">Daily Reachability</div>
+    <section class="chapter chapter--alt" data-ch="reach">
+      <div class="chapter-inner">
+        <div class="chapter-num" aria-hidden="true">03</div>
+        <header class="chapter-hd">
+          <div class="chapter-eyebrow">
+            <span class="chapter-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:130" aria-hidden="true"><circle cx="12" cy="12" r="10" style="--path-len:63"/><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88" style="--path-len:50"/></svg></span>
+            Daily Reachability
+          </div>
+          <h2 class="chapter-title">The drives you'll make 300 times a year.</h2>
+        </header>
+        <p class="chapter-intro">You make these trips every week. Five minutes each way adds 50 hours a year. Here's what the math looks like for this address.</p>
+        <div class="chapter-body">
+          <div class="chapter-left">
+            ${sectionsHTML}
+          </div>
+          <div class="chapter-right"></div>
+        </div>
       </div>
-      <div class="chapter-body">
-        ${sectionsHTML}
-      </div>
-    </div>${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${premiumSectionsHTML}
+    </section>
+    <div class="chapter-rule"></div>
+    ${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${premiumSectionsHTML}
     <footer class="footer">
       <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
       <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
