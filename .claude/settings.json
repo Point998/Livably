@@ -1,0 +1,15 @@
+{
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "visual-critique@designer-skills": true,
+    "ux-strategy@designer-skills": true,
+    "frontend-design@claude-plugins-official": true,
+    "design-ops@designer-skills": true,
+    "design-research@designer-skills": true,
+    "design-systems@designer-skills": true,
+    "designer-toolkit@designer-skills": true,
+    "interaction-design@designer-skills": true,
+    "prototyping-testing@designer-skills": true,
+    "ui-design@designer-skills": true
+  }
+}
