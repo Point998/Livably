@@ -12,13 +12,12 @@
         if (!entry.isIntersecting) return;
         var el = entry.target;
         var delay = parseInt(el.dataset.animDelay, 10) || 0;
-        setTimeout(function () { el.classList.add('animated-in'); }, delay);
+        setTimeout(function () { el.classList.add('is-visible'); }, delay);
         obs.unobserve(el);
       });
     }, { threshold: 0.07, rootMargin: '0px 0px -48px 0px' });
 
     cards.forEach(function (el, i) {
-      el.classList.add('animate-on-scroll');
       el.dataset.animDelay = i * 55;
       obs.observe(el);
     });
@@ -80,21 +79,41 @@
     });
   }
 
-  // ── Loading skeleton pulse for premium cards ──────────────────────────────────
-  // (No-op if premium cards are already present from SSR — just adds polish timing)
+  // ── Drive-time counter animation ─────────────────────────────────────────────
 
-  function initPremiumEntrance() {
-    var premCards = document.querySelectorAll('.chapter-card');
-    premCards.forEach(function (card, i) {
-      // stagger initial load if page just rendered
-      if (document.readyState !== 'complete') {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(16px)';
-        setTimeout(function () {
-          card.style.transition = 'opacity 0.45s ease ' + (i * 0.05) + 's, transform 0.45s ease ' + (i * 0.05) + 's';
-          card.style.opacity = '';
-          card.style.transform = '';
-        }, 80);
+  function initDriveTimeCounters() {
+    if (!window.IntersectionObserver) return;
+
+    function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+    function animateCounter(el, target, suffix, duration) {
+      var start = null;
+      function step(ts) {
+        if (!start) start = ts;
+        var progress = Math.min((ts - start) / duration, 1);
+        el.textContent = Math.round(easeOut(progress) * target) + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        var raw = el.dataset.driveTarget;
+        if (!raw) return;
+        var match = raw.match(/^(\d+)(.*)$/);
+        if (match) animateCounter(el, parseInt(match[1], 10), match[2], 800);
+        obs.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+
+    document.querySelectorAll('.drive-time').forEach(function (el) {
+      var text = el.textContent.trim();
+      if (/^\d+/.test(text)) {
+        el.dataset.driveTarget = text;
+        obs.observe(el);
       }
     });
   }
@@ -116,6 +135,7 @@
   function run() {
     initScrollAnimations();
     initBarAnimations();
+    initDriveTimeCounters();
     initRipples();
     initFocusMode();
     initMapDetailClose();
