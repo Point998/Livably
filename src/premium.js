@@ -590,16 +590,28 @@ function buildClimateChapterHTML(environment, locationInfo) {
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const floodBadge = flood ? `<span class="prem-badge" style="${badgeColor(floodBadgeColor)}">Zone ${esc(flood.zone)} · ${esc(flood.risk)} Risk</span>` : `<span class="prem-badge" style="${badgeColor('muted')}">Zone Unknown</span>`;
 
-  const body = `
-    <div class="prem-climate-flood">
-      <div class="prem-climate-flood-head">
-        🌊 Flood Zone ${floodBadge}
-      </div>
-      <div class="prem-narrative">
-        <p class="prem-narrative-lead">${floodPara}</p>
+  // Flood zone banner (full-width moment)
+  const bannerBg    = (!flood || flood.zone === 'X') ? '#eaeff5' : (flood.risk === 'High' || flood.risk === 'Very High') ? '#fdf0ed' : '#fdf4e3';
+  const bannerColor = (!flood || flood.zone === 'X') ? '#3d5a7a' : (flood.risk === 'High' || flood.risk === 'Very High') ? '#c04a2e' : '#c47c1a';
+  const floodIcon   = (flood?.risk === 'High' || flood?.risk === 'Very High') ? '⚠️' : (flood?.zone === 'X' ? '🛡️' : '🌊');
+
+  const floodBannerHTML = `
+  <div class="prem-flood-zone-banner">
+    <div class="prem-flood-zone-inner" style="background:${bannerBg};color:${bannerColor}">
+      <div class="prem-flood-zone-icon">${floodIcon}</div>
+      <div>
+        <div class="prem-flood-zone-label">FEMA Flood Zone — Parcel Level</div>
+        <div class="prem-flood-zone-name" style="color:${bannerColor}">Zone ${flood ? esc(flood.zone) : 'Unknown'} — ${flood ? esc(flood.risk) : 'Data Unavailable'} Risk</div>
+        <div class="prem-flood-zone-desc" style="color:${bannerColor};opacity:0.8">${(floodPara || '').split('.')[0]}.</div>
       </div>
     </div>
+  </div>`;
+
+  const leftHTML = `
     ${tornadoHTML}
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">${floodPara}</p>
+    </div>
     <div class="prem-safety-actions">
       <div class="prem-safety-actions-label">4 Things to Verify Before You Close</div>
       ${actionsHTML}
@@ -609,7 +621,9 @@ function buildClimateChapterHTML(environment, locationInfo) {
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Flood zone: FEMA National Flood Hazard Layer, parcel-level. Tornado frequency: NOAA Storm Events Database historical averages by state. Insurance cost estimates: NFIP rate ranges, 2024. Research date: ${today}. Verify all data directly with FEMA and your insurance agent before closing.</p>`;
-  return premiumCard('Climate', 'Climate & Weather Risks', body, 'var(--amber)');
+
+  const cloudSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" style="--path-len:80"/></svg>`;
+  return premiumCard('climate', '09', cloudSvg, 'Climate & Weather Risks', 'The risks that come with the address, not just the house.', null, leftHTML, null, floodBannerHTML, null);
 }
 
 // Airport analysis (Google Places) ───────────────────────────────────────────
@@ -1481,7 +1495,7 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
     soil ? 'USDA Web Soil Survey' : null,
   ].filter(Boolean).join('; ');
 
-  const body = `
+  const gardenBody = `
     <p class="prem-narrative-lead">${conditionsPara}</p>
     ${soilPara ? `
     <div class="grow-subsection">
@@ -1503,7 +1517,36 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
     </div>
     <p class="prem-disclaimer">Hardiness zone: USDA phzmapi.org, ZIP-code level. Frost dates are 30-year climate normals correlated with USDA hardiness zone. ${sources ? `Sources: ${esc(sources)}. ` : ''}Wildlife observations: iNaturalist research-grade, 10-mile radius. Research date: ${today}.</p>`;
 
-  return premiumCard('Your Yard', 'What Will Grow Here', body, 'var(--forest)');
+  // Frost timeline full-width visual
+  let frostFullHTML = null;
+  if (hardinessZone?.frost) {
+    const frost = hardinessZone.frost;
+    const MONTH_DOY = { January: 15, February: 46, March: 75, April: 106, May: 136, June: 167, July: 197, August: 228, September: 259, October: 289, November: 320, December: 350 };
+    const parseFrostDate = (str) => {
+      const parts = (str || '').split(' ');
+      const doy = MONTH_DOY[parts[0]] ?? 180;
+      return Math.round((doy / 365) * 100);
+    };
+    const startPct = parseFrostDate(frost.lastSpring);
+    const endPct   = parseFrostDate(frost.firstFall);
+    const fillWidth = Math.max(0, endPct - startPct);
+    frostFullHTML = `
+      <div class="grow-frost-timeline">
+        <div class="grow-frost-inner">
+          <div class="grow-frost-days">${frost.days}<span class="grow-frost-days-unit"> days</span></div>
+          <div class="grow-frost-track" role="img" aria-label="Growing season: ${frost.days} days from ${esc(frost.lastSpring)} to ${esc(frost.firstFall)}">
+            <div class="grow-frost-fill" style="margin-left:${startPct}%" data-final-width="${fillWidth}%"></div>
+          </div>
+          <div class="grow-frost-labels">
+            <span class="grow-frost-label">${esc(frost.lastSpring)}</span>
+            <span class="grow-frost-label">${esc(frost.firstFall)}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  const leafSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>`;
+  return premiumCard('garden', '10', leafSvg, 'What Will Grow Here', 'Your yard\'s potential — soil, season, and native species.', null, gardenBody, null, frostFullHTML, null);
 }
 
 // ── FR-026: Property Intelligence ────────────────────────────────────────────
@@ -1737,18 +1780,29 @@ function badgeColor(color) {
   return map[color] || map.muted;
 }
 
-function premiumCard(label, title, bodyHTML, color) {
-  const colorAttr = color ? ` style="--chapter-color: ${color}"` : '';
+function premiumCard(chKey, chNum, iconSvg, eyebrow, title, introHTML, leftHTML, rightHTML, fullHTML, sourceHTML) {
+  const altClass = (parseInt(chNum, 10) || 0) % 2 === 0 ? ' chapter--alt' : '';
   return `
-  <div class="chapter-card"${colorAttr}>
-    <div class="chapter-header">
-      <div class="chapter-label">${esc(label)}</div>
-      <div class="chapter-title">${esc(title)}</div>
+  <section class="chapter${altClass}" data-ch="${chKey}">
+    <div class="chapter-inner">
+      <div class="chapter-num" aria-hidden="true">${chNum}</div>
+      <header class="chapter-hd">
+        <div class="chapter-eyebrow">
+          ${iconSvg ? `<span class="chapter-icon">${iconSvg}</span>` : ''}
+          ${esc(eyebrow)}
+        </div>
+        <h2 class="chapter-title">${esc(title)}</h2>
+      </header>
+      ${introHTML ? `<p class="chapter-intro">${introHTML}</p>` : ''}
+      <div class="chapter-body">
+        <div class="chapter-left">${leftHTML || ''}</div>
+        ${rightHTML ? `<div class="chapter-right">${rightHTML}</div>` : '<div class="chapter-right"></div>'}
+      </div>
+      ${fullHTML ? `</div><div class="chapter-full">${fullHTML}</div><div class="chapter-inner" style="max-width:var(--inner-max);margin:0 auto;padding:0 var(--inner-pad) 80px">` : ''}
+      ${sourceHTML ? `<div class="chapter-source">${sourceHTML}</div>` : ''}
     </div>
-    <div class="chapter-body premium-body">
-      ${bodyHTML}
-    </div>
-  </div>`;
+  </section>
+  <div class="chapter-rule"></div>`;
 }
 
 // FR-017: Schools & Education
@@ -1870,7 +1924,8 @@ function buildSchoolRatingsHTML(schools) {
     ${checklistHTML}
     ${takeawayHTML}`;
 
-  return premiumCard('Schools', 'Schools & Education', body, 'var(--forest)');
+  const bookSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:90" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`;
+  return premiumCard('school', '05', bookSvg, 'Schools & Education', 'What you need to know before their first day.', null, body, null, null, null);
 }
 
 // FR-018: Safety & Emergency Response
@@ -1977,7 +2032,8 @@ function buildCrimeHTML(crime, emergency) {
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}. For current safety data, contact ${city ? esc(city) + ' Police or' : ''} ${esc(county)} Emergency Management.</p>`;
-  return premiumCard('Safety', 'Safety & Emergency Response', body, 'var(--rust)');
+  const shieldSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+  return premiumCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, null, null);
 }
 
 // FR-027: Sensory & Environmental
@@ -2160,15 +2216,31 @@ function buildSensoryEnvironmentalHTML(env) {
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const body =
-    sectionA + sectionB + sectionC +
+  const leftHTML =
+    sectionA + sectionC +
     `<div class="key-takeaway">
       <span class="kt-icon">🔑</span>
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>` +
     `<p class="prem-disclaimer">Sources: ${sources}. Research date: ${today}. Light pollution is estimated, not satellite-measured.</p>`;
 
-  return premiumCard('Environment', 'Sensory & Environmental', body, 'var(--rust)');
+  // Bortle scale full-width visual
+  const bortleNum = lightPollution?.bortle ?? 5;
+  const bortlePct = ((bortleNum - 1) / 8) * 100;
+  const bortleFullHTML = `
+    <div class="prem-bortle-scale">
+      <div class="prem-bortle-track" role="img" aria-label="Bortle scale: ${bortleNum} of 9">
+        <div class="prem-bortle-marker" style="left:${bortlePct}%"></div>
+      </div>
+      <div class="prem-bortle-labels">
+        <span>1 — Darkest skies</span>
+        <span>9 — City center</span>
+      </div>
+      <p class="prem-bortle-desc">${lightPollution ? `Bortle ${bortleNum} — <strong>${esc(lightPollution.label)}</strong>: ${esc(lightPollution.desc)}` : 'Night sky brightness could not be estimated for this address.'}</p>
+    </div>`;
+
+  const eyeSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  return premiumCard('sensory', '12', eyeSvg, 'Sensory &amp; Environmental', 'What you can\'t discover during a showing.', null, leftHTML, sectionB, bortleFullHTML, null);
 }
 
 // FR-020: Emergency Services
@@ -2215,7 +2287,8 @@ function buildEmergencyServicesHTML(emergency) {
     : serviceCard('🚔', 'Police', emergency.police) +
       serviceCard('🚒', 'Fire Department', emergency.fire) +
       `<p class="prem-disclaimer">Response times are estimates based on distance to nearest stations. Actual times vary. Contact local emergency services for official data.</p>`;
-  return premiumCard('Emergency Services', 'Emergency Response', body, 'var(--rust)');
+  const emergShieldSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+  return premiumCard('safety', '06', emergShieldSvg, 'Emergency Response', 'Your nearest responders and what their arrival time means.', null, body, null, null, null);
 }
 
 // FR-021: Walkability
@@ -2307,11 +2380,14 @@ function buildWalkabilityHTML(walk) {
       ${features.note ? `<div class="prem-walk-feature prem-walk-feat-note">◎ ${esc(features.note)}</div>` : ''}
     </div>`;
 
-  const body = `
-    <div class="prem-walk-header">
+  const walkFullHTML = `
+    <div class="walk-verdict-block">
+      <div class="walk-score-num" style="color:${verdictColor}">${score}</div>
+      <div class="walk-score-label">walkability score (0–100)</div>
       <div class="prem-walk-verdict" style="color:${verdictColor};background:${verdictBg}">${esc(category.label)}</div>
-      <div class="prem-walk-desc">${esc(category.description)}</div>
-    </div>
+    </div>`;
+
+  const walkLeftHTML = `
     <div class="prem-narrative">
       ${para1HTML}
       ${para2HTML}
@@ -2320,7 +2396,9 @@ function buildWalkabilityHTML(walk) {
     ${destHTML}
     ${featHTML}
     <p class="prem-disclaimer">Walkability is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
-  return premiumCard('Walkability', 'Getting Around on Foot', body, 'var(--teal)');
+
+  const walkSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M8 22l2-7 3 3 3-4 2 8"/><path d="M7.5 13.5L9 11l4 1 2-3.5"/></svg>`;
+  return premiumCard('walk', '13', walkSvg, 'Getting Around on Foot', 'What\'s reachable without a car — and what that means for daily life.', null, walkLeftHTML, null, walkFullHTML, null);
 }
 
 // FR-023: Property Costs & Market
@@ -2413,7 +2491,8 @@ function buildPropertyDataHTML(p) {
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Property tax rate: ${esc(p.state)} state effective average (Lincoln Institute, 2024). Insurance: NAIC 2024 state averages, scaled to home price. Utilities: EIA/BLS state averages, 2024. These are estimates — your actual costs will vary. Research date: ${today}.</p>`;
-  return premiumCard('Costs', 'Property Costs & Market', body, 'var(--gold)');
+  const chartSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`;
+  return premiumCard('costs', '14', chartSvg, 'Property Costs & Market', 'The monthly numbers behind the asking price.', null, body, null, null, null);
 }
 
 // FR-024: Demographics
@@ -2540,7 +2619,8 @@ function buildDemographicsHTML(d) {
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
     <p class="prem-disclaimer">Data: U.S. Census Bureau American Community Survey 5-year estimates (2022). Census tract level. Provided for informational purposes only; not to be used as a basis for housing discrimination.</p>`;
-  return premiumCard('Community', 'Demographics & Community', body, 'var(--amber)');
+  const peopleSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+  return premiumCard('community', '07', peopleSvg, 'Demographics & Community', 'Who lives here, and what that means for daily life.', null, body, null, null, null);
 }
 
 // FR-025: Growth & Development
@@ -2697,7 +2777,8 @@ function buildGrowthAndDevelopmentHTML(growth) {
     </div>
     <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Permit data is county-level — not neighborhood-specific. Specific planned projects require direct inquiry with the county planning department.</p>`;
 
-  return premiumCard('Development', 'Growth & Development', body, 'var(--teal)');
+  const craneSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="14" width="6" height="8"/><rect x="9" y="10" width="6" height="12"/><rect x="16" y="6" width="6" height="16"/><line x1="2" y1="22" x2="22" y2="22"/></svg>`;
+  return premiumCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, null, null);
 }
 
 // FR-026: Property Intelligence
@@ -2833,7 +2914,8 @@ function buildPropertyIntelligenceHTML(propIntel) {
     </div>
     <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Construction era is a tract-level Census ACS estimate — not specific to this parcel. Parcel-level permit and tax history requires direct inquiry with the county.</p>`;
 
-  return premiumCard('Property', 'Property Intelligence', body, 'var(--gold)');
+  const homeSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+  return premiumCard('property', '11', homeSvg, 'Property Intelligence', 'Soil, broadband, permits, and the details that listings don\'t show.', null, body, null, null, null);
 }
 
 function buildPremiumSectionsHTML(premium) {
