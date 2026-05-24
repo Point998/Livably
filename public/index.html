@@ -4,170 +4,194 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Livably — Know your new neighborhood before you sign</title>
+  <meta name="description" content="The things you'd only learn after living there for two years — handed to you before you sign.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --ink:        #1a1a1a;
-      --cream:      #faf8f4;
-      --gold:       #b8922a;
-      --gold-dark:  #8a6b1e;
-      --hero-dark:  #111111;
-      --hero-text:  rgba(255,255,255,0.92);
-      --hero-muted: rgba(255,255,255,0.48);
+      --ink: #1a1a1a;
+      --ink-80: #363636;
+      --ink-50: #8a8a8a;
+      --ink-20: #d4d0ca;
+      --cream: #faf8f4;
+      --gold: #b8922a;
+      --gold-light: #f7f0e0;
+      --gold-dark: #8a6b1e;
+      --teal: #2a7d6e;
+      --hero-dark: #111111;
+      --hero-text: rgba(255,255,255,0.92);
+      --hero-muted: rgba(255,255,255,0.5);
     }
 
-    html, body {
-      background: var(--hero-dark);
-      color: var(--hero-text);
-      font-family: 'DM Sans', sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--hero-dark); color: var(--hero-text); -webkit-font-smoothing: antialiased; }
 
-    /* ════════════════════════════════════════════════
-       HERO
-    ════════════════════════════════════════════════ */
+    /* ── Hero ─────────────────────────────────── */
 
     .hero {
       position: relative;
-      min-height: 100vh;
+      min-height: 100svh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 56px 24px 96px;
       overflow: hidden;
-      background: radial-gradient(ellipse at 30% 50%, #1e2a1e 0%, #111111 60%);
+      background: var(--hero-dark);
     }
 
-    /* Grain texture */
+    /* Warm green radial bloom — breathes */
     .hero::before {
       content: '';
       position: absolute;
       inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.07'/%3E%3C/svg%3E");
-      opacity: 0;
-      animation: grainIn 0.9s 0.15s ease forwards;
+      background: radial-gradient(ellipse 70% 90% at 28% 55%,
+        rgba(30,46,28,0.85) 0%, rgba(20,30,20,0.4) 45%, transparent 72%);
+      animation: bloom 9s ease-in-out infinite;
       pointer-events: none;
       z-index: 0;
     }
 
-    /* Ambient gold bloom */
+    /* Grain texture */
     .hero::after {
       content: '';
       position: absolute;
-      top: -15%;
-      right: -5%;
-      width: 55%;
-      height: 55%;
-      background: radial-gradient(ellipse, rgba(184,146,42,0.05) 0%, transparent 70%);
+      inset: -50%;
+      width: 200%; height: 200%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0;
+      mix-blend-mode: overlay;
       pointer-events: none;
-      z-index: 0;
-    }
-
-    .hero-inner {
-      position: relative;
       z-index: 1;
-      width: 100%;
-      max-width: 640px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      animation: grainIn 0.9s 0.2s ease-out forwards;
     }
 
-    /* Logo */
+    @keyframes bloom {
+      0%, 100% { opacity: 0.7; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.04); }
+    }
+    @keyframes grainIn { to { opacity: 0.35; } }
+
+    .hero-nav {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 28px 40px;
+      z-index: 10;
+      opacity: 0;
+      animation: fadeUp 0.6s 0.3s ease-out forwards;
+    }
+
     .hero-logo {
       font-family: 'Fraunces', serif;
       font-optical-sizing: auto;
-      font-size: 20px;
+      font-size: 22px;
       font-weight: 400;
-      letter-spacing: -0.02em;
-      color: var(--hero-muted);
-      margin-bottom: 64px;
-      opacity: 0;
-      animation: fadeSlideUp 0.5s 0.3s ease forwards;
+      color: var(--hero-text);
+      letter-spacing: -0.01em;
+      text-decoration: none;
     }
+
     .logo-gold { color: var(--gold); }
 
-    /* Headline */
-    .hero-headline {
-      margin-bottom: 28px;
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 0 24px;
+      max-width: 680px;
+      width: 100%;
     }
-    .h1-line {
-      display: block;
+
+    .hero-eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 28px;
+      opacity: 0;
+      animation: fadeIn 0.5s 0.4s ease-out forwards;
+    }
+
+    .hero-headline {
       font-family: 'Fraunces', serif;
       font-optical-sizing: auto;
-      font-size: clamp(46px, 8.5vw, 92px);
+      font-size: clamp(44px, 8vw, 88px);
       font-weight: 300;
+      line-height: 1.08;
       letter-spacing: -0.025em;
-      line-height: 1.06;
       color: var(--hero-text);
-      opacity: 0;
+      margin-bottom: 28px;
     }
-    .h1-line:nth-child(1) { animation: fadeSlideUp 0.65s 0.42s cubic-bezier(0.22,1,0.36,1) forwards; }
-    .h1-line:nth-child(2) { animation: fadeSlideUp 0.65s 0.60s cubic-bezier(0.22,1,0.36,1) forwards; }
 
-    /* Subhead */
-    .hero-sub {
-      font-size: clamp(15px, 2.5vw, 17px);
+    .hero-headline .line-1 {
+      display: block;
+      opacity: 0;
+      animation: fadeUp 0.7s 0.42s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+
+    .hero-headline .line-2 {
+      display: block;
+      opacity: 0;
+      animation: fadeUp 0.7s 0.62s cubic-bezier(0.16,1,0.3,1) forwards;
+    }
+
+    .hero-subhead {
+      font-size: 17px;
       font-weight: 400;
       line-height: 1.65;
       color: var(--hero-muted);
-      max-width: 420px;
-      margin-bottom: 48px;
+      max-width: 400px;
+      margin: 0 auto 40px;
       opacity: 0;
-      animation: fadeIn 0.5s 0.9s ease forwards;
-    }
-
-    /* Address portal */
-    .portal-wrap {
-      width: 100%;
-      max-width: 520px;
-      opacity: 0;
-      animation: fadeSlideUp 0.5s 1.1s ease forwards;
+      animation: fadeIn 0.6s 0.9s ease-out forwards;
     }
 
     .address-portal {
-      display: flex;
-      align-items: center;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.13);
       border-radius: 12px;
       padding: 6px 6px 6px 20px;
+      display: flex;
+      align-items: center;
+      max-width: 520px;
       width: 100%;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      margin: 0 auto 16px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       transition: border-color 0.3s, box-shadow 0.3s;
-    }
-    .address-portal:focus-within {
-      border-color: rgba(184,146,42,0.5);
-      box-shadow: 0 0 0 4px rgba(184,146,42,0.08), 0 0 40px rgba(184,146,42,0.10);
+      opacity: 0;
+      animation: fadeUp 0.6s 1.1s cubic-bezier(0.16,1,0.3,1) forwards;
     }
 
-    .portal-input {
-      flex: 1;
+    .address-portal:focus-within {
+      border-color: rgba(184,146,42,0.5);
+      box-shadow: 0 0 0 4px rgba(184,146,42,0.08), 0 0 40px rgba(184,146,42,0.12);
+    }
+
+    .address-portal input {
       background: transparent;
       border: none;
       color: var(--hero-text);
       font-family: 'DM Sans', sans-serif;
       font-size: 15px;
       font-weight: 400;
-      outline: none;
-      padding: 11px 0;
+      flex: 1;
       min-width: 0;
+      outline: none;
+      padding: 10px 0;
     }
-    .portal-input::placeholder { color: rgba(255,255,255,0.28); }
 
-    .portal-btn {
+    .address-portal input::placeholder { color: rgba(255,255,255,0.3); }
+
+    .address-portal button {
       background: var(--gold);
       color: #fff;
       border: none;
       border-radius: 8px;
-      padding: 11px 22px;
+      padding: 10px 22px;
       font-family: 'DM Sans', sans-serif;
       font-size: 13px;
       font-weight: 600;
@@ -176,207 +200,254 @@
       cursor: pointer;
       white-space: nowrap;
       flex-shrink: 0;
-      transition: background 0.2s, transform 0.12s;
-    }
-    .portal-btn:hover  { background: var(--gold-dark); transform: translateY(-1px); }
-    .portal-btn:active { transform: scale(0.98); }
-
-    /* Mobile: stack */
-    @media (max-width: 500px) {
-      .address-portal {
-        flex-direction: column;
-        padding: 14px 16px;
-        gap: 12px;
-        border-radius: 10px;
-        align-items: stretch;
-      }
-      .portal-btn { text-align: center; padding: 13px 16px; }
+      transition: background 0.2s, transform 0.1s;
     }
 
-    .hero-proof {
+    .address-portal button:hover { background: var(--gold-dark); transform: translateY(-1px); }
+    .address-portal button:active { transform: translateY(0); }
+
+    .social-proof {
       font-size: 12px;
-      font-weight: 400;
-      color: var(--hero-muted);
-      margin-top: 20px;
+      color: rgba(255,255,255,0.28);
       letter-spacing: 0.02em;
       opacity: 0;
-      animation: fadeIn 0.4s 1.4s ease forwards;
+      animation: fadeIn 0.5s 1.4s ease-out forwards;
     }
 
-    /* Scroll indicator */
     .scroll-hint {
       position: absolute;
       bottom: 32px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 10;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      color: var(--hero-muted);
       font-size: 10px;
-      letter-spacing: 0.12em;
+      font-weight: 600;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
+      color: rgba(255,255,255,0.22);
       opacity: 0;
-      animation: fadeIn 0.4s 1.9s ease forwards, scrollBounce 2.6s 2.5s ease-in-out infinite;
-      cursor: pointer;
-      z-index: 1;
-      background: none;
-      border: none;
-      pointer-events: auto;
-    }
-    .scroll-hint svg { width: 15px; height: 15px; }
-
-    /* ════════════════════════════════════════════════
-       FEATURES — dark fades to cream
-    ════════════════════════════════════════════════ */
-
-    .features {
-      background: linear-gradient(to bottom, #111111 0%, #161616 18%, var(--cream) 45%);
-      padding: 112px 24px 88px;
+      animation: fadeIn 0.5s 1.9s ease-out forwards;
+      transition: opacity 0.5s;
     }
 
-    .features-inner {
-      max-width: 860px;
-      margin: 0 auto;
+    .scroll-hint svg { animation: bounceDown 2.4s ease-in-out infinite; }
+
+    @keyframes bounceDown {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(5px); }
     }
 
-    .features-eyebrow {
+    /* ── What section ─────────────────────────── */
+
+    .what-section {
+      background: linear-gradient(to bottom, var(--hero-dark) 0%, #181814 22%, var(--cream) 58%);
+      padding: 100px 40px 120px;
+    }
+
+    .what-inner { max-width: 960px; margin: 0 auto; }
+
+    .what-eyebrow {
       font-size: 11px;
       font-weight: 600;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
       color: var(--gold);
+      margin-bottom: 64px;
       text-align: center;
-      margin-bottom: 18px;
       opacity: 0;
       transform: translateY(12px);
-      transition: opacity 0.5s ease, transform 0.5s ease;
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
     }
-    .features-eyebrow.is-visible { opacity: 1; transform: none; }
 
-    .features-title {
-      font-family: 'Fraunces', serif;
-      font-optical-sizing: auto;
-      font-size: clamp(30px, 5vw, 44px);
-      font-weight: 400;
-      letter-spacing: -0.02em;
-      line-height: 1.18;
-      color: var(--ink);
-      text-align: center;
-      margin-bottom: 72px;
-      opacity: 0;
-      transform: translateY(14px);
-      transition: opacity 0.5s 0.1s ease, transform 0.5s 0.1s ease;
-    }
-    .features-title.is-visible { opacity: 1; transform: none; }
+    .what-eyebrow.is-visible { opacity: 1; transform: translateY(0); }
 
-    .features-grid {
+    .what-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 48px 40px;
+      grid-template-columns: 1fr 1fr 1fr;
     }
-    @media (max-width: 640px) { .features-grid { grid-template-columns: 1fr; gap: 52px; } }
 
-    .feature-col {
+    .what-col {
+      padding-right: 52px;
       opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.5s ease, transform 0.5s ease;
-    }
-    .feature-col.is-visible { opacity: 1; transform: none; }
-    .feature-col:nth-child(1) { transition-delay: 0.08s; }
-    .feature-col:nth-child(2) { transition-delay: 0.18s; }
-    .feature-col:nth-child(3) { transition-delay: 0.28s; }
-
-    .feature-divider {
-      width: 100%;
-      height: 1px;
-      background: rgba(26,26,26,0.12);
-      margin-bottom: 18px;
-      position: relative;
-    }
-    .feature-divider::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 24px;
-      height: 1px;
-      background: var(--gold);
+      transform: translateY(20px);
+      transition: opacity 0.7s ease-out, transform 0.7s ease-out;
     }
 
-    .feature-label {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: rgba(26,26,26,0.38);
-      margin-bottom: 14px;
+    .what-col.is-visible { opacity: 1; transform: translateY(0); }
+
+    .what-col + .what-col {
+      padding-left: 52px;
+      padding-right: 0;
+      border-left: 1px solid var(--ink-20);
     }
 
-    .feature-title {
+    .what-col:nth-child(2) { padding-right: 52px; }
+
+    .what-col-icon { margin-bottom: 20px; color: var(--gold); opacity: 0.75; }
+
+    .what-col-title {
       font-family: 'Fraunces', serif;
       font-optical-sizing: auto;
-      font-size: 21px;
+      font-size: 22px;
       font-weight: 400;
-      letter-spacing: -0.01em;
-      line-height: 1.3;
       color: var(--ink);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
     }
 
-    .feature-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 11px;
-    }
+    .what-col-rule { width: 32px; height: 2px; background: var(--gold); margin-bottom: 20px; opacity: 0.45; }
 
-    .feature-item {
+    .what-finding {
       font-size: 14px;
-      line-height: 1.55;
-      color: rgba(26,26,26,0.62);
-      padding-left: 18px;
-      position: relative;
-    }
-    .feature-item::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 9px;
-      width: 6px;
-      height: 1px;
-      background: var(--gold);
-      opacity: 0.65;
+      line-height: 1.7;
+      color: var(--ink-80);
+      padding: 9px 0;
+      border-bottom: 1px solid var(--ink-20);
     }
 
-    /* ════════════════════════════════════════════════
-       CTA
-    ════════════════════════════════════════════════ */
+    .what-finding:last-child { border-bottom: none; }
+    .what-finding strong { font-weight: 600; color: var(--ink); }
+
+    /* ── Preview section ──────────────────────── */
+
+    .preview-section {
+      background: var(--cream);
+      padding: 0 40px 120px;
+      text-align: center;
+    }
+
+    .preview-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-50);
+      margin-bottom: 52px;
+    }
+
+    .preview-wrapper { max-width: 520px; margin: 0 auto; }
+
+    .preview-card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+      padding: 36px 36px 28px;
+      transform: rotate(-1.8deg);
+      text-align: left;
+      border-top: 3px solid var(--teal);
+      will-change: transform;
+    }
+
+    .preview-chapter-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 6px;
+    }
+
+    .preview-chapter-title {
+      font-family: 'Fraunces', serif;
+      font-optical-sizing: auto;
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+
+    .preview-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 0;
+      border-top: 1px solid var(--ink-20);
+    }
+
+    .preview-dest-name { font-size: 14px; font-weight: 500; color: var(--ink); }
+    .preview-dest-sub { font-size: 12px; color: var(--ink-50); margin-top: 2px; }
+
+    .preview-drive-time {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--teal);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preview-drive-unit { font-size: 12px; color: var(--ink-50); font-weight: 400; }
+
+    .preview-takeaway {
+      margin-top: 22px;
+      background: var(--gold-light);
+      border: 1px solid rgba(184,146,42,0.2);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .preview-takeaway-icon { font-size: 15px; flex-shrink: 0; margin-top: 2px; }
+
+    .preview-takeaway-text {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ink-80);
+    }
+
+    .preview-caption {
+      margin-top: 28px;
+      font-size: 13px;
+      color: var(--ink-50);
+      font-style: italic;
+    }
+
+    /* ── CTA ──────────────────────────────────── */
 
     .cta-section {
       background: var(--hero-dark);
-      padding: 108px 24px 108px;
+      padding: 120px 40px;
       text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 80% at 50% 50%,
+        rgba(30,46,28,0.5) 0%, transparent 70%);
+      pointer-events: none;
     }
 
     .cta-inner {
-      max-width: 560px;
+      position: relative;
+      z-index: 1;
+      max-width: 580px;
       margin: 0 auto;
       opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
+      transform: translateY(20px);
+      transition: opacity 0.7s ease-out, transform 0.7s ease-out;
     }
-    .cta-inner.is-visible { opacity: 1; transform: none; }
 
-    .cta-title {
+    .cta-inner.is-visible { opacity: 1; transform: translateY(0); }
+
+    .cta-headline {
       font-family: 'Fraunces', serif;
       font-optical-sizing: auto;
-      font-size: clamp(30px, 5vw, 44px);
-      font-weight: 400;
-      letter-spacing: -0.022em;
-      line-height: 1.18;
+      font-size: clamp(28px, 5vw, 42px);
+      font-weight: 300;
       color: var(--hero-text);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
       margin-bottom: 16px;
     }
 
@@ -384,263 +455,289 @@
       font-size: 16px;
       color: var(--hero-muted);
       line-height: 1.6;
-      margin-bottom: 44px;
+      margin-bottom: 40px;
     }
 
-    .cta-form {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
+    /* CTA portal overrides */
+    .cta-section .address-portal { opacity: 1; animation: none; }
 
-    .cta-input {
-      width: 100%;
-      max-width: 440px;
-      padding: 16px 20px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      color: var(--hero-text);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      outline: none;
-      transition: border-color 0.2s;
-      -webkit-appearance: none;
-    }
-    .cta-input::placeholder { color: rgba(255,255,255,0.28); }
-    .cta-input:focus { border-color: rgba(184,146,42,0.5); }
+    /* ── Footer ───────────────────────────────── */
 
-    .cta-btn {
-      padding: 14px 36px;
-      background: var(--gold);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.12s;
-    }
-    .cta-btn:hover  { background: var(--gold-dark); transform: translateY(-1px); }
-    .cta-btn:active { transform: scale(0.98); }
-
-    /* ════════════════════════════════════════════════
-       FOOTER
-    ════════════════════════════════════════════════ */
-
-    .home-footer {
+    .site-footer {
       background: #0d0d0d;
-      padding: 36px 24px;
-      text-align: center;
+      padding: 32px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       border-top: 1px solid rgba(255,255,255,0.05);
     }
 
-    .footer-logo {
+    .site-footer-brand {
       font-family: 'Fraunces', serif;
       font-size: 18px;
       font-weight: 400;
-      letter-spacing: -0.02em;
-      color: rgba(255,255,255,0.4);
-      margin-bottom: 14px;
+      color: rgba(255,255,255,0.45);
     }
-    .footer-logo .logo-gold { color: var(--gold); opacity: 0.75; }
 
-    .footer-links {
-      display: flex;
-      justify-content: center;
-      gap: 28px;
-      flex-wrap: wrap;
-    }
-    .footer-link {
-      font-size: 12px;
-      color: rgba(255,255,255,0.28);
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-    .footer-link:hover { color: rgba(255,255,255,0.65); }
+    .site-footer-note { font-size: 12px; color: rgba(255,255,255,0.18); max-width: 400px; }
 
-    /* ════════════════════════════════════════════════
-       KEYFRAMES
-    ════════════════════════════════════════════════ */
+    /* ── Animations ───────────────────────────── */
 
-    @keyframes grainIn     { to { opacity: 0.45; } }
-    @keyframes fadeIn      { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes fadeSlideUp {
+    @keyframes fadeUp {
       from { opacity: 0; transform: translateY(20px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    @keyframes scrollBounce {
-      0%, 100% { transform: translateX(-50%) translateY(0); }
-      50%       { transform: translateX(-50%) translateY(7px); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
+
+    /* ── Mobile ───────────────────────────────── */
+
+    @media (max-width: 600px) {
+      .hero-nav { padding: 22px 20px; }
+      .what-section { padding: 80px 24px 100px; }
+      .what-grid { grid-template-columns: 1fr; gap: 0; }
+      .what-col { padding-right: 0; padding-bottom: 40px; }
+      .what-col + .what-col { padding-left: 0; border-left: none; border-top: 1px solid var(--ink-20); padding-top: 40px; }
+      .what-col:nth-child(2) { padding-right: 0; }
+      .preview-section { padding: 0 24px 80px; }
+      .preview-card { padding: 28px 22px 22px; }
+      .cta-section { padding: 80px 24px; }
+      .site-footer { flex-direction: column; gap: 12px; text-align: center; padding: 28px 24px; }
+      .address-portal { flex-direction: column; padding: 16px; gap: 12px; border-radius: 14px; }
+      .address-portal input { width: 100%; padding: 0; font-size: 16px; }
+      .address-portal button { width: 100%; padding: 13px; }
+    }
+
+    /* ── Reduced motion ───────────────────────── */
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
+        animation-delay: 0.01ms !important;
         transition-duration: 0.01ms !important;
-        opacity: 1 !important;
-        transform: none !important;
+      }
+      .hero-eyebrow, .hero-headline .line-1, .hero-headline .line-2,
+      .hero-subhead, .address-portal, .social-proof, .scroll-hint, .hero-nav {
+        opacity: 1; transform: none;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- ════ HERO ════ -->
-  <section class="hero">
-    <div class="hero-inner">
-      <div class="hero-logo">Liv<span class="logo-gold">ably</span></div>
+<!-- ══ Hero ══════════════════════════════════════════════════════ -->
+<section class="hero" id="top">
+  <nav class="hero-nav">
+    <a href="/" class="hero-logo">Liv<span class="logo-gold">ably</span></a>
+  </nav>
 
-      <h1 class="hero-headline" aria-label="The place you're about to call home.">
-        <span class="h1-line">The place you're</span>
-        <span class="h1-line">about to call home.</span>
-      </h1>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Address Intelligence for Homebuyers</div>
 
-      <p class="hero-sub">The things you'd only learn after living there for two years&thinsp;—&thinsp;handed to you before you sign.</p>
+    <h1 class="hero-headline">
+      <span class="line-1">The place you're</span>
+      <span class="line-2">about to call home.</span>
+    </h1>
 
-      <div class="portal-wrap">
-        <form class="address-portal" action="/report" method="get">
-          <input
-            class="portal-input"
-            type="text"
-            name="address"
-            placeholder="Enter a home address — street, city, state"
-            autocomplete="street-address"
-            required
-            autofocus
-            aria-label="Home address"
-          >
-          <button type="submit" class="portal-btn">Get report</button>
-        </form>
+    <p class="hero-subhead">
+      The things you'd only learn after living there for two years —
+      handed to you before you sign.
+    </p>
+
+    <form class="address-portal" action="/report" method="GET">
+      <input
+        type="text"
+        name="address"
+        placeholder="Enter a home address — street, city, state"
+        autocomplete="street-address"
+        required
+        aria-label="Home address"
+      >
+      <button type="submit">Explore →</button>
+    </form>
+
+    <p class="social-proof">Used by homebuyers across the US</p>
+  </div>
+
+  <div class="scroll-hint" id="scrollHint" aria-hidden="true">
+    <span>Discover</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ══ What Livably Shows You ═══════════════════════════════════ -->
+<section class="what-section">
+  <div class="what-inner">
+    <div class="what-eyebrow js-reveal">What Livably Shows You</div>
+
+    <div class="what-grid">
+
+      <div class="what-col js-reveal" style="transition-delay: 0ms">
+        <div class="what-col-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 22 Q4 14 14 8 Q24 14 24 22"/>
+            <path d="M9 22 Q9 16 14 13 Q19 16 19 22"/>
+            <line x1="14" y1="8" x2="14" y2="5"/>
+          </svg>
+        </div>
+        <h2 class="what-col-title">The Place</h2>
+        <div class="what-col-rule"></div>
+        <div class="what-finding">Your <strong>yard's soil type</strong> and what will actually grow in it</div>
+        <div class="what-finding"><strong>USDA hardiness zone</strong> and frost dates for your specific address</div>
+        <div class="what-finding"><strong>Light pollution, air quality,</strong> and what you'll hear at night</div>
       </div>
 
-      <p class="hero-proof">Used by homebuyers across the US</p>
+      <div class="what-col js-reveal" style="transition-delay: 140ms">
+        <div class="what-col-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="14" cy="14" r="10"/>
+            <polyline points="14 8 14 14 18 16.5"/>
+          </svg>
+        </div>
+        <h2 class="what-col-title">The Day to Day</h2>
+        <div class="what-col-rule"></div>
+        <div class="what-finding"><strong>3 min</strong> to the nearest grocery store</div>
+        <div class="what-finding"><strong>4 min</strong> to the nearest full-service ER</div>
+        <div class="what-finding"><strong>8 min</strong> to I-75 on an 8am Tuesday</div>
+      </div>
+
+      <div class="what-col js-reveal" style="transition-delay: 280ms">
+        <div class="what-col-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="14" cy="14" r="10"/>
+            <path d="M14 4 C14 4 20 9 20 14 S14 24 14 24 C14 24 8 19 8 14 S14 4 14 4"/>
+            <line x1="4" y1="14" x2="24" y2="14"/>
+          </svg>
+        </div>
+        <h2 class="what-col-title">The Future</h2>
+        <div class="what-col-rule"></div>
+        <div class="what-finding"><strong>Zone X</strong> — flood insurance not federally required</div>
+        <div class="what-finding">Confirmed <strong>development projects</strong> within 1 mile</div>
+        <div class="what-finding"><strong>School assignment</strong> verified against your exact parcel</div>
+      </div>
+
     </div>
+  </div>
+</section>
 
-    <button
-      class="scroll-hint"
-      aria-hidden="true"
-      tabindex="-1"
-      onclick="document.querySelector('.features').scrollIntoView({behavior:'smooth'})"
-    >
-      <span>Explore</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <path d="M12 5v14m0 0l7-7m-7 7l-7-7"/>
-      </svg>
-    </button>
-  </section>
+<!-- ══ Preview ═══════════════════════════════════════════════════ -->
+<section class="preview-section">
+  <p class="preview-label">From a real report</p>
 
-  <!-- ════ FEATURES ════ -->
-  <section class="features">
-    <div class="features-inner">
-      <p class="features-eyebrow">What Livably shows you</p>
-      <h2 class="features-title">Every dimension of life<br>at this address</h2>
+  <div class="preview-wrapper">
+    <div class="preview-card" id="previewCard">
+      <div class="preview-chapter-label">Core Services</div>
+      <div class="preview-chapter-title">Daily Reachability</div>
 
-      <div class="features-grid">
-        <div class="feature-col">
-          <div class="feature-divider"></div>
-          <div class="feature-label">The Place</div>
-          <h3 class="feature-title">Your yard. Your soil. Your neighborhood.</h3>
-          <ul class="feature-list">
-            <li class="feature-item">Parcel-level FEMA flood zone — not ZIP code level</li>
-            <li class="feature-item">USDA soil type, drainage class, hardiness zone</li>
-            <li class="feature-item">Native plants and wildlife for your specific lot</li>
-          </ul>
+      <div class="preview-row">
+        <div>
+          <div class="preview-dest-name">Kroger</div>
+          <div class="preview-dest-sub">Grocery · Georgetown, KY</div>
         </div>
+        <div><span class="preview-drive-time">3</span><span class="preview-drive-unit"> min</span></div>
+      </div>
 
-        <div class="feature-col">
-          <div class="feature-divider"></div>
-          <div class="feature-label">The Day to Day</div>
-          <h3 class="feature-title">Drive times, schools, safety — what life actually feels like.</h3>
-          <ul class="feature-list">
-            <li class="feature-item">3 min to the nearest grocery, 8 min to I-75</li>
-            <li class="feature-item">Nearest ER verified by actual drive time, not proximity</li>
-            <li class="feature-item">8am Tuesday drive times — not mid-day estimates</li>
-          </ul>
+      <div class="preview-row">
+        <div>
+          <div class="preview-dest-name">Georgetown Community Hospital</div>
+          <div class="preview-dest-sub">Full Emergency Department</div>
         </div>
+        <div><span class="preview-drive-time">4</span><span class="preview-drive-unit"> min</span></div>
+      </div>
 
-        <div class="feature-col">
-          <div class="feature-divider"></div>
-          <div class="feature-label">The Future</div>
-          <h3 class="feature-title">What's coming to the neighborhood.</h3>
-          <ul class="feature-list">
-            <li class="feature-item">Confirmed funded development projects by name and status</li>
-            <li class="feature-item">Zone X — flood insurance not federally required</li>
-            <li class="feature-item">Air quality, light pollution, radon zone, water quality</li>
-          </ul>
+      <div class="preview-row">
+        <div>
+          <div class="preview-dest-name">I-75 North / South</div>
+          <div class="preview-dest-sub">Highway Access</div>
         </div>
+        <div><span class="preview-drive-time">8</span><span class="preview-drive-unit"> min</span></div>
+      </div>
+
+      <div class="preview-takeaway">
+        <span class="preview-takeaway-icon">🔑</span>
+        <span class="preview-takeaway-text">
+          <strong>Key Takeaway:</strong> Fast fire response (~2 min) and a close ER (4 min) are genuine safety assets here. Still ask your insurance agent for the ISO PPC rating.
+        </span>
       </div>
     </div>
-  </section>
+    <p class="preview-caption">Generated for any US residential address in under 60 seconds.</p>
+  </div>
+</section>
 
-  <!-- ════ CTA ════ -->
-  <section class="cta-section">
-    <div class="cta-inner">
-      <h2 class="cta-title">Ready to know your new neighborhood?</h2>
-      <p class="cta-sub">Generated for any US address in under 60 seconds.</p>
-      <form class="cta-form" action="/report" method="get">
-        <input
-          class="cta-input"
-          type="text"
-          name="address"
-          placeholder="Enter a home address"
-          autocomplete="street-address"
-          required
-          aria-label="Home address"
-        >
-        <button type="submit" class="cta-btn">Enter your address &rarr;</button>
-      </form>
-    </div>
-  </section>
+<!-- ══ CTA ════════════════════════════════════════════════════════ -->
+<section class="cta-section">
+  <div class="cta-inner js-reveal">
+    <h2 class="cta-headline">Ready to know your new neighborhood?</h2>
+    <p class="cta-sub">Enter any US residential address. Receive a full intelligence report in under a minute.</p>
 
-  <!-- ════ FOOTER ════ -->
-  <footer class="home-footer">
-    <div class="footer-logo">Liv<span class="logo-gold">ably</span></div>
-    <nav class="footer-links">
-      <a href="/history.html" class="footer-link">Report History</a>
-      <a href="/compare" class="footer-link">Compare Addresses</a>
-    </nav>
-  </footer>
+    <form class="address-portal" action="/report" method="GET">
+      <input
+        type="text"
+        name="address"
+        placeholder="Enter a home address — street, city, state"
+        autocomplete="street-address"
+        required
+        aria-label="Home address"
+      >
+      <button type="submit">Enter your address →</button>
+    </form>
+  </div>
+</section>
 
-  <script>
-    (function () {
-      'use strict';
+<!-- ══ Footer ════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="site-footer-brand">Liv<span class="logo-gold">ably</span></div>
+  <div class="site-footer-note">For informational purposes only. Not a substitute for professional inspection or legal counsel.</div>
+</footer>
 
-      // Intersection Observer for scroll-triggered entrances
-      if (window.IntersectionObserver) {
-        var els = document.querySelectorAll(
-          '.features-eyebrow, .features-title, .feature-col, .cta-inner'
-        );
-        var io = new IntersectionObserver(function (entries) {
-          entries.forEach(function (e) {
-            if (e.isIntersecting) {
-              e.target.classList.add('is-visible');
-              io.unobserve(e.target);
-            }
-          });
-        }, { threshold: 0.12 });
-        els.forEach(function (el) { io.observe(el); });
-      } else {
-        // No IO support — make everything visible
-        document.querySelectorAll('.features-eyebrow,.features-title,.feature-col,.cta-inner')
-          .forEach(function (el) { el.classList.add('is-visible'); });
+<script>
+  (function () {
+    'use strict';
+
+    // Fade scroll hint on first scroll
+    var hint = document.getElementById('scrollHint');
+    var scrolled = false;
+    window.addEventListener('scroll', function () {
+      if (!scrolled && hint) {
+        hint.style.opacity = '0';
+        hint.style.pointerEvents = 'none';
+        scrolled = true;
       }
+    }, { passive: true });
 
-      // Fade out scroll hint on first scroll
-      var hint = document.querySelector('.scroll-hint');
-      if (hint) {
-        window.addEventListener('scroll', function () {
-          hint.style.transition = 'opacity 0.35s';
-          hint.style.opacity = '0';
-          hint.style.pointerEvents = 'none';
-        }, { once: true, passive: true });
-      }
-    })();
-  </script>
+    // Intersection Observer for .js-reveal
+    if (!window.IntersectionObserver) {
+      document.querySelectorAll('.js-reveal').forEach(function (el) { el.classList.add('is-visible'); });
+      return;
+    }
+
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          obs.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('.js-reveal').forEach(function (el) { obs.observe(el); });
+
+    // Preview card: gentle parallax
+    var card = document.getElementById('previewCard');
+    if (card && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      window.addEventListener('scroll', function () {
+        var rect = card.getBoundingClientRect();
+        var offset = (rect.top + rect.height / 2 - window.innerHeight / 2) / window.innerHeight;
+        card.style.transform = 'rotate(-1.8deg) translateY(' + (offset * 14) + 'px)';
+      }, { passive: true });
+    }
+  })();
+</script>
+
 </body>
 </html>
