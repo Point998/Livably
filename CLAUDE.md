@@ -31,8 +31,7 @@ No finding may reference or imply racial, ethnic, national origin, income, or cl
 - Fonts: Fraunces (serif headings), DM Sans (body) — Google Fonts
 - Colors: dark ink header (#1a1a1a), cream background (#faf8f4), gold accents (#b8922a)
 - Mobile-first, max-width 480px
-- Visual target: `reference/livably_report_georgetown_v4.html`
-- No scoring ring. Replace with clean address hero block.
+- The only design reference for all future work is LIVABLY-DESIGN-BRIEF.md. All previous design patterns are deprecated.
 
 ---
 
