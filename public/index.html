@@ -3,17 +3,239 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Livably</title>
-  <link rel="stylesheet" href="/report.css">
+  <title>Livably — Home Intelligence Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:         #1a1a1a;
+      --cream:       #faf8f4;
+      --cream-dark:  #f3f0e8;
+      --gold:        #b8922a;
+      --gold-hover:  #a07a20;
+      --gold-ring:   rgba(184, 146, 42, 0.18);
+      --border:      rgba(26, 26, 26, 0.13);
+      --muted:       rgba(26, 26, 26, 0.42);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Grain texture overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.055'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* Subtle vignette at edges */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(210, 200, 178, 0.28) 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px 72px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    /* ── Logo ───────────────────────────────────────── */
+    .logo {
+      font-family: 'Fraunces', serif;
+      font-optical-sizing: auto;
+      font-size: clamp(44px, 12vw, 56px);
+      font-weight: 400;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      line-height: 1;
+      margin-bottom: 20px;
+      animation: fadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .logo-gold {
+      color: var(--gold);
+    }
+
+    /* ── Rule ───────────────────────────────────────── */
+    .rule {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+      animation: fadeUp 0.55s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .rule-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, var(--gold), transparent);
+      max-width: 56px;
+      opacity: 0.55;
+    }
+
+    .rule-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--gold);
+      opacity: 0.55;
+    }
+
+    /* ── Tagline ────────────────────────────────────── */
+    .tagline {
+      font-family: 'Fraunces', serif;
+      font-optical-sizing: auto;
+      font-style: italic;
+      font-weight: 300;
+      font-size: clamp(17px, 4.5vw, 20px);
+      line-height: 1.52;
+      color: var(--ink);
+      opacity: 0.68;
+      margin-bottom: 44px;
+      max-width: 400px;
+      animation: fadeUp 0.55s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* ── Form ───────────────────────────────────────── */
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: fadeUp 0.55s 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .address-input {
+      width: 100%;
+      padding: 17px 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--ink);
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: 3px;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .address-input::placeholder {
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .address-input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px var(--gold-ring);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 17px 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #fff;
+      background: var(--gold);
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.18s ease, transform 0.1s ease;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .submit-btn:hover {
+      background: var(--gold-hover);
+    }
+
+    .submit-btn:active {
+      transform: scale(0.985);
+    }
+
+    /* ── Footnote ───────────────────────────────────── */
+    .footnote {
+      margin-top: 32px;
+      font-size: 12.5px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.65;
+      animation: fadeUp 0.55s 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* ── Animations ─────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ─────────────────────────────────── */
+    @media (max-width: 375px) {
+      .page { padding: 40px 20px 60px; }
+    }
+
+    @media (min-width: 600px) {
+      .page { padding: 80px 40px 100px; }
+    }
+  </style>
 </head>
-<body class="form-page">
-  <div class="form-container">
-    <div class="form-logo">Liv<span class="logo-gold">ably</span></div>
-    <p class="form-tagline">The things you'd only learn after living there for two years.</p>
-    <form action="/report" method="get" class="address-form">
-      <input type="text" name="address" placeholder="Enter a home address" autocomplete="street-address" required>
-      <button type="submit">Generate report</button>
-    </form>
-  </div>
+<body>
+  <main class="page">
+    <div class="card">
+      <h1 class="logo">Liv<span class="logo-gold">ably</span></h1>
+
+      <div class="rule" aria-hidden="true">
+        <div class="rule-line"></div>
+        <div class="rule-dot"></div>
+      </div>
+
+      <p class="tagline">The things you'd only learn after living there for two years.</p>
+
+      <form class="form" action="/report" method="get">
+        <input
+          class="address-input"
+          type="text"
+          name="address"
+          placeholder="Enter a home address"
+          autocomplete="street-address"
+          required
+          autofocus
+          aria-label="Home address"
+        >
+        <button class="submit-btn" type="submit">Generate Report</button>
+      </form>
+
+      <p class="footnote">US addresses only &mdash; covers health &amp; safety, schools, environment, growth, and more.</p>
+    </div>
+  </main>
 </body>
 </html>
