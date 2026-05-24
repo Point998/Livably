@@ -1119,6 +1119,79 @@ function buildKeyInsightsHTML(hospital, school, highwayRamp, premium) {
   </div>`;
 }
 
+function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
+  const findings = [];
+  const env = premium?.environment;
+
+  const flood = env?.floodRisk;
+  if (flood) {
+    if (flood.risk === 'High' || flood.risk === 'Very High') {
+      findings.push({ bucket: 'Things to Check', cls: 'check',
+        text: `FEMA Flood Zone ${flood.zone} — flood insurance required, adds $1,500–$4,000/year.` });
+    } else if (flood.zone === 'X') {
+      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
+        text: `Outside FEMA high-risk flood zones (Zone X) — flood insurance not federally required.` });
+    } else {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `FEMA Flood Zone ${flood.zone} — moderate risk area, worth pricing flood insurance before closing.` });
+    }
+  }
+
+  if (school) {
+    findings.push({ bucket: 'Things to Check', cls: 'check',
+      text: `Nearest school: ${school.name} (${school.driveTimeMinutes} min). Assigned school requires district verification.` });
+  }
+
+  if (hospital) {
+    if (hospital.driveTimeMinutes > 20) {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `Nearest ER (${hospital.name}) is ${hospital.driveTimeMinutes} min away — farther than average.` });
+    } else if (hospital.driveTimeMinutes <= 10) {
+      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
+        text: `${hospital.name} is ${hospital.driveTimeMinutes} min away — full emergency department within quick reach.` });
+    } else {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `Nearest ER (${hospital.name}) is ${hospital.driveTimeMinutes} min — know your route before you need it.` });
+    }
+  }
+
+  if (highwayRamp) {
+    if (highwayRamp.driveTimeMinutes <= 8) {
+      findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
+        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min away — quick highway access.` });
+    } else if (highwayRamp.driveTimeMinutes > 20) {
+      findings.push({ bucket: 'Things to Consider', cls: 'consider',
+        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min — regional travel adds meaningful time.` });
+    }
+  }
+
+  const radon = env?.radon;
+  if (radon && radon.zone === 1) {
+    findings.push({ bucket: 'Things to Check', cls: 'check',
+      text: `EPA Radon Zone 1 (high potential) — a $15–$30 test before closing is strongly recommended.` });
+  }
+
+  if (!findings.length) return '';
+  const top = findings.slice(0, 4);
+
+  const ICONS = {
+    cool: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    check: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2L8 2a6 6 0 100 12 6 6 0 000-12z" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11" r="0.75" fill="currentColor"/></svg>`,
+    consider: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 7v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="5" r="0.75" fill="currentColor"/></svg>`,
+  };
+
+  return `
+    <div class="hero-insights-label">At a Glance</div>
+    ${top.map((f) => `
+    <div class="hero-insight-row ki-${f.cls}">
+      <div class="hero-insight-icon">${ICONS[f.cls]}</div>
+      <div class="hero-insight-right">
+        <span class="hero-insight-bucket">${escapeHtml(f.bucket)}</span>
+        <p class="hero-insight-text">${escapeHtml(f.text)}</p>
+      </div>
+    </div>`).join('')}`;
+}
+
 function buildHealthSafetyChapterHTML(hospital, emergency) {
   if (!hospital && !emergency) return '';
   const fire   = emergency?.fire;
@@ -1406,50 +1479,15 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     buildSchoolSection(school),
   ].join('\n');
 
-  // Build map pin data from all non-null services
-  const mapServices = [];
-  if (grocery && grocery.length) {
-    grocery.forEach((s) => {
-      if (s?.location) mapServices.push({
-        name: s.name, address: s.address, driveTimeMinutes: s.driveTimeMinutes,
-        lat: s.location.lat, lng: s.location.lng,
-        label: 'Grocery', category: 'grocery',
-      });
-    });
-  }
-  [
-    { result: pharmacy,         label: 'Pharmacy',          category: 'healthcare' },
-    { result: hospital,         label: 'Hospital',          category: 'healthcare' },
-    { result: urgentCare,       label: 'Urgent Care',       category: 'healthcare' },
-    { result: highwayRamp,      label: highwayRamp?.name || 'Highway', category: 'transit' },
-    { result: school,           label: 'School',            category: 'education' },
-    { result: gasStation,       label: 'Gas Station',       category: 'transit' },
-    { result: park,             label: 'Park',              category: 'parks' },
-    { result: coffeeShop,       label: 'Coffee Shop',       category: 'coffee' },
-    { result: elementarySchool, label: 'Elementary School', category: 'education' },
-  ].forEach(({ result, label, category }) => {
-    if (result?.location) mapServices.push({
-      name: result.name, address: result.address, driveTimeMinutes: result.driveTimeMinutes,
-      lat: result.location.lat, lng: result.location.lng, label, category,
-    });
-  });
-
-  if (customDestinations) {
-    customDestinations.forEach((dest) => {
-      if (dest?.location) mapServices.push({
-        name: dest.name, address: dest.address, driveTimeMinutes: dest.driveTimeMinutes,
-        lat: dest.location.lat, lng: dest.location.lng, label: dest.name, category: 'custom',
-      });
-    });
-  }
-
   const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
   const premiumSectionsHTML = buildPremiumSectionsHTML(premium || null);
-  const keyInsightsHTML = buildKeyInsightsHTML(hospital, school, highwayRamp, premium);
   const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, premium?.emergency);
+
+  // Hero At-a-Glance insight rows (rendered inside the editorial hero block)
+  const heroInsightRowsHTML = buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium);
 
   const safeAddrJS = JSON.stringify(address).replace(/</g, '\\u003c');
   const saveHistoryScriptHTML = `
@@ -1467,25 +1505,20 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     })();
   <\/script>`;
 
-  const mapData = origin ? { home: { lat: origin.lat, lng: origin.lng }, services: mapServices } : null;
-  const safeMapJSON = mapData ? JSON.stringify(mapData).replace(/</g, '\\u003c') : null;
-
-  // Quick stats for the hero info card
-  const quickStatsHTML = buildHeroQuickStatsHTML(grocery, coffeeShop, premium, elementarySchool, school);
-
-  // Share button lives in the hero; script wires it up
+  // Share button (lives in the hero)
   const heroShareHTML = reportId ? `
-    <button id="shareBtn" class="hero-share-btn no-print">Share this report</button>
-    <span id="shareToast" class="hero-share-toast hidden">Link copied!</span>` : '';
+    <div class="hero-share-area no-print">
+      <button id="shareBtn" class="hero-share-btn">Share this report</button>
+      <span id="shareToast" class="hero-share-toast hidden">Link copied!</span>
+    </div>` : '';
 
   const shareScriptHTML = reportId ? `
   <script>
     (function () {
-      var id = '${reportId}';
       var btn = document.getElementById('shareBtn');
       if (!btn) return;
       btn.addEventListener('click', function () {
-        var url = window.location.origin + '/r/' + id;
+        var url = window.location.origin + '/r/' + '${reportId}';
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(url).then(showToast).catch(function () { prompt('Copy this link:', url); });
         } else {
@@ -1501,122 +1534,6 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     })();
   <\/script>` : '';
 
-  // Hero map HTML (map + detail panel + toggles live inside .hero)
-  const heroMapHTML = mapData ? `
-    <div class="hero-map-container no-print">
-      <div id="map" class="hero-map"></div>
-    </div>
-    <div class="hero-category-toggles no-print" id="mapControls">
-      <button class="map-toggle active" data-cat="all">All</button>
-      <button class="map-toggle" data-cat="education">🏫 Schools</button>
-      <button class="map-toggle" data-cat="healthcare">🏥 Healthcare</button>
-      <button class="map-toggle" data-cat="grocery">🛒 Grocery</button>
-      <button class="map-toggle" data-cat="coffee">☕ Coffee</button>
-      <button class="map-toggle" data-cat="parks">🌳 Parks</button>${mapData.services.some((s) => s.category === 'custom') ? '\n      <button class="map-toggle" data-cat="custom">⭐ Custom</button>' : ''}
-    </div>
-    <div id="map-detail" class="no-print">
-      <div class="map-detail-pill"></div>
-      <button id="map-detail-close" aria-label="Close">&#x2715;</button>
-      <div class="map-detail-cat" id="map-detail-cat"></div>
-      <div class="map-detail-name" id="map-detail-name"></div>
-      <div class="map-detail-addr" id="map-detail-addr"></div>
-      <span class="map-detail-time" id="map-detail-time"></span>
-    </div>` : '';
-
-  const mapScriptsHTML = mapData ? `
-  <script id="map-data" type="application/json">${safeMapJSON}<\/script>
-  <script>
-    window.initMap = function () {
-      try {
-        var data = JSON.parse(document.getElementById('map-data').textContent);
-        var home = { lat: data.home.lat, lng: data.home.lng };
-        var map = new google.maps.Map(document.getElementById('map'), {
-          center: home, zoom: 15,
-          mapTypeControl: false, streetViewControl: false, fullscreenControl: false,
-          styles: [
-            { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-          ],
-        });
-
-        var CAT_COLORS = {
-          education: '#7B8E7F',
-          healthcare: '#C27B5B',
-          grocery:    '#B8956A',
-          coffee:     '#7A6247',
-          parks:      '#5B7A5E',
-          transit:    '#9B9080',
-          custom:     '#7A8FAD',
-        };
-
-        new google.maps.Marker({
-          position: home, map: map, title: 'Your address', zIndex: 20,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            fillColor: '#7B8E7F', fillOpacity: 1,
-            strokeColor: '#ffffff', strokeWeight: 3, scale: 11,
-          },
-        });
-
-        var svcMarkers = [];
-        var detail = document.getElementById('map-detail');
-        var detailCat  = document.getElementById('map-detail-cat');
-        var detailName = document.getElementById('map-detail-name');
-        var detailAddr = document.getElementById('map-detail-addr');
-        var detailTime = document.getElementById('map-detail-time');
-
-        function showDetail(svc) {
-          detailCat.textContent  = svc.label || svc.category || '';
-          detailName.textContent = svc.name;
-          detailAddr.textContent = svc.address;
-          detailTime.textContent = svc.driveTimeMinutes + ' min drive';
-          if (detail) detail.classList.add('visible');
-        }
-
-        var closeBtn = document.getElementById('map-detail-close');
-        if (closeBtn) closeBtn.addEventListener('click', function () {
-          if (detail) detail.classList.remove('visible');
-        });
-
-        data.services.forEach(function (svc) {
-          var pos = { lat: svc.lat, lng: svc.lng };
-          var color = CAT_COLORS[svc.category] || '#9B9080';
-          var marker = new google.maps.Marker({
-            position: pos, map: map, title: svc.name,
-            icon: {
-              path: google.maps.SymbolPath.CIRCLE,
-              fillColor: color, fillOpacity: 0.9,
-              strokeColor: '#ffffff', strokeWeight: 2, scale: 8,
-            },
-          });
-          marker._svc = svc;
-          marker.addListener('click', function () { showDetail(svc); });
-          svcMarkers.push(marker);
-        });
-
-        // Category toggle filtering
-        var controls = document.getElementById('mapControls');
-        if (controls) {
-          controls.addEventListener('click', function (e) {
-            var btn = e.target.closest('.map-toggle');
-            if (!btn) return;
-            controls.querySelectorAll('.map-toggle').forEach(function (b) { b.classList.remove('active'); });
-            btn.classList.add('active');
-            var cat = btn.dataset.cat;
-            if (detail) detail.classList.remove('visible');
-            svcMarkers.forEach(function (m) {
-              var show = cat === 'all' || (m._svc && m._svc.category === cat);
-              m.setVisible(show);
-            });
-          });
-        }
-      } catch (e) {
-        var el = document.getElementById('map');
-        if (el) el.style.display = 'none';
-      }
-    };
-  <\/script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=${escapeHtml(googleMapsApiKey)}&callback=initMap" async defer><\/script>` : '';
 
   const safeAddrShort = escapeHtml(address.length > 50 ? address.slice(0, 47) + '…' : address);
 
@@ -1640,24 +1557,22 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
        onclick="this.href='/report/pdf'+location.search.replace(/[?&]fetch=1/,'');return true;">PDF</a>
   </nav>
 
-  <div class="hero">${heroMapHTML}
-    <div class="hero-info-card">
-      <div class="hero-card-brand">Liv<span class="logo-gold">ably</span></div>
-      <h1 class="hero-info-street">${escapeHtml(street)}</h1>
-      <div class="hero-info-city">${escapeHtml(cityState)}</div>${quickStatsHTML ? `
-      <div class="hero-quick-stats">${quickStatsHTML}
-      </div>` : ''}
-    </div>${heroShareHTML}
-    <div class="hero-scroll-indicator" aria-hidden="true">
-      <span>Explore</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <path d="M12 5v14m0 0l7-7m-7 7l-7-7"/>
-      </svg>
+  <div class="report-hero">
+    <div class="report-hero-inner">
+      <div class="report-hero-eyebrow">
+        <span class="report-hero-brand">Liv<span class="logo-gold">ably</span> Report</span>
+        <span class="report-hero-date">${researchDate}</span>
+      </div>
+      <div class="report-hero-address">
+        <h1 class="report-hero-street">${escapeHtml(street)}</h1>
+        <div class="report-hero-city">${escapeHtml(cityState)}</div>
+      </div>
+      ${heroInsightRowsHTML}
+      ${heroShareHTML}
     </div>
   </div>
 
   <div class="report-content">
-    ${keyInsightsHTML}
     ${healthSafetyChapterHTML}
     ${insightsCardHTML}
     <div class="chapter-card" style="--chapter-color: var(--teal)">
@@ -1698,7 +1613,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
       window.addEventListener('scroll', onScroll, { passive: true });
     })();
   <\/script>
-  ${mapScriptsHTML}${shareScriptHTML}${saveHistoryScriptHTML}
+  ${shareScriptHTML}${saveHistoryScriptHTML}
   <script src="/ui.js" defer><\/script>
 </body>
 </html>`;
@@ -1780,17 +1695,18 @@ function buildLoadingHTML(address) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Livably — Building your report…</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/report.css">
 </head>
 <body class="loading-page" data-address="${escapeHtml(address)}">
-  <div class="loading-container">
-    <div class="loading-logo">Liv<span class="logo-gold">ably</span></div>
-    <div class="loading-address">${escapeHtml(address)}</div>
-    <div class="loading-progress-track">
-      <div class="loading-progress-fill" id="loading-progress"></div>
-    </div>
-    <p class="loading-message" id="loading-msg">Finding your address…</p>
+  <div class="loading-brand">Liv<span>ably</span></div>
+  <div class="loading-address">${escapeHtml(address)}</div>
+  <div class="loading-progress-track">
+    <div class="loading-progress-fill" id="loading-progress"></div>
   </div>
+  <p class="loading-message" id="loading-msg">Finding your address…</p>
   <script>
     (function () {
       var messages = [
