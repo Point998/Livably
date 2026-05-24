@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   LIVABLY — UI Animation System
+   LIVABLY — UI Animation System v2
    Purposeful. Every animation earns its place.
    Respects prefers-reduced-motion throughout.
    ═══════════════════════════════════════════════════════ */
@@ -9,37 +9,54 @@
 
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ── 1. Chapter card scroll-reveal ──────────────────────
+  // ── 1. Chapter scroll-reveals ──────────────────────────
+  // Observes .chapter elements. On intersection:
+  //   • Adds .is-visible to .chapter-num, .chapter-title, .chapter-intro
+  //   • Adds .is-drawn to the .chapter itself (triggers SVG draw via CSS)
 
-  function initCardReveals() {
+  function initChapterReveals() {
+    function revealChapter(chapter) {
+      var num   = chapter.querySelector('.chapter-num');
+      var title = chapter.querySelector('.chapter-title');
+      var intro = chapter.querySelector('.chapter-intro');
+      if (num)   num.classList.add('is-visible');
+      if (title) title.classList.add('is-visible');
+      if (intro) intro.classList.add('is-visible');
+      chapter.classList.add('is-drawn');
+    }
+
     if (!window.IntersectionObserver) {
-      document.querySelectorAll('.chapter-card, .custom-dests-card').forEach(function (el) {
-        el.classList.add('is-visible');
-      });
+      document.querySelectorAll('.chapter').forEach(revealChapter);
       return;
     }
 
     var obs = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        var el = entry.target;
-        var delay = parseInt(el.dataset.animDelay, 10) || 0;
-        if (reduced) {
-          el.classList.add('is-visible');
-        } else {
-          setTimeout(function () { el.classList.add('is-visible'); }, delay);
-        }
-        obs.unobserve(el);
+        revealChapter(entry.target);
+        obs.unobserve(entry.target);
       });
-    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    }, { threshold: 0.06, rootMargin: '0px 0px -60px 0px' });
 
-    document.querySelectorAll('.chapter-card, .custom-dests-card').forEach(function (el, i) {
-      el.dataset.animDelay = i * 45;
+    document.querySelectorAll('.chapter').forEach(function (el) {
       obs.observe(el);
     });
   }
 
-  // ── 2. Hero At-a-Glance insight rows ───────────────────
+  // ── 2. SVG draw-on-scroll animations ──────────────────
+  // CSS uses stroke-dasharray/stroke-dashoffset via .chapter.is-drawn.
+  // JS does not need to manage this — CSS handles it via the .is-drawn
+  // class added by initChapterReveals. This function is a no-op but kept
+  // in case getTotalLength-based dynamic path lengths are needed later.
+
+  function initSVGDrawAnimations() {
+    // CSS drives the animation via:
+    //   .chapter-icon svg path { stroke-dasharray: var(--path-len, 200); stroke-dashoffset: var(--path-len, 200); }
+    //   .chapter.is-drawn .chapter-icon svg path { stroke-dashoffset: 0; }
+    // No JS needed here — initChapterReveals adds .is-drawn.
+  }
+
+  // ── 3. Hero insight rows ───────────────────────────────
 
   function initInsightRows() {
     var rows = document.querySelectorAll('.hero-insight-row');
@@ -55,7 +72,7 @@
     });
   }
 
-  // ── 3. Drive-time counters ─────────────────────────────
+  // ── 4. Drive-time counters ─────────────────────────────
 
   function easeOut(t) {
     return 1 - Math.pow(1 - t, 3);
@@ -88,7 +105,7 @@
       });
     }, { threshold: 0.6 });
 
-    document.querySelectorAll('.drive-time').forEach(function (el) {
+    document.querySelectorAll('.drive-time, .dest-time').forEach(function (el) {
       var text = el.textContent.trim();
       if (/^\d+/.test(text)) {
         el.dataset.driveTarget = text;
@@ -97,7 +114,7 @@
     });
   }
 
-  // ── 4. Traffic bar animations ──────────────────────────
+  // ── 5. Traffic bar animations ──────────────────────────
 
   function initTrafficBars() {
     if (!window.IntersectionObserver) {
@@ -107,7 +124,6 @@
       return;
     }
 
-    // Store final widths, set to 0
     document.querySelectorAll('.traffic-bar').forEach(function (bar) {
       var w = bar.style.width || '0%';
       bar.dataset.finalWidth = w;
@@ -117,24 +133,22 @@
     var obs = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        var section = entry.target;
-        var bars = section.querySelectorAll('.traffic-bar');
-        bars.forEach(function (bar, i) {
-          var delay = reduced ? 0 : i * 100;
+        entry.target.querySelectorAll('.traffic-bar').forEach(function (bar, i) {
+          var delay = reduced ? 0 : i * 80;
           setTimeout(function () {
             bar.style.width = bar.dataset.finalWidth || '0%';
           }, delay);
         });
-        obs.unobserve(section);
+        obs.unobserve(entry.target);
       });
     }, { threshold: 0.2 });
 
-    document.querySelectorAll('.traffic-dest-section').forEach(function (s) {
-      obs.observe(s);
+    document.querySelectorAll('.chapter-full, .traffic-dest-section').forEach(function (s) {
+      if (s.querySelector('.traffic-bar')) obs.observe(s);
     });
   }
 
-  // ── 5. Age / demographic bar animations ────────────────
+  // ── 6. Age / demographic bar animations ────────────────
 
   function initAgeBars() {
     if (!window.IntersectionObserver) return;
@@ -148,44 +162,78 @@
     var obs = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        var container = entry.target;
-        container.querySelectorAll('.prem-age-fill').forEach(function (fill, i) {
+        entry.target.querySelectorAll('.prem-age-fill').forEach(function (fill, i) {
           var delay = reduced ? 0 : i * 80;
           setTimeout(function () {
             fill.style.width = fill.dataset.finalWidth || '0%';
           }, delay);
         });
-        obs.unobserve(container);
+        obs.unobserve(entry.target);
       });
     }, { threshold: 0.3 });
 
-    document.querySelectorAll('.chapter-card').forEach(function (card) {
-      if (card.querySelector('.prem-age-fill')) obs.observe(card);
+    document.querySelectorAll('.chapter').forEach(function (ch) {
+      if (ch.querySelector('.prem-age-fill')) obs.observe(ch);
     });
   }
 
-  // ── 6. Bortle scale marker ─────────────────────────────
+  // ── 7. Frost timeline draw ─────────────────────────────
+  // .grow-frost-fill has data-final-width; animates from 0 on scroll.
+
+  function initFrostTimeline() {
+    if (!window.IntersectionObserver) {
+      document.querySelectorAll('.grow-frost-fill').forEach(function (fill) {
+        if (fill.dataset.finalWidth) fill.style.width = fill.dataset.finalWidth;
+      });
+      return;
+    }
+
+    document.querySelectorAll('.grow-frost-fill').forEach(function (fill) {
+      fill.style.width = '0%';
+    });
+
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var fill = entry.target.querySelector('.grow-frost-fill');
+        if (fill) {
+          setTimeout(function () {
+            fill.style.width = fill.dataset.finalWidth || '50%';
+          }, reduced ? 0 : 200);
+        }
+        obs.unobserve(entry.target);
+      });
+    }, { threshold: 0.4 });
+
+    document.querySelectorAll('.grow-frost-timeline').forEach(function (el) {
+      obs.observe(el);
+    });
+  }
+
+  // ── 8. Bortle scale marker ─────────────────────────────
+  // Marker has inline style.left set to target; animate from 0.
 
   function initBortleMarker() {
     var marker = document.querySelector('.prem-bortle-marker');
-    if (!marker) return;
+    if (!marker || reduced) return;
 
-    if (reduced) return;
-
-    var target = marker.dataset.targetLeft || marker.style.left || '50%';
+    var targetLeft = marker.style.left || '50%';
     marker.style.left = '0%';
+    marker.style.transition = 'none';
 
     var obs = new IntersectionObserver(function (entries) {
-      if (entries[0].isIntersecting) {
-        setTimeout(function () { marker.style.left = target; }, 200);
-        obs.disconnect();
-      }
+      if (!entries[0].isIntersecting) return;
+      setTimeout(function () {
+        marker.style.transition = 'left 1s cubic-bezier(0.16,1,0.3,1)';
+        marker.style.left = targetLeft;
+      }, 200);
+      obs.disconnect();
     }, { threshold: 0.5 });
 
     obs.observe(marker.parentElement);
   }
 
-  // ── 7. Sticky nav ──────────────────────────────────────
+  // ── 9. Sticky nav ──────────────────────────────────────
 
   function initStickyNav() {
     var nav = document.getElementById('reportNav');
@@ -203,10 +251,10 @@
     }
 
     window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll(); // run once on init
+    onScroll();
   }
 
-  // ── 8. Focus-ring keyboard detection ──────────────────
+  // ── 10. Focus-ring keyboard detection ─────────────────
 
   function initFocusRing() {
     document.addEventListener('mousedown', function () {
@@ -217,17 +265,53 @@
     });
   }
 
+  // ── 11. Destination item stagger ──────────────────────
+  // .dest-item cards fade/slide in with staggered delay.
+
+  function initDestItems() {
+    if (reduced || !window.IntersectionObserver) {
+      document.querySelectorAll('.dest-item').forEach(function (el) {
+        el.style.opacity = '1';
+        el.style.transform = 'none';
+      });
+      return;
+    }
+
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var grid = entry.target;
+        grid.querySelectorAll('.dest-item').forEach(function (item, i) {
+          setTimeout(function () {
+            item.classList.add('is-visible');
+          }, i * 60);
+        });
+        obs.unobserve(grid);
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.dest-grid').forEach(function (g) {
+      obs.observe(g);
+    });
+  }
+
   // ── Init ───────────────────────────────────────────────
 
   function run() {
     initStickyNav();
     initInsightRows();
-    initCardReveals();
+    initChapterReveals();
+    initSVGDrawAnimations();
     initDriveTimeCounters();
     initTrafficBars();
     initAgeBars();
+    initFrostTimeline();
     initBortleMarker();
+    initDestItems();
     initFocusRing();
+
+    // Initialize Lucide icons if available
+    if (window.lucide) window.lucide.createIcons();
   }
 
   if (document.readyState === 'loading') {
