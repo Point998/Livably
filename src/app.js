@@ -657,6 +657,16 @@ async function findNearestGasStation(originLatLng) {
   return result;
 }
 
+const PARK_EXCLUDED_TYPES = ['local_government_office', 'lawyer', 'insurance_agency', 'political'];
+const PARK_LEISURE_TYPES = ['park', 'natural_feature', 'campground', 'amusement_park', 'zoo', 'stadium', 'gym', 'recreation_area'];
+
+function isValidPark(p) {
+  const types = p.types || [];
+  if (PARK_EXCLUDED_TYPES.some((t) => types.includes(t))) return false;
+  if (types.includes('establishment') && !PARK_LEISURE_TYPES.some((t) => types.includes(t))) return false;
+  return true;
+}
+
 async function findNearestPark(originLatLng) {
   const cacheKey = `park:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
@@ -670,7 +680,7 @@ async function findNearestPark(originLatLng) {
       type: 'park',
     },
   });
-  const place = (placesResponse.data.results || [])[0];
+  const place = (placesResponse.data.results || []).find(isValidPark);
   if (!place) throw new Error('No park found near that address.');
   const result = {
     name: place.name,

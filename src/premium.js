@@ -341,6 +341,11 @@ function getWalkCategory(score) {
 
 // ── FR-020: Emergency Services ────────────────────────────────────────────────
 
+function normalizeStationName(name) {
+  if (!name) return name;
+  return name.replace(/Fire\s+Protction\s+Services/gi, 'Fire Protection Services');
+}
+
 async function getEmergencyServices(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime) {
   const [policeResult, fireResult] = await Promise.allSettled([
     googleMapsClient.placesNearby({
@@ -359,7 +364,7 @@ async function getEmergencyServices(lat, lng, originLatLng, googleMapsClient, go
     let driveTimeMinutes = null;
     try { driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location); } catch {}
     return {
-      name: place.name,
+      name: normalizeStationName(place.name),
       address: place.vicinity || place.formatted_address || place.name,
       distanceMiles: distanceMiles.toFixed(1),
       driveTimeMinutes,
@@ -1380,14 +1385,19 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   if (soil) {
     const name = soil.muname || 'this soil type';
     const drain = soil.drainageCategory;
-    soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? ` — USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
-    if (drain && drain.color !== 'muted') {
-      soilPara += esc(drain.implication) + ' ';
-    }
-    if (drain?.color === 'green' || drain?.color === 'lightgreen') {
-      soilPara += `A layer of compost before planting and you're in good shape.`;
-    } else if (drain?.color === 'orange' || drain?.color === 'red') {
-      soilPara += `Raised beds are a practical solution for vegetable gardens — they let you control drainage regardless of the native soil conditions.`;
+    const isUrban = !soil.drainagecl && name.toLowerCase().includes('urban');
+    if (isUrban) {
+      soilPara = `This address is on developed urban land — standard soil survey data isn't available for this parcel. For drainage and foundation soil information, request a geotechnical report or ask the seller about any known drainage issues.`;
+    } else {
+      soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? ` — USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
+      if (drain && drain.color !== 'muted') {
+        soilPara += esc(drain.implication) + ' ';
+      }
+      if (drain?.color === 'green' || drain?.color === 'lightgreen') {
+        soilPara += `A layer of compost before planting and you're in good shape.`;
+      } else if (drain?.color === 'orange' || drain?.color === 'red') {
+        soilPara += `Raised beds are a practical solution for vegetable gardens — they let you control drainage regardless of the native soil conditions.`;
+      }
     }
   }
 
@@ -2725,17 +2735,19 @@ function buildPropertyIntelligenceHTML(propIntel) {
     const name  = soil.muname || 'this soil type';
     const drain = soil.drainageCategory;
     const isUrban = !drain && (name.toLowerCase().includes('urban') || name.toLowerCase().includes('pits'));
-    soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? `, USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
-    if (drain) {
-      soilPara += esc(drain.implication);
-      soilBadgeHTML = `<span class="prem-badge prem-intel-soil-badge" style="${badgeColor(drain.color)}">${esc(drain.label)}</span>`;
-    } else if (isUrban) {
-      soilPara += `Urban land classifications don't carry standard drainage ratings — the soil profile has been altered by development. If you're concerned about drainage or foundation conditions, an on-site soil evaluation by a geotechnical engineer is the right approach.`;
-    } else if (!soil.drainagecl) {
-      soilPara += `No drainage classification is on record for this soil type — consult a soil engineer for site-specific drainage evaluation.`;
-    }
-    if (soil.isHydric) {
-      soilPara += ` USDA identifies this soil as hydric — a potential wetland indicator. Discuss foundation moisture, drainage feasibility, and any planned additions with your inspector.`;
+    if (isUrban) {
+      soilPara = `This address is on developed urban land — standard soil survey data isn't available for this parcel. For drainage and foundation soil information, request a geotechnical report or ask the seller about any known drainage issues.`;
+    } else {
+      soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? `, USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
+      if (drain) {
+        soilPara += esc(drain.implication);
+        soilBadgeHTML = `<span class="prem-badge prem-intel-soil-badge" style="${badgeColor(drain.color)}">${esc(drain.label)}</span>`;
+      } else if (!soil.drainagecl) {
+        soilPara += `No drainage classification is on record for this soil type — consult a soil engineer for site-specific drainage evaluation.`;
+      }
+      if (soil.isHydric) {
+        soilPara += ` USDA identifies this soil as hydric — a potential wetland indicator. Discuss foundation moisture, drainage feasibility, and any planned additions with your inspector.`;
+      }
     }
   }
 
