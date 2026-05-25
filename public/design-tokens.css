@@ -1,0 +1,136 @@
+/* ═══════════════════════════════════════════════════════════════════
+   LIVABLY — Design Tokens v1.0
+   Single source of truth for all design values.
+   Sourced from LIVABLY-DESIGN-BRIEF.md.
+   @import this file first in report.css — never duplicate values here.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+
+  /* ── Core Colors ─────────────────────────────────────────────── */
+  --ink:        #1a1a1a;   /* Primary text */
+  --ink-60:     #666260;   /* Secondary text */
+  --ink-30:     #b0adaa;   /* Muted, labels */
+  --ink-10:     #e8e5e0;   /* Dividers */
+  --ink-04:     #f5f3f0;   /* Subtle backgrounds */
+  --white:      #ffffff;
+  --page:       #f8f6f2;   /* Page background — warm off-white */
+
+  /* ── Dark Surfaces (loading, nav, footer) ────────────────────── */
+  --dark:        #0f1a0f;
+  --dark-mid:    #1a2e1a;
+  --dark-text:   rgba(255,255,255,0.92);
+  --dark-muted:  rgba(255,255,255,0.45);
+  --dark-border: rgba(255,255,255,0.08);
+
+  /* ── Chapter Color Identities ────────────────────────────────── */
+  --ch-health:        #1e3a5f; --ch-health-light: #e8f0f8; --ch-health-text: #1e3a5f;
+  --ch-daily:         #c47c1a; --ch-daily-light:  #fdf4e3; --ch-daily-text:  #8a5510;
+  --ch-reach:         #2d5a8e; --ch-reach-light:  #e8f0f8; --ch-reach-text:  #2d5a8e;
+  --ch-traffic:       #0e7c7b; --ch-traffic-light:#e0f5f5; --ch-traffic-text:#0e7c7b;
+  --ch-school:        #3d7a4f; --ch-school-light: #e8f4ec; --ch-school-text: #2a5535;
+  --ch-safety:        #c04a2e; --ch-safety-light: #fdf0ed; --ch-safety-text: #8a2e1a;
+  --ch-community:     #7b4f8a; --ch-community-light:#f4eef7;--ch-community-text:#5a3566;
+  --ch-growth:        #e05c1a; --ch-growth-light:  #fef0e6; --ch-growth-text: #a03d0a;
+  --ch-climate:       #3d5a7a; --ch-climate-light: #eaeff5; --ch-climate-text:#2a3f55;
+  --ch-garden:        #2d6b3d; --ch-garden-light:  #e8f4ec; --ch-garden-text: #1a4525;
+  --ch-property:      #4a3f35; --ch-property-light:#f0ece8; --ch-property-text:#2a221a;
+  --ch-sensory:       #4a2d7a; --ch-sensory-light: #f0eaf8; --ch-sensory-text:#2d1a4f;
+  --ch-walk:          #d45c3d; --ch-walk-light:    #fdf0ed; --ch-walk-text:   #8a2e1a;
+  --ch-costs:         #1a6b6b; --ch-costs-light:   #e0f5f5; --ch-costs-text:  #0a4040;
+  --ch-custom:        #4a3f35; --ch-custom-light:  #f0ece8; --ch-custom-text: #2a221a;
+
+  /* ── Three-Bucket System ─────────────────────────────────────── */
+  --bucket-check:          #c04a2e; --bucket-check-light:   #fdf0ed;
+  --bucket-consider:       #c47c1a; --bucket-consider-light:#fdf4e3;
+  --bucket-cool:           #2d6b3d; --bucket-cool-light:    #e8f4ec;
+
+  /* ── Chapter Defaults (overridden per-chapter via data-ch) ───── */
+  --ch:      #1a1a1a;
+  --ch-light:#f5f3f0;
+  --ch-text: #1a1a1a;
+
+  /* ── Font Stacks ─────────────────────────────────────────────── */
+  --font-display: 'Fraunces', serif;
+  --font-body:    'DM Sans', sans-serif;
+
+  /* ── Layout ──────────────────────────────────────────────────── */
+  --inner-max: 1100px;
+  --inner-pad: 48px;
+
+  /* ── Spacing Scale ───────────────────────────────────────────── */
+  --space-4:   4px;
+  --space-8:   8px;
+  --space-12:  12px;
+  --space-16:  16px;
+  --space-20:  20px;
+  --space-24:  24px;
+  --space-32:  32px;
+  --space-40:  40px;
+  --space-48:  48px;
+  --space-64:  64px;
+  --space-80:  80px;
+  --space-96:  96px;
+
+  /* ── Border Radius ───────────────────────────────────────────── */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-pill: 20px;
+
+  /* ── Badge Semantic Colors ───────────────────────────────────── */
+  /* Used by .badge-{color} utility classes */
+  --badge-green-bg:        rgba(40,167,69,0.12);
+  --badge-green-color:     #1e7e34;
+  --badge-lightgreen-bg:   rgba(92,184,92,0.12);
+  --badge-lightgreen-color:#3a9a3a;
+  --badge-gold-bg:         rgba(184,149,106,0.14);
+  --badge-gold-color:      #8a6a40;
+  --badge-orange-bg:       rgba(253,126,20,0.12);
+  --badge-orange-color:    #c0530a;
+  --badge-red-bg:          rgba(220,53,69,0.12);
+  --badge-red-color:       #a71d2a;
+  --badge-muted-bg:        rgba(107,107,107,0.1);
+  --badge-muted-color:     #555555;
+
+  /* ── Response Badge Colors (CH01 Health & Safety) ────────────── */
+  /* Used by .badge-response-{color} classes */
+  --badge-resp-green-bg:     #e8f5ee;
+  --badge-resp-green-color:  #2a6640;
+  --badge-resp-gold-bg:      #fdf3dc;
+  --badge-resp-gold-color:   #7a5c10;
+  --badge-resp-orange-bg:    #fff0e0;
+  --badge-resp-orange-color: #8a4f10;
+  --badge-resp-red-bg:       #ffeeee;
+  --badge-resp-red-color:    #8a1010;
+
+  /* ── Flood Zone Banner Themes ────────────────────────────────── */
+  /* Used by .flood-banner--{level} classes */
+  --flood-low-bg:        #eaeff5;
+  --flood-low-color:     #3d5a7a;
+  --flood-moderate-bg:   #fdf4e3;
+  --flood-moderate-color:#c47c1a;
+  --flood-high-bg:       #fdf0ed;
+  --flood-high-color:    #c04a2e;
+
+  /* ── Growth Project Status Colors ────────────────────────────── */
+  /* Used by .project-status--{state} classes */
+  --status-construction: #2e7d32;
+  --status-approved:     #b8922a;
+  --status-planned:      #5c6bc0;
+  --status-default:      #666666;
+
+  /* ── Walkability Score Colors ────────────────────────────────── */
+  /* Used by .walk-score--{level} and .walk-verdict--{level} classes */
+  --walk-green:         #1e7e34;
+  --walk-lightgreen:    #3a9a3a;
+  --walk-gold:          #8a6a40;
+  --walk-orange:        #c0530a;
+  --walk-red:           #a71d2a;
+  --walk-green-bg:      rgba(40,167,69,0.1);
+  --walk-lightgreen-bg: rgba(92,184,92,0.1);
+  --walk-gold-bg:       rgba(184,149,106,0.12);
+  --walk-orange-bg:     rgba(253,126,20,0.1);
+  --walk-red-bg:        rgba(220,53,69,0.1);
+}

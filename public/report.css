@@ -2,58 +2,10 @@
    LIVABLY — Report Stylesheet v2
    Eclectic living color system. Each chapter IS the place.
    LIVABLY-DESIGN-BRIEF.md is the sole design reference.
+   All design tokens live in design-tokens.css — never hardcode values here.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Custom Properties ─────────────────────────────────────────── */
-
-:root {
-  /* Core */
-  --ink:        #1a1a1a;
-  --ink-60:     #666260;
-  --ink-30:     #b0adaa;
-  --ink-10:     #e8e5e0;
-  --ink-04:     #f5f3f0;
-  --white:      #ffffff;
-  --page:       #f8f6f2;
-
-  /* Dark surfaces (loading, nav) */
-  --dark:       #0f1a0f;
-  --dark-mid:   #1a2e1a;
-  --dark-text:  rgba(255,255,255,0.92);
-  --dark-muted: rgba(255,255,255,0.45);
-  --dark-border:rgba(255,255,255,0.08);
-
-  /* Chapter color identities */
-  --ch-health:        #1e3a5f; --ch-health-light: #e8f0f8; --ch-health-text: #1e3a5f;
-  --ch-daily:         #c47c1a; --ch-daily-light:  #fdf4e3; --ch-daily-text:  #8a5510;
-  --ch-reach:         #2d5a8e; --ch-reach-light:  #e8f0f8; --ch-reach-text:  #2d5a8e;
-  --ch-traffic:       #0e7c7b; --ch-traffic-light:#e0f5f5; --ch-traffic-text:#0e7c7b;
-  --ch-school:        #3d7a4f; --ch-school-light: #e8f4ec; --ch-school-text: #2a5535;
-  --ch-safety:        #c04a2e; --ch-safety-light: #fdf0ed; --ch-safety-text: #8a2e1a;
-  --ch-community:     #7b4f8a; --ch-community-light:#f4eef7;--ch-community-text:#5a3566;
-  --ch-growth:        #e05c1a; --ch-growth-light:  #fef0e6; --ch-growth-text: #a03d0a;
-  --ch-climate:       #3d5a7a; --ch-climate-light: #eaeff5; --ch-climate-text:#2a3f55;
-  --ch-garden:        #2d6b3d; --ch-garden-light:  #e8f4ec; --ch-garden-text: #1a4525;
-  --ch-property:      #4a3f35; --ch-property-light:#f0ece8; --ch-property-text:#2a221a;
-  --ch-sensory:       #4a2d7a; --ch-sensory-light: #f0eaf8; --ch-sensory-text:#2d1a4f;
-  --ch-walk:          #d45c3d; --ch-walk-light:    #fdf0ed; --ch-walk-text:   #8a2e1a;
-  --ch-costs:         #1a6b6b; --ch-costs-light:   #e0f5f5; --ch-costs-text:  #0a4040;
-  --ch-custom:        #4a3f35; --ch-custom-light:  #f0ece8; --ch-custom-text: #2a221a;
-
-  /* Buckets */
-  --bucket-check:         #c04a2e; --bucket-check-light:   #fdf0ed;
-  --bucket-consider:      #c47c1a; --bucket-consider-light:#fdf4e3;
-  --bucket-cool:          #2d6b3d; --bucket-cool-light:    #e8f4ec;
-
-  /* Chapter defaults (overridden per chapter) */
-  --ch:      #1a1a1a;
-  --ch-light:#f5f3f0;
-  --ch-text: #1a1a1a;
-
-  /* Layout */
-  --inner-max: 1100px;
-  --inner-pad: 48px;
-}
+@import url('./design-tokens.css');
 
 /* ── Reset ─────────────────────────────────────────────────────── */
 
@@ -2893,3 +2845,100 @@ body.report-page {
   .chapter-body { grid-template-columns: 1fr; gap: 40px; }
   .dest-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   UTILITY CLASSES — replace all inline design decisions in JS files
+   Every class here corresponds to something removed from app.js or
+   premium.js. Values reference design tokens from design-tokens.css.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Badge Color System ─────────────────────────────────────────── */
+/* Replaces badgeColor() inline style strings in premium.js         */
+
+.badge-green      { background: var(--badge-green-bg);      color: var(--badge-green-color);      }
+.badge-lightgreen { background: var(--badge-lightgreen-bg); color: var(--badge-lightgreen-color); }
+.badge-gold       { background: var(--badge-gold-bg);       color: var(--badge-gold-color);       }
+.badge-orange     { background: var(--badge-orange-bg);     color: var(--badge-orange-color);     }
+.badge-red        { background: var(--badge-red-bg);        color: var(--badge-red-color);        }
+.badge-muted      { background: var(--badge-muted-bg);      color: var(--badge-muted-color);      }
+
+/* ── CH01 Response Badge Colors ─────────────────────────────────── */
+/* Replaces badgeStyle ternary in app.js stationRow()               */
+
+.badge-response-green  { background: var(--badge-resp-green-bg);  color: var(--badge-resp-green-color);  }
+.badge-response-gold   { background: var(--badge-resp-gold-bg);   color: var(--badge-resp-gold-color);   }
+.badge-response-orange { background: var(--badge-resp-orange-bg); color: var(--badge-resp-orange-color); }
+.badge-response-red    { background: var(--badge-resp-red-bg);    color: var(--badge-resp-red-color);    }
+
+/* ── Flood Zone Banner Themes ────────────────────────────────────── */
+/* Replaces bannerBg/bannerColor inline attrs on .prem-flood-zone-inner */
+
+.flood-banner--low      { background: var(--flood-low-bg);      color: var(--flood-low-color);      }
+.flood-banner--moderate { background: var(--flood-moderate-bg); color: var(--flood-moderate-color); }
+.flood-banner--high     { background: var(--flood-high-bg);     color: var(--flood-high-color);     }
+
+.prem-flood-zone-name { color: inherit; }
+.prem-flood-zone-desc { color: inherit; opacity: 0.8; }
+
+/* ── Walkability Score Colors ────────────────────────────────────── */
+/* Replaces verdictColor inline style on .walk-score-num             */
+
+.walk-score--green      { color: var(--walk-green);      }
+.walk-score--lightgreen { color: var(--walk-lightgreen); }
+.walk-score--gold       { color: var(--walk-gold);       }
+.walk-score--orange     { color: var(--walk-orange);     }
+.walk-score--red        { color: var(--walk-red);        }
+
+/* ── Walkability Verdict Badge ───────────────────────────────────── */
+/* Replaces verdictColor/verdictBg inline attrs on .prem-walk-verdict */
+
+.walk-verdict--green      { color: var(--walk-green);      background: var(--walk-green-bg);      }
+.walk-verdict--lightgreen { color: var(--walk-lightgreen); background: var(--walk-lightgreen-bg); }
+.walk-verdict--gold       { color: var(--walk-gold);       background: var(--walk-gold-bg);       }
+.walk-verdict--orange     { color: var(--walk-orange);     background: var(--walk-orange-bg);     }
+.walk-verdict--red        { color: var(--walk-red);        background: var(--walk-red-bg);        }
+
+/* ── Growth Project Status Badge ────────────────────────────────── */
+/* Replaces STATUS_COLORS inline style/border-color on status badge  */
+
+.project-status--construction { color: var(--status-construction); border-color: var(--status-construction); }
+.project-status--approved     { color: var(--status-approved);     border-color: var(--status-approved);     }
+.project-status--planned      { color: var(--status-planned);      border-color: var(--status-planned);      }
+.project-status--default      { color: var(--status-default);      border-color: var(--status-default);      }
+
+/* ── Services Grid Layout ────────────────────────────────────────── */
+/* Replaces inline display:grid on buildAdditionalServicesCardHTML   */
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2px;
+  background: var(--ink-10);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.services-grid-item {
+  background: var(--white);
+  padding: var(--space-20);
+}
+
+/* ── Chapter Inner Variants ──────────────────────────────────────── */
+/* Replaces inline style="max-width/margin/padding" on wrapper divs  */
+
+.chapter-inner--addon {
+  max-width: var(--inner-max);
+  margin: 0 auto;
+  padding: var(--space-40) var(--inner-pad);
+}
+
+.chapter-inner--continuation {
+  max-width: var(--inner-max);
+  margin: 0 auto;
+  padding: 0 var(--inner-pad) var(--space-80);
+}
+
+/* ── Logo Link ───────────────────────────────────────────────────── */
+/* Replaces style="text-decoration:none" on logo anchor tags         */
+
+.logo-link { text-decoration: none; }

@@ -537,7 +537,7 @@ function buildClimateChapterHTML(environment, locationInfo) {
     <div class="prem-climate-row">
       <div class="prem-climate-row-label">
         🌪️ Tornado Frequency
-        <span class="prem-badge" style="${badgeColor(tornado.color)}">${esc(tornado.tier)}</span>
+        <span class="prem-badge ${badgeColor(tornado.color)}">${esc(tornado.tier)}</span>
       </div>
       <p class="prem-climate-row-body">${esc(tornado.note)}</p>
     </div>` : '';
@@ -588,21 +588,22 @@ function buildClimateChapterHTML(environment, locationInfo) {
   }
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const floodBadge = flood ? `<span class="prem-badge" style="${badgeColor(floodBadgeColor)}">Zone ${esc(flood.zone)} · ${esc(flood.risk)} Risk</span>` : `<span class="prem-badge" style="${badgeColor('muted')}">Zone Unknown</span>`;
+  const floodBadge = flood ? `<span class="prem-badge ${badgeColor(floodBadgeColor)}">Zone ${esc(flood.zone)} · ${esc(flood.risk)} Risk</span>` : `<span class="prem-badge badge-muted">Zone Unknown</span>`;
 
   // Flood zone banner (full-width moment)
-  const bannerBg    = (!flood || flood.zone === 'X') ? '#eaeff5' : (flood.risk === 'High' || flood.risk === 'Very High') ? '#fdf0ed' : '#fdf4e3';
-  const bannerColor = (!flood || flood.zone === 'X') ? '#3d5a7a' : (flood.risk === 'High' || flood.risk === 'Very High') ? '#c04a2e' : '#c47c1a';
+  const bannerClass = (!flood || flood.zone === 'X') ? 'flood-banner--low'
+    : (flood.risk === 'High' || flood.risk === 'Very High') ? 'flood-banner--high'
+    : 'flood-banner--moderate';
   const floodIcon   = (flood?.risk === 'High' || flood?.risk === 'Very High') ? '⚠️' : (flood?.zone === 'X' ? '🛡️' : '🌊');
 
   const floodBannerHTML = `
   <div class="prem-flood-zone-banner">
-    <div class="prem-flood-zone-inner" style="background:${bannerBg};color:${bannerColor}">
+    <div class="prem-flood-zone-inner ${bannerClass}">
       <div class="prem-flood-zone-icon">${floodIcon}</div>
       <div>
         <div class="prem-flood-zone-label">FEMA Flood Zone — Parcel Level</div>
-        <div class="prem-flood-zone-name" style="color:${bannerColor}">Zone ${flood ? esc(flood.zone) : 'Unknown'} — ${flood ? esc(flood.risk) : 'Data Unavailable'} Risk</div>
-        <div class="prem-flood-zone-desc" style="color:${bannerColor};opacity:0.8">${(floodPara || '').split('.')[0]}.</div>
+        <div class="prem-flood-zone-name">Zone ${flood ? esc(flood.zone) : 'Unknown'} — ${flood ? esc(flood.risk) : 'Data Unavailable'} Risk</div>
+        <div class="prem-flood-zone-desc">${(floodPara || '').split('.')[0]}.</div>
       </div>
     </div>
   </div>`;
@@ -1769,14 +1770,7 @@ function getPedestrianFeatures(score) {
 // ── HTML builders ──────────────────────────────────────────────────────────────
 
 function badgeColor(color) {
-  const map = {
-    green: 'background:rgba(40,167,69,0.12);color:#1e7e34',
-    lightgreen: 'background:rgba(92,184,92,0.12);color:#3a9a3a',
-    gold: 'background:rgba(184,149,106,0.14);color:#8a6a40',
-    orange: 'background:rgba(253,126,20,0.12);color:#c0530a',
-    red: 'background:rgba(220,53,69,0.12);color:#a71d2a',
-    muted: 'background:rgba(107,107,107,0.1);color:#555',
-  };
+  const map = { green: 'badge-green', lightgreen: 'badge-lightgreen', gold: 'badge-gold', orange: 'badge-orange', red: 'badge-red', muted: 'badge-muted' };
   return map[color] || map.muted;
 }
 
@@ -1798,7 +1792,7 @@ function premiumCard(chKey, chNum, iconSvg, eyebrow, title, introHTML, leftHTML,
         <div class="chapter-left">${leftHTML || ''}</div>
         ${rightHTML ? `<div class="chapter-right">${rightHTML}</div>` : '<div class="chapter-right"></div>'}
       </div>
-      ${fullHTML ? `</div><div class="chapter-full">${fullHTML}</div><div class="chapter-inner" style="max-width:var(--inner-max);margin:0 auto;padding:0 var(--inner-pad) 80px">` : ''}
+      ${fullHTML ? `</div><div class="chapter-full">${fullHTML}</div><div class="chapter-inner chapter-inner--continuation">` : ''}
       ${sourceHTML ? `<div class="chapter-source">${sourceHTML}</div>` : ''}
     </div>
   </section>
@@ -1950,7 +1944,7 @@ function buildCrimeHTML(crime, emergency) {
       mins <= 12 ? `That's an average response time. For medical emergencies, every minute matters — knowing basic first aid and having a plan adds a real margin of safety.` :
       mins <= 20 ? `A ${mins}-minute response estimate is common for rural and exurban areas. Working smoke detectors, a CO detector, and a family emergency plan matter more when professional help is further away.` :
       `At ${mins} minutes, response is extended — typical for sparsely populated rural areas. Fire extinguishers on each floor, interconnected smoke alarms, and a practiced family escape plan are practical necessities here, not just suggestions.`;
-    policePara = `The nearest police station is ${esc(police.name)}, ${police.distanceMiles} miles away. Estimated response time: <strong>~${mins} minutes</strong> <span class="prem-inline-badge" style="${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
+    policePara = `The nearest police station is ${esc(police.name)}, ${police.distanceMiles} miles away. Estimated response time: <strong>~${mins} minutes</strong> <span class="prem-inline-badge ${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
   }
 
   // ── Fire response ─────────────────────────────────────────────────────────
@@ -1963,7 +1957,7 @@ function buildCrimeHTML(crime, emergency) {
       mins <= 8  ? `A ${mins}-minute fire response is solid — this is the range where professional suppression and modern systems work well together.` :
       mins <= 12 ? `A ${mins}-minute fire response means a fire has time to spread beyond one room. Working smoke detectors in every bedroom and a household fire escape plan are essential.` :
       `A ${mins}-minute fire response time is extended. A house fire doubles in size every minute — this is a meaningful practical consideration. Ask your insurance agent for the ISO fire protection class rating, which directly affects your premium.`;
-    firePara = `${esc(fire.name)} is ${fire.distanceMiles} miles away. Estimated fire response: <strong>~${mins} minutes</strong> <span class="prem-inline-badge" style="${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
+    firePara = `${esc(fire.name)} is ${fire.distanceMiles} miles away. Estimated fire response: <strong>~${mins} minutes</strong> <span class="prem-inline-badge ${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
   }
 
   // ── Insurance / ISO note ──────────────────────────────────────────────────
@@ -2259,7 +2253,7 @@ function buildEmergencyServicesHTML(emergency) {
     <div class="prem-emergency-card">
       <div class="prem-emergency-head">
         ${icon} <span class="prem-emergency-label">${esc(label)}</span>
-        <span class="prem-badge prem-badge-right" style="${badgeColor(cat.color)}">~${station.response.estimate} min</span>
+        <span class="prem-badge prem-badge-right ${badgeColor(cat.color)}">~${station.response.estimate} min</span>
       </div>
       <div class="prem-emergency-name">${esc(station.name)}</div>
       <div class="prem-emergency-addr">${esc(station.address)}</div>
@@ -2296,13 +2290,7 @@ function buildWalkabilityHTML(walk) {
   if (!walk) return '';
   const { score, category, destinations } = walk;
 
-  const verdictColor = {
-    green: '#1e7e34', lightgreen: '#3a9a3a', gold: '#8a6a40', orange: '#c0530a', red: '#a71d2a',
-  }[category.color] || '#8a6a40';
-  const verdictBg = {
-    green: 'rgba(40,167,69,0.1)', lightgreen: 'rgba(92,184,92,0.1)', gold: 'rgba(184,149,106,0.12)',
-    orange: 'rgba(253,126,20,0.1)', red: 'rgba(220,53,69,0.1)',
-  }[category.color] || 'rgba(184,149,106,0.12)';
+  const verdictMod = ['green', 'lightgreen', 'gold', 'orange', 'red'].includes(category.color) ? category.color : 'gold';
 
   // Bucket destinations by walk time for narrative use
   const nearby = (destinations || []).filter((d) => d.walkMinutes <= 10);
@@ -2382,9 +2370,9 @@ function buildWalkabilityHTML(walk) {
 
   const walkFullHTML = `
     <div class="walk-verdict-block">
-      <div class="walk-score-num" style="color:${verdictColor}">${score}</div>
+      <div class="walk-score-num walk-score--${verdictMod}">${score}</div>
       <div class="walk-score-label">walkability score (0–100)</div>
-      <div class="prem-walk-verdict" style="color:${verdictColor};background:${verdictBg}">${esc(category.label)}</div>
+      <div class="prem-walk-verdict walk-verdict--${verdictMod}">${esc(category.label)}</div>
     </div>`;
 
   const walkLeftHTML = `
@@ -2508,8 +2496,8 @@ function buildDemographicsHTML(d) {
     </div>`;
   }
 
-  const incomeBadge = `<span class="prem-badge" style="${badgeColor(d.income.level.color)}">${esc(d.income.level.label)}</span>`;
-  const eduBadge = `<span class="prem-badge" style="${badgeColor(d.education.level.color)}">${esc(d.education.level.label)}</span>`;
+  const incomeBadge = `<span class="prem-badge ${badgeColor(d.income.level.color)}">${esc(d.income.level.label)}</span>`;
+  const eduBadge = `<span class="prem-badge ${badgeColor(d.education.level.color)}">${esc(d.education.level.label)}</span>`;
 
   const ageNarrative = (() => {
     const under18 = d.age.under18;
@@ -2631,10 +2619,10 @@ function buildGrowthAndDevelopmentHTML(growth) {
   const city   = locationInfo?.city   || '';
 
   // ── Named projects (from local intel database) ────────────────────────────
-  const STATUS_COLORS = {
-    'Under Construction': '#2e7d32',
-    'Approved':           '#b8922a',
-    'Planned':            '#5c6bc0',
+  const STATUS_CLASSES = {
+    'Under Construction': 'project-status--construction',
+    'Approved':           'project-status--approved',
+    'Planned':            'project-status--planned',
   };
 
   const hasManual    = namedProjects.some((p) => !p.automated);
@@ -2646,7 +2634,7 @@ function buildGrowthAndDevelopmentHTML(growth) {
   let namedProjectsHTML = '';
   if (namedProjects.length) {
     const projectCards = namedProjects.map((p) => {
-      const color = STATUS_COLORS[p.status] || '#666';
+      const statusClass = STATUS_CLASSES[p.status] || 'project-status--default';
       return `
         <div class="prem-growth-named-project">
           <div class="prem-growth-named-project-header">
@@ -2655,7 +2643,7 @@ function buildGrowthAndDevelopmentHTML(growth) {
               <div class="prem-growth-named-project-name">${esc(p.name)}</div>
               <div class="prem-growth-named-project-type">${esc(p.type)}</div>
             </div>
-            <div class="prem-growth-named-project-status" style="color:${color};border-color:${color}">${esc(p.status)}</div>
+            <div class="prem-growth-named-project-status ${statusClass}">${esc(p.status)}</div>
           </div>
           ${p.expectedOpening ? `<div class="prem-growth-named-project-timeline">Expected: ${esc(p.expectedOpening)}</div>` : ''}
           <div class="prem-growth-named-project-impact">${esc(p.impact)}</div>
@@ -2823,7 +2811,7 @@ function buildPropertyIntelligenceHTML(propIntel) {
       soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? `, USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
       if (drain) {
         soilPara += esc(drain.implication);
-        soilBadgeHTML = `<span class="prem-badge prem-intel-soil-badge" style="${badgeColor(drain.color)}">${esc(drain.label)}</span>`;
+        soilBadgeHTML = `<span class="prem-badge prem-intel-soil-badge ${badgeColor(drain.color)}">${esc(drain.label)}</span>`;
       } else if (!soil.drainagecl) {
         soilPara += `No drainage classification is on record for this soil type — consult a soil engineer for site-specific drainage evaluation.`;
       }
@@ -2849,7 +2837,7 @@ function buildPropertyIntelligenceHTML(propIntel) {
       : ` Only one provider is confirmed at this address — worth verifying service reliability before committing.`;
     broadbandCardsHTML = `
       <div class="prem-intel-bb-providers">
-        <span class="prem-badge" style="${badgeColor(cat.color)}">${esc(cat.label)}</span>
+        <span class="prem-badge ${badgeColor(cat.color)}">${esc(cat.label)}</span>
         ${broadband.providers.map((p) => `
         <div class="prem-intel-bb-provider">
           <span class="prem-intel-bb-name">${esc(p.name)}</span>

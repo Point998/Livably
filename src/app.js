@@ -1123,10 +1123,10 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
   function stationRow(icon, label, station) {
     if (!station) return '';
     const { estimate, category } = station.response;
-    const badgeStyle = category.color === 'green'  ? 'background:#e8f5ee;color:#2a6640'
-                     : category.color === 'gold'   ? 'background:#fdf3dc;color:#7a5c10'
-                     : category.color === 'orange' ? 'background:#fff0e0;color:#8a4f10'
-                     :                               'background:#fee;color:#8a1010';
+    const badgeClass = category.color === 'green'  ? 'badge-response-green'
+                     : category.color === 'gold'   ? 'badge-response-gold'
+                     : category.color === 'orange' ? 'badge-response-orange'
+                     :                               'badge-response-red';
     return `
       <div class="ch01-station-row">
         <span class="ch01-station-icon">${icon}</span>
@@ -1134,7 +1134,7 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
           <span class="ch01-station-name">${escapeHtml(station.name)}</span>
           <span class="ch01-station-dist">${station.distanceMiles} mi</span>
         </div>
-        <span class="ch01-response-badge" style="${badgeStyle}">~${estimate} min · ${escapeHtml(category.label)}</span>
+        <span class="ch01-response-badge ${badgeClass}">~${estimate} min · ${escapeHtml(category.label)}</span>
       </div>`;
   }
 
@@ -1319,12 +1319,12 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
     : '';
 
   return `
-  <div class="chapter-inner" style="max-width:var(--inner-max);margin:0 auto;padding:40px var(--inner-pad);">
+  <div class="chapter-inner chapter-inner--addon">
     ${narrativeHTML}
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2px;background:var(--ink-10);border-radius:12px;overflow:hidden">
-      ${elementarySchool ? `<div style="background:var(--white);padding:20px">${buildDestSection('Elementary School', elementarySchool)}</div>` : ''}
-      ${park ? `<div style="background:var(--white);padding:20px">${buildDestSection('Park', park)}</div>` : ''}
-      ${coffeeShop ? `<div style="background:var(--white);padding:20px">${buildDestSection('Coffee Shop', coffeeShop)}</div>` : ''}
+    <div class="services-grid">
+      ${elementarySchool ? `<div class="services-grid-item">${buildDestSection('Elementary School', elementarySchool)}</div>` : ''}
+      ${park ? `<div class="services-grid-item">${buildDestSection('Park', park)}</div>` : ''}
+      ${coffeeShop ? `<div class="services-grid-item">${buildDestSection('Coffee Shop', coffeeShop)}</div>` : ''}
     </div>
   </div>`;
 }
@@ -2023,7 +2023,7 @@ function buildCompareFormHTML() {
 </head>
 <body class="compare-page">
   <header class="header">
-    <a href="/" style="text-decoration:none"><div class="logo">Liv<span class="logo-gold">ably</span></div></a>
+    <a href="/" class="logo-link"><div class="logo">Liv<span class="logo-gold">ably</span></div></a>
   </header>
   <div class="compare-container">
     <h1 class="compare-title">Compare Addresses</h1>
@@ -2159,7 +2159,7 @@ function buildCompareResultsHTML(reports) {
 </head>
 <body class="compare-page">
   <header class="header">
-    <a href="/" style="text-decoration:none"><div class="logo">Liv<span class="logo-gold">ably</span></div></a>
+    <a href="/" class="logo-link"><div class="logo">Liv<span class="logo-gold">ably</span></div></a>
     <div class="report-badge">Comparison</div>
   </header>
   <div class="compare-container compare-results">
