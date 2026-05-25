@@ -1850,6 +1850,875 @@ body.report-page {
 .prem-dev-timeline { margin-top: 20px; }
 .prem-dev-timeline-item { padding: 12px 0; border-bottom: 1px solid var(--ink-10); font-size: 14px; color: var(--ink-60); }
 
+/* ── Shared Narrative Text ─────────────────────────────────────── */
+
+.prem-narrative { margin-bottom: 28px; }
+
+.prem-narrative-lead {
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
+.prem-narrative-body {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ink-60);
+  margin-bottom: 14px;
+}
+
+.prem-narrative-body:last-child { margin-bottom: 0; }
+
+.prem-disclaimer {
+  font-size: 11px;
+  color: var(--ink-30);
+  margin-top: 24px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+/* ── Schools Chapter (HTML-side classes) ───────────────────────── */
+
+.prem-school-assigned-alert {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--ch-school-light);
+  border: 1px solid rgba(61,122,79,0.3);
+  border-left: 3px solid var(--ch-school);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 28px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ch-school-text);
+}
+
+.prem-school-assigned-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+
+.prem-school-assigned-text { flex: 1; min-width: 0; }
+
+.prem-school-assigned-action {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ch-school);
+  font-weight: 500;
+}
+
+.prem-school-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-school);
+  margin: 24px 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-school-card {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-school-card:first-of-type { border-top: 1px solid var(--ink-10); }
+
+.prem-school-header { }
+
+.prem-school-level {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-school);
+  margin-bottom: 6px;
+}
+
+.prem-school-addr {
+  font-size: 12px;
+  color: var(--ink-60);
+  margin-bottom: 8px;
+}
+
+.prem-school-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--ink-60);
+  margin-top: 8px;
+}
+
+.prem-school-dist,
+.prem-school-time { font-weight: 500; }
+
+.prem-school-choice-section { margin-top: 28px; }
+
+.prem-school-choice-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-school);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-school-choice-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-school-choice-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.prem-school-choice-meta {
+  font-size: 12px;
+  color: var(--ink-60);
+}
+
+.prem-school-choice-note {
+  font-size: 12px;
+  color: var(--ink-30);
+  margin-top: 14px;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ── Safety Actions Checklist ──────────────────────────────────── */
+
+.prem-safety-actions {
+  margin-top: 32px;
+  padding: 24px;
+  background: var(--ch-light, var(--ink-04));
+  border-radius: 12px;
+}
+
+.prem-safety-actions-label {
+  font-family: 'Fraunces', serif;
+  font-optical-sizing: auto;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
+}
+
+.prem-safety-action {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.prem-safety-action:last-child { border-bottom: none; }
+
+.prem-safety-action-icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+
+.prem-safety-action-text { flex: 1; min-width: 0; }
+
+.prem-safety-action-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.prem-safety-action-detail {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-60);
+}
+
+/* ── Emergency Services Cards ──────────────────────────────────── */
+
+.prem-emergency-card {
+  background: var(--ch-light, var(--ch-safety-light));
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.prem-emergency-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.prem-emergency-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-60);
+  flex: 1;
+}
+
+.prem-emergency-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.prem-emergency-addr {
+  font-size: 12px;
+  color: var(--ink-60);
+  margin-bottom: 4px;
+}
+
+.prem-emergency-dist {
+  font-size: 13px;
+  color: var(--ink-60);
+}
+
+/* ── Demographics Grid ─────────────────────────────────────────── */
+
+.prem-demo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  background: var(--ink-10);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 28px 0;
+}
+
+.prem-demo-card {
+  background: var(--white);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prem-demo-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-30);
+  margin-bottom: 4px;
+}
+
+.prem-demo-summary {
+  font-size: 13px;
+  color: var(--ink-60);
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.prem-demo-big,
+.prem-demo-stat-num {
+  font-family: 'Fraunces', serif;
+  font-optical-sizing: auto;
+  font-size: 36px;
+  font-weight: 300;
+  color: var(--ch-community);
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.prem-demo-sub,
+.prem-demo-stat-label {
+  font-size: 12px;
+  color: var(--ink-60);
+}
+
+.prem-demo-note {
+  font-size: 12px;
+  color: var(--ink-30);
+  margin-top: 4px;
+}
+
+.prem-edu-stats {
+  display: flex;
+  gap: 16px;
+  margin: 4px 0;
+}
+
+.prem-edu-pct {
+  font-family: 'Fraunces', serif;
+  font-optical-sizing: auto;
+  font-size: 24px;
+  font-weight: 300;
+  color: var(--ch-community);
+  display: block;
+  line-height: 1.1;
+}
+
+.prem-edu-lbl {
+  font-size: 11px;
+  color: var(--ink-60);
+  display: block;
+}
+
+.prem-community-item {
+  font-size: 13px;
+  color: var(--ink-60);
+  padding: 4px 0;
+}
+
+/* ── Growth: Places + Project extras ───────────────────────────── */
+
+.prem-growth-section,
+.prem-growth-commercial { margin-top: 28px; }
+
+.prem-growth-label,
+.prem-growth-commercial-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-growth);
+  margin-bottom: 12px;
+}
+
+.prem-growth-places { display: flex; flex-direction: column; }
+
+.prem-growth-place,
+.prem-growth-commercial-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ink-10);
+  font-size: 14px;
+  color: var(--ink-60);
+}
+
+.prem-growth-place-icon { font-size: 18px; flex-shrink: 0; }
+
+.prem-growth-place-info { flex: 1; min-width: 0; }
+
+.prem-growth-place-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.prem-growth-place-cat {
+  font-size: 12px;
+  color: var(--ink-60);
+}
+
+.prem-growth-place-dist {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-60);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.prem-growth-named-project-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.prem-growth-named-project-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+.prem-growth-named-project-title { flex: 1; min-width: 0; }
+
+.prem-growth-named-project-type {
+  font-size: 12px;
+  color: var(--ink-60);
+  margin-top: 2px;
+}
+
+.prem-growth-named-project-timeline {
+  font-size: 12px;
+  color: var(--ink-60);
+  margin-bottom: 6px;
+}
+
+.prem-growth-named-project-impact,
+.prem-growth-named-project-desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-60);
+}
+
+.prem-growth-named-project-source {
+  font-size: 11px;
+  color: var(--ink-30);
+  margin-top: 6px;
+}
+
+.prem-growth-source-link { color: var(--ch-growth); }
+
+.prem-growth-automated-note {
+  font-size: 12px;
+  color: var(--ink-30);
+  font-style: italic;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ink-10);
+}
+
+/* ── Costs Chapter ─────────────────────────────────────────────── */
+
+.prem-carrying-section {
+  margin: 24px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ink-10);
+}
+
+.prem-carrying-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-costs);
+  padding: 16px 20px 12px;
+  background: var(--ch-costs-light);
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-carry-table { width: 100%; }
+
+.prem-carry-th { padding: 10px 12px; background: var(--ink-04); }
+
+.prem-carrying-note {
+  font-size: 11px;
+  color: var(--ink-30);
+  padding: 12px 16px;
+  border-top: 1px solid var(--ink-10);
+  background: var(--white);
+  line-height: 1.5;
+}
+
+.prem-market-note {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--ink-04);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-60);
+}
+
+.prem-market-note-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+
+/* ── Property Intelligence Section ─────────────────────────────── */
+
+.prem-intel-section {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-intel-section:last-of-type { border-bottom: none; }
+
+.prem-intel-section .prem-intel-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-property);
+  margin-bottom: 10px;
+}
+
+.prem-intel-cautions {
+  background: var(--ch-property-light);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-top: 12px;
+}
+
+.prem-intel-caution-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ch-property-text);
+  margin-bottom: 8px;
+}
+
+.prem-intel-caution-list {
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--ink-60);
+  line-height: 1.7;
+}
+
+.prem-intel-caution-list li { margin-bottom: 4px; }
+
+.prem-intel-bb-providers {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prem-intel-bb-provider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--ink-04);
+  border-radius: 6px;
+}
+
+.prem-intel-bb-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+}
+
+.prem-intel-bb-tech {
+  font-size: 11px;
+  color: var(--ink-60);
+  background: var(--white);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--ink-10);
+}
+
+.prem-intel-bb-speed {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ch-property);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Sensory Sections ──────────────────────────────────────────── */
+
+.prem-sensory-section { margin-bottom: 28px; }
+
+.prem-sensory-section .prem-sensory-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-sensory);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+/* ── Walkability Destinations ──────────────────────────────────── */
+
+.prem-walk-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-walk);
+  margin: 28px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-walk-dests { display: flex; flex-direction: column; }
+
+.prem-walk-dest {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-walk-dest-icon { font-size: 20px; flex-shrink: 0; }
+
+.prem-walk-dest-info { flex: 1; min-width: 0; }
+
+.prem-walk-dest-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.prem-walk-dest-cat {
+  font-size: 12px;
+  color: var(--ink-60);
+  margin-top: 2px;
+}
+
+.prem-walk-dest-time {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ch-walk);
+  text-align: right;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.prem-walk-dest-dist {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-30);
+}
+
+.prem-walk-feat-yes { color: var(--ch-walk); }
+.prem-walk-feat-yes::before { }
+.prem-walk-feat-note { color: var(--ink-60); }
+
+/* ── Garden Subsections ────────────────────────────────────────── */
+
+.grow-subsection { margin-bottom: 28px; }
+
+.grow-subsection-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ch-garden);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.grow-plant-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.grow-plant-list .grow-plant-item {
+  padding: 12px 0 12px 12px;
+}
+
+.grow-plant-sci,
+.grow-plant-latin {
+  font-size: 12px;
+  color: var(--ink-60);
+  font-style: italic;
+  margin-top: 1px;
+}
+
+.grow-ext-cta {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-60);
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--ch-garden-light);
+  border-radius: 8px;
+  border-left: 3px solid var(--ch-garden);
+}
+
+.grow-ext-cta a { color: var(--ch-garden); }
+
+/* ── Climate Row Pattern ───────────────────────────────────────── */
+
+.prem-climate-row {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-climate-row-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.prem-climate-row-body {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-60);
+}
+
+/* ── Utility ───────────────────────────────────────────────────── */
+
+.prem-na {
+  font-size: 14px;
+  color: var(--ink-30);
+  font-style: italic;
+}
+
+/* ── Costs Table Cells ─────────────────────────────────────────── */
+
+.prem-carry-row td { border-bottom: 1px solid var(--ink-10); padding: 12px 12px; font-size: 14px; }
+
+.prem-carry-price {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.prem-carry-cell {
+  color: var(--ink-60);
+  font-variant-numeric: tabular-nums;
+}
+
+.prem-carry-th-total {
+  text-align: right;
+}
+
+.prem-homestead-note {
+  border-left: 3px solid var(--ch-costs);
+  background: var(--ch-costs-light);
+}
+
+/* ── Demographics Synthesis ────────────────────────────────────── */
+
+.prem-synthesis-line {
+  font-style: italic;
+  color: var(--ink-60);
+}
+
+/* ── Walkability Features List ─────────────────────────────────── */
+
+.prem-walk-features { margin-top: 8px; }
+
+/* ── Growth Named-projects container extra class ───────────────── */
+
+.prem-growth-named-projects { }
+
+/* ── Health Chapter (app.js additional classes) ────────────────── */
+
+.ch01-station-dist {
+  font-size: 12px;
+  color: var(--ink-60);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ch01-check-text { flex: 1; min-width: 0; }
+
+/* ── Daily Insights Chapter ────────────────────────────────────── */
+
+.insight-section { margin-bottom: 36px; }
+
+.insight-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.insight-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+
+.insight-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.insight-subtitle {
+  font-size: 12px;
+  color: var(--ink-30);
+}
+
+.insight-opening {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-60);
+  margin-bottom: 12px;
+}
+
+.insight-para {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-60);
+  margin-bottom: 8px;
+}
+
+.insight-breakdown {
+  border-top: 1px solid var(--ink-10);
+  margin-top: 12px;
+  padding-top: 4px;
+}
+
+.insight-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ink-10);
+  gap: 12px;
+}
+
+.item-label {
+  font-size: 13px;
+  color: var(--ink-60);
+  flex: 1;
+}
+
+.item-place {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+.item-time {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ch, var(--ch-daily));
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+}
+
+/* ── Callout body (app.js insight callout) ─────────────────────── */
+
+.callout-body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Bucket single-dash variant (alias for double-dash) ────────── */
+
+.bucket-check {
+  background: var(--bucket-check-light);
+  border-left: 3px solid var(--bucket-check);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.bucket-text {
+  color: var(--ink-60);
+  margin-top: 4px;
+}
+
+/* ── Reachability dest-row ─────────────────────────────────────── */
+
+.dest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ink-10);
+  gap: 12px;
+}
+
+/* ── Additional Services intro ─────────────────────────────────── */
+
+.services-intro {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-60);
+  margin-bottom: 24px;
+}
+
 /* ── Footer ────────────────────────────────────────────────────── */
 
 .footer {
