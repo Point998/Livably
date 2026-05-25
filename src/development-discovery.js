@@ -8,95 +8,15 @@
 const fs   = require('fs');
 const path = require('path');
 const { getLocalDevelopmentIntel } = require('./development-intel');
+const {
+  DEV_CACHE_TTL_MS, DEV_REQUEST_DELAY_MS, DEV_MAX_ARTICLE_AGE,
+  DEV_TYPE_MAP, DEV_STATUS_MAP,
+} = require('./utils/constants');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const CACHE_DIR        = path.join(__dirname, '..', '.cache', 'development-intel');
-const CACHE_TTL_MS     = 7 * 24 * 60 * 60 * 1000;   // 7 days
-const REQUEST_DELAY_MS = 1200;                          // 1.2 s between RSS fetches
-const MAX_ARTICLE_AGE  = 2 * 365 * 24 * 60 * 60 * 1000; // 2 years
+const CACHE_DIR = path.join(__dirname, '..', '.cache', 'development-intel');
 
-// ── Classification tables ─────────────────────────────────────────────────────
-
-// Note: keywords are matched as substrings in lowercased text.
-// Avoid single common words (e.g. 'target', 'ross') that appear in general prose.
-// Use brand names with context qualifiers where needed.
-const TYPE_MAP = [
-  {
-    type: 'Grocery Store', icon: '🛒',
-    keywords: ['publix', 'kroger', 'aldi', 'whole foods', 'trader joe', 'sprouts', 'meijer',
-               'wegmans', 'food lion', 'harris teeter', 'grocery store', 'supermarket',
-               'lidl', 'save a lot', 'piggly wiggly', 'fresh market'],
-  },
-  {
-    type: 'Major Retail', icon: '🏪',
-    // 'target' alone matches verbs/nouns in general prose — require it as a proper noun phrase
-    keywords: ['target store', 'new target', 'target opening', 'target to open', 'target approved',
-               'walmart', 'costco', 'home depot', "lowe's", 'lowes', 'best buy',
-               'ross dress', 'tj maxx', 't.j. maxx', 'marshalls', 'burlington coat',
-               'dollar tree', 'dollar general', 'big lots', 'five below', 'hobby lobby',
-               'michaels craft', 'ulta beauty', 'bath & body works', 'academy sports',
-               'ikea', 'nordstrom', 'macy', 'kohl', 'tj maxx', 'old navy', 'gap ', 'jcpenney'],
-  },
-  {
-    type: 'Restaurant', icon: '🍽️',
-    keywords: ['chick-fil-a', "mcdonald's", 'starbucks', "chili's", "applebee's",
-               'cracker barrel', 'olive garden', 'restaurant', 'brewery', 'distillery',
-               'pizza hut', 'taco bell', "wendy's", 'panera', 'chipotle', 'culver'],
-  },
-  {
-    type: 'Medical Facility', icon: '🏥',
-    keywords: ['hospital', 'urgent care', 'medical center', 'health system',
-               'er campus', 'emergency room', 'medical clinic', 'healthcare campus'],
-  },
-  {
-    type: 'Hotel', icon: '🏨',
-    keywords: ['hotel', 'marriott', 'hilton', 'hampton inn', 'holiday inn',
-               'courtyard by marriott', 'hyatt', 'fairfield inn', 'comfort inn'],
-  },
-  {
-    type: 'Mixed-Use / Residential', icon: '🏢',
-    keywords: ['mixed-use', 'mixed use', 'apartment complex', 'condominiums',
-               'townhomes', 'townhouses', 'housing development', 'luxury apartments',
-               'senior living', 'affordable housing', 'multifamily'],
-  },
-  {
-    type: 'Industrial / Logistics', icon: '🏭',
-    keywords: ['warehouse', 'distribution center', 'amazon fulfillment', 'industrial park',
-               'logistics center', 'manufacturing plant', 'data center', 'fulfillment center'],
-  },
-  {
-    type: 'Shopping Center', icon: '🏬',
-    keywords: ['shopping center', 'strip mall', 'retail center', 'town center',
-               'marketplace', 'retail plaza', 'lifestyle center'],
-  },
-];
-
-const STATUS_MAP = [
-  {
-    status: 'Under Construction',
-    keywords: ['under construction', 'breaking ground', 'construction started',
-               'construction has begun', 'groundbreaking', 'site work underway',
-               'construction begins', 'crews are working'],
-  },
-  {
-    status: 'Opening Soon',
-    keywords: ['opening soon', 'opening this', 'set to open', 'scheduled to open',
-               'grand opening', 'opens this', 'opening in', 'open by', 'soft open'],
-  },
-  {
-    status: 'Approved',
-    keywords: ['approved by', 'planning commission approved', 'zoning approved',
-               'city council approved', 'gets approval', 'receives approval',
-               'approved for', 'granted approval', 'green-lit', 'approved project'],
-  },
-  {
-    status: 'Planned',
-    keywords: ['planned', 'proposed', 'announced', 'plans for', 'coming to',
-               'will open', 'in the works', 'expected to open', 'seeking approval',
-               'filing for', 'applied for'],
-  },
-];
 
 const DEFAULT_IMPACT = {
   'Grocery Store':           'Adds a new full-service grocery option — expands shopping choices and may reduce drive times for routine errands.',
@@ -122,7 +42,7 @@ function readCache(city, state) {
     const file = cacheFile(city, state);
     if (!fs.existsSync(file)) return null;
     const { ts, data } = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return (Date.now() - ts < CACHE_TTL_MS) ? data : null;
+    return (Date.now() - ts < DEV_CACHE_TTL_MS) ? data : null;
   } catch { return null; }
 }
 
@@ -163,7 +83,7 @@ function parseRSSItems(xml) {
 
 function classifyType(text) {
   const t = text.toLowerCase();
-  for (const { type, icon, keywords } of TYPE_MAP) {
+  for (const { type, icon, keywords } of DEV_TYPE_MAP) {
     if (keywords.some((k) => t.includes(k))) return { type, icon };
   }
   return { type: 'Development', icon: '🏗️' };
@@ -171,7 +91,7 @@ function classifyType(text) {
 
 function classifyStatus(text) {
   const t = text.toLowerCase();
-  for (const { status, keywords } of STATUS_MAP) {
+  for (const { status, keywords } of DEV_STATUS_MAP) {
     if (keywords.some((k) => t.includes(k))) return status;
   }
   return 'Planned';
@@ -315,7 +235,7 @@ async function scrapeGoogleNews(city, state) {
   const seen     = new Set();
 
   for (let i = 0; i < SEARCH_TEMPLATES.length; i++) {
-    if (i > 0) await sleep(REQUEST_DELAY_MS);
+    if (i > 0) await sleep(DEV_REQUEST_DELAY_MS);
 
     const query = SEARCH_TEMPLATES[i](city, state);
     let items;
@@ -330,7 +250,7 @@ async function scrapeGoogleNews(city, state) {
     for (const item of items) {
       // Age filter
       try {
-        if (Date.now() - new Date(item.pubDate).getTime() > MAX_ARTICLE_AGE) continue;
+        if (Date.now() - new Date(item.pubDate).getTime() > DEV_MAX_ARTICLE_AGE) continue;
       } catch { /* unparseable date — keep */ }
 
       const text = `${item.title} ${item.description}`;

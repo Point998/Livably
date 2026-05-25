@@ -13,6 +13,25 @@ const { getPremiumData, buildPremiumSectionsHTML } = require('./premium');
 const { logRequest, logError, logAnalysis, readRecentLogs } = require('./logger');
 const { getMitigation, loadMitigations } = require('./errorMemory');
 
+const { getNextTuesday8am, getNextDayAt } = require('./utils/time');
+const {
+  escapeHtml, formatDriveTime, toTitleCase,
+  parseAddressParts, formatResearchDate, slugify, getDateSlug,
+} = require('./utils/text');
+const {
+  GROCERY_SEARCH_RADIUS_M, GROCERY_CANDIDATE_COUNT, GROCERY_EXCLUDED_TYPES,
+  HOSPITAL_SEARCH_RADIUS_M, HOSPITAL_CANDIDATE_COUNT,
+  COFFEE_SHOP_CANDIDATE_COUNT,
+  ELEMENTARY_SCHOOL_SEARCH_RADIUS_M, ELEMENTARY_SCHOOL_EXCLUSIONS,
+  HIGHWAY_MAX_DRIVE_MINUTES, HIGHWAY_INTERCHANGE_MAX_MINUTES,
+  TRAFFIC_VARIATION_SLOTS,
+  INTERSTATE_LIST,
+  MAX_CONCURRENT_PDFS,
+  PARK_EXCLUDED_TYPES, PARK_LEISURE_TYPES,
+  SCHOOL_PLACE_TYPES, SCHOOL_NAME_TERMS,
+  CUSTOM_DEST_ICONS, ERROR_ICONS,
+} = require('./utils/constants');
+
 const app = express();
 const port = process.env.PORT || 3000;
 const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -70,52 +89,11 @@ function updateReportAccess(reportId) {
 
 app.use(express.static(path.join(__dirname, '../public')));
 
-function getNextTuesday8am() {
-  const now = new Date();
-  const nextTuesday = new Date(now);
-  const currentDay = nextTuesday.getDay();
-  let daysUntilTuesday = (2 - currentDay + 7) % 7;
-
-  if (daysUntilTuesday === 0) {
-    const todayAt8 = new Date(nextTuesday);
-    todayAt8.setHours(8, 0, 0, 0);
-    if (nextTuesday >= todayAt8) {
-      daysUntilTuesday = 7;
-    }
-  }
-
-  nextTuesday.setDate(nextTuesday.getDate() + daysUntilTuesday);
-  nextTuesday.setHours(8, 0, 0, 0);
-  nextTuesday.setMinutes(0);
-  nextTuesday.setSeconds(0);
-  nextTuesday.setMilliseconds(0);
-  return Math.floor(nextTuesday.getTime() / 1000);
-}
-
-// Returns a Unix timestamp (seconds) for the next occurrence of targetDay at the given hour.
-// targetDay: 0=Sun … 6=Sat.  Always returns a future time (at least 30 min ahead).
-function getNextDayAt(targetDay, hour) {
-  const now = new Date();
-  const candidate = new Date(now);
-  let days = (targetDay - now.getDay() + 7) % 7;
-  if (days === 0) {
-    const todayAtHour = new Date(now);
-    todayAtHour.setHours(hour, 0, 0, 0);
-    if (now >= todayAtHour) days = 7;
-  }
-  candidate.setDate(candidate.getDate() + days);
-  candidate.setHours(hour, 0, 0, 0);
-  return Math.floor(candidate.getTime() / 1000);
-}
-
 async function getTrafficVariations(originLatLng, destLocation) {
   const destLatLng = `${destLocation.lat},${destLocation.lng}`;
-  const slots = [
-    { label: 'morningRush', display: '8am Mon',  ts: getNextDayAt(1, 8)  },
-    { label: 'midday',      display: '12pm Mon', ts: getNextDayAt(1, 12) },
-    { label: 'eveningRush', display: '5pm Mon',  ts: getNextDayAt(1, 17) },
-    { label: 'weekend',     display: '10am Sat', ts: getNextDayAt(6, 10) },
-  ];
+  const slots = TRAFFIC_VARIATION_SLOTS.map(({ label, display, targetDay, hour }) => ({
+    label, display, ts: getNextDayAt(targetDay, hour),
+  }));
 
   const results = await Promise.allSettled(
     slots.map(async ({ label, display, ts }) => {
@@ -218,23 +196,21 @@ async function findNearestGrocery(originLatLng) {
       key: googleMapsApiKey,
       query: 'grocery store',
       location: originLatLng,
-      radius: getMitigation('findNearestGrocery', 'searchRadiusM', 8000),
+      radius: getMitigation('findNearestGrocery', 'searchRadiusM', GROCERY_SEARCH_RADIUS_M),
     },
   });
 
   const placeResults = (placesResponse.data.results || []).filter((place) => {
     const types = place.types || [];
-    return !types.includes('gas_station') &&
-           !types.includes('convenience_store') &&
-           !types.includes('lodging');
+    return !GROCERY_EXCLUDED_TYPES.some((t) => types.includes(t));
   });
 
   if (!placeResults.length) {
     throw new Error('No grocery stores found near that address.');
   }
 
-  // Calculate drive times for top 8 candidates, return 3 fastest
-  const candidates = placeResults.slice(0, 8);
+  // Calculate drive times for top candidates, return 3 fastest
+  const candidates = placeResults.slice(0, GROCERY_CANDIDATE_COUNT);
   const withDriveTimes = await Promise.all(
     candidates.map(async (place) => {
       try {
@@ -300,7 +276,7 @@ async function findNearestHospital(originLatLng) {
       key: googleMapsApiKey,
       query: 'hospital emergency department',
       location: originLatLng,
-      radius: 50000,
+      radius: HOSPITAL_SEARCH_RADIUS_M,
     },
   });
 
@@ -322,7 +298,7 @@ async function findNearestHospital(originLatLng) {
     throw new Error('No hospital found near that address.');
   }
 
-  const candidates = placeResults.slice(0, 5);
+  const candidates = placeResults.slice(0, HOSPITAL_CANDIDATE_COUNT);
   const withDriveTimes = await Promise.all(
     candidates.map(async (place) => {
       try {
@@ -386,7 +362,7 @@ async function findNearestUrgentCare(originLatLng) {
         key: googleMapsApiKey,
         query: 'urgent care clinic',
         location: originLatLng,
-        radius: 50000,
+        radius: HOSPITAL_SEARCH_RADIUS_M,
       },
     });
     placeResults = (placesResponse.data.results || []).filter(
@@ -429,18 +405,8 @@ async function findNearestHighwayOnRamp(originLatLng) {
   const state = geoComponents.find((c) => c.types.includes('administrative_area_level_1'))?.short_name || '';
   const locationLabel = city && state ? `${city}, ${state}` : originLatLng;
 
-  const interstates = [
-    'I-5',  'I-8',  'I-10', 'I-11', 'I-12', 'I-15', 'I-16', 'I-17', 'I-19',
-    'I-20', 'I-22', 'I-24', 'I-25', 'I-26', 'I-27', 'I-29', 'I-30', 'I-35',
-    'I-37', 'I-38', 'I-39', 'I-40', 'I-41', 'I-43', 'I-44', 'I-49', 'I-55',
-    'I-57', 'I-59', 'I-64', 'I-65', 'I-69', 'I-70', 'I-71', 'I-72', 'I-73',
-    'I-74', 'I-75', 'I-76', 'I-77', 'I-78', 'I-79', 'I-80', 'I-81', 'I-82',
-    'I-83', 'I-84', 'I-85', 'I-86', 'I-87', 'I-88', 'I-89', 'I-90', 'I-93',
-    'I-94', 'I-95', 'I-96', 'I-97', 'I-99',
-  ];
-
   const geocodeResults = await Promise.all(
-    interstates.map(async (highway) => {
+    INTERSTATE_LIST.map(async (highway) => {
       try {
         const response = await googleMapsClient.geocode({
           params: {
@@ -496,12 +462,12 @@ async function findNearestHighwayOnRamp(originLatLng) {
   // whose geocoded point is >20 min but ≤50 min, try the junction with the nearest
   // already-validated within-20 interstate to find the real closest access.
   const primary20 = allValid
-    .filter((r) => r.driveTimeMinutes <= 20)
+    .filter((r) => r.driveTimeMinutes <= HIGHWAY_MAX_DRIVE_MINUTES)
     .sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
 
   if (primary20.length && state) {
     const nearestHwy = primary20[0];
-    const borderline = allValid.filter((r) => r.driveTimeMinutes > 20 && r.driveTimeMinutes <= 50);
+    const borderline = allValid.filter((r) => r.driveTimeMinutes > HIGHWAY_MAX_DRIVE_MINUTES && r.driveTimeMinutes <= HIGHWAY_INTERCHANGE_MAX_MINUTES);
 
     const interchangeResults = await Promise.all(
       borderline.map(async (farHwy) => {
@@ -525,7 +491,7 @@ async function findNearestHighwayOnRamp(originLatLng) {
           if (!isReal) return null;
 
           const driveTimeMinutes = await getDriveTime(originLatLng, result.geometry.location);
-          if (driveTimeMinutes > 20) return null;
+          if (driveTimeMinutes > HIGHWAY_MAX_DRIVE_MINUTES) return null;
 
           return {
             highway: farHwy.highway,
@@ -540,14 +506,14 @@ async function findNearestHighwayOnRamp(originLatLng) {
     );
 
     for (const r of interchangeResults) {
-      if (r && !allValid.some((v) => v.highway === r.highway && v.driveTimeMinutes <= 20)) {
+      if (r && !allValid.some((v) => v.highway === r.highway && v.driveTimeMinutes <= HIGHWAY_MAX_DRIVE_MINUTES)) {
         allValid.push(r);
       }
     }
   }
 
   const nearby = allValid
-    .filter((r) => r.driveTimeMinutes <= 20)
+    .filter((r) => r.driveTimeMinutes <= HIGHWAY_MAX_DRIVE_MINUTES)
     .sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
 
   const candidates = nearby.length
@@ -577,8 +543,6 @@ async function findNearestHighwayOnRamp(originLatLng) {
 // Returns nearest school by distance.
 // Note: nearest by distance is not the assigned school for the parcel.
 // Assigned school requires verification with the school district.
-const SCHOOL_PLACE_TYPES = new Set(['school', 'primary_school', 'secondary_school', 'university']);
-const SCHOOL_NAME_TERMS = /school|elementary|middle|high\s+school|academy|college|university|institute|charter|magnet|preparatory|prep\s+school|learning\s+center|educational/i;
 
 function isValidSchoolPlace(p) {
   const hasSchoolType = (p.types || []).some((t) => SCHOOL_PLACE_TYPES.has(t));
@@ -657,8 +621,6 @@ async function findNearestGasStation(originLatLng) {
   return result;
 }
 
-const PARK_EXCLUDED_TYPES = ['local_government_office', 'lawyer', 'insurance_agency', 'political'];
-const PARK_LEISURE_TYPES = ['park', 'natural_feature', 'campground', 'amusement_park', 'zoo', 'stadium', 'gym', 'recreation_area'];
 
 function isValidPark(p) {
   const types = p.types || [];
@@ -706,7 +668,7 @@ async function findNearestCoffeeShop(originLatLng) {
     },
   });
 
-  const candidates = (placesResponse.data.results || []).slice(0, 5);
+  const candidates = (placesResponse.data.results || []).slice(0, COFFEE_SHOP_CANDIDATE_COUNT);
   if (!candidates.length) throw new Error('No coffee shop found near that address.');
 
   const withDriveTimes = await Promise.all(
@@ -738,17 +700,16 @@ async function findNearestElementarySchool(originLatLng) {
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
 
-  const exclusions = ['preschool', 'pre-school', 'daycare', 'day care', 'montessori', 'private'];
   const placesResponse = await googleMapsClient.textSearch({
     params: {
       key: googleMapsApiKey,
       query: 'public elementary school',
       location: originLatLng,
-      radius: 15000,
+      radius: ELEMENTARY_SCHOOL_SEARCH_RADIUS_M,
     },
   });
   const place = (placesResponse.data.results || []).filter(
-    (p) => !isExcludedPlaceName(p.name, exclusions),
+    (p) => !isExcludedPlaceName(p.name, ELEMENTARY_SCHOOL_EXCLUSIONS),
   )[0];
   if (!place) throw new Error('No elementary school found near that address.');
   const result = {
@@ -761,39 +722,6 @@ async function findNearestElementarySchool(originLatLng) {
   return result;
 }
 
-function escapeHtml(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function formatDriveTime(minutes) {
-  return `${minutes} min`;
-}
-
-const STATE_ABBRS = new Set(['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC']);
-
-function toTitleCase(str) {
-  return str.replace(/\w+/g, (word) => {
-    if (word.length === 2 && STATE_ABBRS.has(word.toUpperCase())) return word.toUpperCase();
-    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-  });
-}
-
-function parseAddressParts(address) {
-  const commaIdx = address.indexOf(',');
-  if (commaIdx === -1) return { street: address, cityState: '' };
-  return {
-    street: address.slice(0, commaIdx).trim(),
-    cityState: address.slice(commaIdx + 1).trim(),
-  };
-}
-
-function formatResearchDate() {
-  return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
 
 function buildGrocerySection(stores) {
   const label = '<div class="dest-label">Grocery Stores</div>';
@@ -1068,7 +996,7 @@ function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
     if (highwayRamp.driveTimeMinutes <= 8) {
       findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
         text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min away — quick highway access.` });
-    } else if (highwayRamp.driveTimeMinutes > 20) {
+    } else if (highwayRamp.driveTimeMinutes > HIGHWAY_MAX_DRIVE_MINUTES) {
       findings.push({ bucket: 'Things to Consider', cls: 'consider',
         text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min — regional travel adds meaningful time.` });
     }
@@ -1255,7 +1183,6 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
   <div class="chapter-rule"></div>`;
 }
 
-const CUSTOM_DEST_ICONS = { work: '💼', family: '🏠', medical: '⚕️', recreation: '⛳', other: '📍' };
 
 function buildCustomDestinationsCardHTML(customDestinations) {
   if (!customDestinations || !customDestinations.length) return '';
@@ -1573,7 +1500,6 @@ function classifyError(error) {
   return { type: 'SERVER_ERROR', title: 'Something went wrong', message: 'An error occurred generating your report.', retryAfter: null };
 }
 
-const ERROR_ICONS = { ADDRESS_NOT_FOUND: '📍', RATE_LIMIT: '⏱️', QUOTA_EXCEEDED: '📊', SERVER_ERROR: '⚠️' };
 
 function buildErrorHTML(type, title, message, address, retryAfter) {
   const icon = ERROR_ICONS[type] || '⚠️';
@@ -2240,17 +2166,7 @@ app.get('/admin/cache-stats', (req, res) => {
 
 // ── PDF Export (FR-016) ──────────────────────────────────────────────────────
 
-function slugify(text) {
-  return String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 50);
-}
-
-function getDateSlug() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 let activePDFs = 0;
-const MAX_CONCURRENT_PDFS = 3;
 
 app.get('/report/pdf', async (req, res) => {
   const address = req.query.address ? toTitleCase(req.query.address.trim()) : '';

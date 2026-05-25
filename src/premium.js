@@ -3,32 +3,38 @@
 // Premium data module — FR-017 through FR-024 (excluding FR-022 paywall)
 
 const { discoverDevelopments } = require('./development-discovery');
+const { haversineDistance } = require('./utils/geo');
+const { escapeHtml, formatMoney } = require('./utils/text');
+const {
+  STATE_TAX_RATES, STATE_INSURANCE_ANNUAL, STATE_UTILITIES_MONTHLY,
+  STATE_HOMESTEAD, STATE_EXTENSION,
+  TORNADO_TIER,
+  RADON_ZONE_BY_STATE,
+  FROST_DATE_TABLE,
+  NATIVE_PLANT_EXCLUDE, NATIVE_PLANT_EXCLUDE_NAMES,
+  BENIGN_INTRODUCED, DOMESTIC_MAMMALS,
+  OVERPASS_ENDPOINTS,
+  NON_AIRPORT_RE, AIRPORT_RE,
+  AIRPORT_SEARCH_RADIUS_M, AIRPORT_MAX_DISTANCE_MILES,
+  WALKABILITY_SEARCH_RADIUS_M, WALK_TYPES,
+  DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M, COMMERCIAL_DEV_TYPES,
+  RESPONSE_SPEED_MPH, RESPONSE_DISPATCH_MINUTES, RESPONSE_TIME_THRESHOLDS,
+  FEMA_FLOOD_ZONES,
+  BROADBAND_TECH_CODES,
+  OSM_ROAD_NOISE_RADIUS_M, OSM_RAIL_RADIUS_M, OSM_LANDUSE_RADIUS_M,
+  WATER_QUALITY_SEARCH_RADIUS_MILES,
+  INAT_NATIVE_PLANTS_RADIUS_KM, INAT_INVASIVE_PLANTS_RADIUS_KM,
+  INAT_WILDLIFE_RADIUS_KM, INAT_BIRDS_RADIUS_KM,
+  INAT_NATIVE_PLANTS_PER_PAGE, INAT_INVASIVE_PLANTS_PER_PAGE,
+  INAT_WILDLIFE_PER_PAGE, INAT_BIRDS_PER_PAGE,
+  GROCERY_SEARCH_RADIUS_M,
+} = require('./utils/constants');
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
-
-function haversineDistance(lat1, lng1, lat2, lng2) {
-  const R = 3959;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 function safeInt(n) {
   const v = parseInt(n, 10);
   return isNaN(v) || v < 0 ? 0 : v;
-}
-
-function esc(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function formatMoney(n) {
-  return n != null ? '$' + Number(n).toLocaleString('en-US') : 'N/A';
 }
 
 // ── Census FIPS lookup (cached) ───────────────────────────────────────────────
@@ -214,49 +220,6 @@ function getCommunityType(ownershipRate, householdSize) {
 
 // ── FR-023: Property Costs & Market ──────────────────────────────────────────
 
-const STATE_TAX_RATES = {
-  AL:0.39,AK:1.04,AZ:0.60,AR:0.62,CA:0.73,CO:0.49,CT:1.73,DE:0.55,FL:0.80,GA:0.83,
-  HI:0.28,ID:0.56,IL:2.07,IN:0.83,IA:1.46,KS:1.30,KY:0.83,LA:0.56,ME:1.09,MD:1.02,
-  MA:1.12,MI:1.32,MN:1.02,MS:0.75,MO:0.93,MT:0.74,NE:1.54,NV:0.55,NH:1.89,NJ:2.13,
-  NM:0.67,NY:1.40,NC:0.70,ND:0.88,OH:1.41,OK:0.88,OR:0.87,PA:1.36,RI:1.29,SC:0.52,
-  SD:1.22,TN:0.66,TX:1.60,UT:0.52,VT:1.73,VA:0.75,WA:0.84,WV:0.55,WI:1.61,WY:0.55,
-  DC:0.56,
-};
-
-// Annual homeowner's insurance avg by state (approx. for $300k home, 2024 NAIC data)
-const STATE_INSURANCE_ANNUAL = {
-  AL:2380,AK:975, AZ:1690,AR:2650,CA:1380,CO:2310,CT:1540,DE:1010,FL:4231,GA:2310,
-  HI:560, ID:1090,IL:2049,IN:1280,IA:1280,KS:3460,KY:1680,LA:3540,ME:1100,MD:1240,
-  MA:1430,MI:1400,MN:1530,MS:2970,MO:2220,MT:1550,NE:2610,NV:1060,NH:1160,NJ:1440,
-  NM:1810,NY:1274,NC:1580,ND:1520,OH:1390,OK:3900,OR:1250,PA:1340,RI:1280,SC:1990,
-  SD:1960,TN:2020,TX:3429,UT:1010,VT:1090,VA:1330,WA:1450,WV:1200,WI:1200,WY:1370,
-  DC:1200,
-};
-
-// Average monthly home utilities (electric + gas + water, EIA/BLS 2024 estimates)
-const STATE_UTILITIES_MONTHLY = {
-  AL:215,AK:195,AZ:180,AR:205,CA:175,CO:145,CT:245,DE:185,FL:195,GA:195,
-  HI:215,ID:155,IL:185,IN:195,IA:175,KS:185,KY:190,LA:200,ME:195,MD:185,
-  MA:225,MI:195,MN:185,MS:200,MO:185,MT:165,NE:175,NV:160,NH:215,NJ:210,
-  NM:175,NY:215,NC:175,ND:185,OH:185,OK:185,OR:155,PA:185,RI:215,SC:175,
-  SD:175,TN:200,TX:195,UT:155,VT:195,VA:175,WA:155,WV:185,WI:175,WY:175,
-  DC:155,
-};
-
-// Brief homestead exemption notes for common states
-const STATE_HOMESTEAD = {
-  KY: 'Kentucky offers a homestead exemption ($46,350 off assessed value) for homeowners 65+ or permanently disabled.',
-  TX: 'Texas provides a $100,000 homestead exemption from school district taxes, plus additional caps on annual assessment increases.',
-  FL: 'Florida\'s $50,000 homestead exemption plus the Save Our Homes cap (3%/yr assessment increase limit) can produce significant long-term savings.',
-  CA: 'California\'s Prop 13 limits assessed value increases to 2%/yr for owner-occupied homes — a major long-term advantage in a high-appreciation state.',
-  IL: 'Illinois offers a General Homestead Exemption ($10,000 off EAV) and a Long-time Occupant Exemption for incomes under $100,000.',
-  GA: 'Georgia provides a standard homestead exemption plus additional senior exemptions. Amounts vary significantly by county.',
-  OH: 'Ohio\'s Homestead Exemption provides $25,000 off assessed value for homeowners 65+ or permanently disabled.',
-  PA: 'Pennsylvania\'s Homestead/Farmstead Exclusion reduces school property taxes; amounts vary by school district.',
-  NC: 'North Carolina offers an Elderly/Disabled Exclusion and a Circuit Breaker deferral program for qualifying homeowners.',
-  SC: 'South Carolina provides a 4% assessment ratio for primary residences (vs 6% for non-primary), a major ongoing savings.',
-};
-
 async function getPropertyData(fips, locationInfo) {
   const state  = locationInfo?.state  || '';
   const county = locationInfo?.county || '';
@@ -287,18 +250,10 @@ async function getPropertyData(fips, locationInfo) {
 // ── FR-021: Walkability Score (proxy via Google Places) ───────────────────────
 
 async function getWalkabilityScore(lat, lng, googleMapsClient, googleMapsApiKey) {
-  const WALK_TYPES = [
-    { type: 'grocery_or_supermarket', weight: 25, label: 'Grocery',  icon: '🛒' },
-    { type: 'restaurant',             weight: 20, label: 'Dining',   icon: '🍽️' },
-    { type: 'transit_station',        weight: 20, label: 'Transit',  icon: '🚌' },
-    { type: 'park',                   weight: 15, label: 'Park',     icon: '🌳' },
-    { type: 'pharmacy',               weight: 20, label: 'Pharmacy', icon: '💊' },
-  ];
-
   const results = await Promise.allSettled(
     WALK_TYPES.map(({ type }) =>
       googleMapsClient.placesNearby({
-        params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: 800, type },
+        params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: WALKABILITY_SEARCH_RADIUS_M, type },
       })
     )
   );
@@ -381,14 +336,8 @@ async function getEmergencyServices(lat, lng, originLatLng, googleMapsClient, go
 }
 
 function estimateResponseTime(distanceMiles, type) {
-  const speeds = { police: 30, fire: 35 };
-  const dispatch = { police: 2, fire: 1.5 };
-  const minutes = Math.round((distanceMiles / (speeds[type] || 30)) * 60 + (dispatch[type] || 2));
-  const thresholds = {
-    police: { excellent: 5, good: 10, fair: 15 },
-    fire: { excellent: 5, good: 8, fair: 12 },
-  };
-  const t = thresholds[type] || { excellent: 5, good: 10, fair: 15 };
+  const minutes = Math.round((distanceMiles / (RESPONSE_SPEED_MPH[type] || 30)) * 60 + (RESPONSE_DISPATCH_MINUTES[type] || 2));
+  const t = RESPONSE_TIME_THRESHOLDS[type] || { excellent: 5, good: 10, fair: 15 };
   let category;
   if (minutes <= t.excellent) category = { label: 'Excellent', color: 'green' };
   else if (minutes <= t.good) category = { label: 'Good', color: 'gold' };
@@ -472,39 +421,22 @@ async function getFloodRisk(lat, lng) {
 }
 
 function interpretFloodZone(zone) {
-  const map = {
-    A:  { risk: 'High',      insuranceRequired: true,  description: '1% annual flood chance (100-year floodplain).' },
-    AE: { risk: 'High',      insuranceRequired: true,  description: '1% annual flood chance with base flood elevation.' },
-    AH: { risk: 'High',      insuranceRequired: true,  description: 'Shallow flooding area.' },
-    AO: { risk: 'High',      insuranceRequired: true,  description: 'Sheet flow flooding area.' },
-    V:  { risk: 'Very High', insuranceRequired: true,  description: 'Coastal high-velocity wave action.' },
-    VE: { risk: 'Very High', insuranceRequired: true,  description: 'Coastal flood with wave action.' },
-    X:  { risk: 'Minimal',   insuranceRequired: false, description: 'Outside high-risk flood areas.' },
-    B:  { risk: 'Moderate',  insuranceRequired: false, description: '0.2% annual flood chance.' },
-    C:  { risk: 'Minimal',   insuranceRequired: false, description: 'Minimal flood hazard.' },
-  };
-  return map[zone] || { risk: 'Unknown', insuranceRequired: false, description: 'Flood zone data unavailable.' };
+  return FEMA_FLOOD_ZONES[zone] || { risk: 'Unknown', insuranceRequired: false, description: 'Flood zone data unavailable.' };
 }
 
-// State-level tornado frequency tier (NOAA historical average, tornadoes/year)
-const TORNADO_TIER = (() => {
-  const high   = ['TX','KS','OK','NE','IA','SD','ND','MO','MS','AL','AR','TN','KY','IN','IL','OH'];
-  const mod    = ['FL','GA','SC','NC','VA','WV','CO','WY','MT','MN','WI','MI','LA'];
-  const low    = ['CA','OR','WA','ID','NV','AZ','NM','UT','AK','HI','ME','NH','VT','MA','RI','CT','NY','NJ','PA','DE','MD','DC'];
-  return (state) => {
-    if (high.includes(state))  return { tier: 'High',     color: 'orange', note: `${state} averages among the highest tornado frequency in the US. Verify home has an interior shelter or basement.` };
-    if (mod.includes(state))   return { tier: 'Moderate', color: 'gold',   note: `${state} sees periodic tornado activity. Most homes here are built with standard storm shutters — ask about storm shelter access.` };
-    if (low.includes(state))   return { tier: 'Low',      color: 'green',  note: `${state} has low historical tornado frequency.` };
-    return                            { tier: 'Unknown',  color: 'muted',  note: 'Check NOAA Storm Events for this area.' };
-  };
-})();
+function getTornadoTier(state) {
+  if (TORNADO_TIER.high.includes(state))     return { tier: 'High',     color: 'orange', note: `${state} averages among the highest tornado frequency in the US. Verify home has an interior shelter or basement.` };
+  if (TORNADO_TIER.moderate.includes(state)) return { tier: 'Moderate', color: 'gold',   note: `${state} sees periodic tornado activity. Most homes here are built with standard storm shutters — ask about storm shelter access.` };
+  if (TORNADO_TIER.low.includes(state))      return { tier: 'Low',      color: 'green',  note: `${state} has low historical tornado frequency.` };
+  return                                            { tier: 'Unknown',  color: 'muted',  note: 'Check NOAA Storm Events for this area.' };
+}
 
 function buildClimateChapterHTML(environment, locationInfo) {
   if (!environment) return '';
   const flood  = environment.floodRisk;
   const state  = locationInfo?.state || null;
   const county = locationInfo?.county || 'this county';
-  const tornado = state ? TORNADO_TIER(state) : null;
+  const tornado = state ? getTornadoTier(state) : null;
 
   // ── Flood section ─────────────────────────────────────────────────────────
   let floodPara = '';
@@ -515,15 +447,15 @@ function buildClimateChapterHTML(environment, locationInfo) {
     const risk = flood.risk || 'Minimal';
     if (risk === 'High' || risk === 'Very High') {
       floodBadgeColor = 'red';
-      floodPara = `This parcel falls in FEMA Flood Zone <strong>${esc(zone)}</strong> — a high-risk area with a 1% annual flood chance. Over a 30-year mortgage that translates to a <strong>26% probability of at least one flood event</strong>. Flood insurance is federally required for federally-backed mortgages on this property. NFIP policies for Zone A/AE properties typically run <strong>$1,500–$3,500/year</strong>, though elevation can significantly change that figure. Request an elevation certificate from the seller — it's the single best tool for accurately quoting flood insurance and potentially reducing the premium.`;
+      floodPara = `This parcel falls in FEMA Flood Zone <strong>${escapeHtml(zone)}</strong> — a high-risk area with a 1% annual flood chance. Over a 30-year mortgage that translates to a <strong>26% probability of at least one flood event</strong>. Flood insurance is federally required for federally-backed mortgages on this property. NFIP policies for Zone A/AE properties typically run <strong>$1,500–$3,500/year</strong>, though elevation can significantly change that figure. Request an elevation certificate from the seller — it's the single best tool for accurately quoting flood insurance and potentially reducing the premium.`;
       floodAction = 'Get flood insurance quotes before your inspection period ends — the premium varies widely based on the elevation certificate, and a surprise here can change your offer math.';
     } else if (risk === 'Moderate') {
       floodBadgeColor = 'gold';
-      floodPara = `This parcel is in FEMA Flood Zone <strong>${esc(zone)}</strong> — a moderate-risk area (0.2% annual flood chance, or roughly 6% over a 30-year mortgage). Flood insurance is not federally required here, but <strong>25% of NFIP claims come from outside high-risk zones</strong>. A preferred-risk policy in moderate zones typically costs $300–$700/year and is worth considering if the property has low-lying areas or sits near a drainage channel.`;
+      floodPara = `This parcel is in FEMA Flood Zone <strong>${escapeHtml(zone)}</strong> — a moderate-risk area (0.2% annual flood chance, or roughly 6% over a 30-year mortgage). Flood insurance is not federally required here, but <strong>25% of NFIP claims come from outside high-risk zones</strong>. A preferred-risk policy in moderate zones typically costs $300–$700/year and is worth considering if the property has low-lying areas or sits near a drainage channel.`;
       floodAction = "Confirm your zone at msc.fema.gov — boundaries shift over time and one parcel can differ from the neighbor's. A flood insurance quote takes 15 minutes and locks in your cost picture before closing.";
     } else {
       floodBadgeColor = 'green';
-      floodPara = `This parcel is in FEMA Flood Zone <strong>${esc(zone)}</strong> — outside high-risk flood areas. No federally required flood insurance for this address. That said, <strong>25% of NFIP claims still come from Zone X properties</strong> — mostly from heavy rainfall events and local drainage issues rather than river flooding. A preferred-risk policy in Zone X runs around $300–$500/year if you want a cushion.`;
+      floodPara = `This parcel is in FEMA Flood Zone <strong>${escapeHtml(zone)}</strong> — outside high-risk flood areas. No federally required flood insurance for this address. That said, <strong>25% of NFIP claims still come from Zone X properties</strong> — mostly from heavy rainfall events and local drainage issues rather than river flooding. A preferred-risk policy in Zone X runs around $300–$500/year if you want a cushion.`;
       floodAction = 'Verify your exact zone at msc.fema.gov using the specific parcel address — flood maps are updated periodically and this is the authoritative source.';
     }
   } else {
@@ -537,9 +469,9 @@ function buildClimateChapterHTML(environment, locationInfo) {
     <div class="prem-climate-row">
       <div class="prem-climate-row-label">
         🌪️ Tornado Frequency
-        <span class="prem-badge ${badgeColor(tornado.color)}">${esc(tornado.tier)}</span>
+        <span class="prem-badge ${badgeColor(tornado.color)}">${escapeHtml(tornado.tier)}</span>
       </div>
-      <p class="prem-climate-row-body">${esc(tornado.note)}</p>
+      <p class="prem-climate-row-body">${escapeHtml(tornado.note)}</p>
     </div>` : '';
 
   // ── Action checklist ──────────────────────────────────────────────────────
@@ -562,7 +494,7 @@ function buildClimateChapterHTML(environment, locationInfo) {
     {
       icon: '🏠',
       label: 'Ask about storm shelter and drainage',
-      detail: `Ask the seller about the property's drainage and whether neighbors have experienced basement or yard flooding after heavy rain. In ${esc(county)}, local drainage patterns often matter more than the FEMA zone designation.`,
+      detail: `Ask the seller about the property's drainage and whether neighbors have experienced basement or yard flooding after heavy rain. In ${escapeHtml(county)}, local drainage patterns often matter more than the FEMA zone designation.`,
     },
   ];
 
@@ -570,7 +502,7 @@ function buildClimateChapterHTML(environment, locationInfo) {
     <div class="prem-safety-action">
       <span class="prem-safety-action-icon">${a.icon}</span>
       <div class="prem-safety-action-text">
-        <div class="prem-safety-action-label">${esc(a.label)}</div>
+        <div class="prem-safety-action-label">${escapeHtml(a.label)}</div>
         <div class="prem-safety-action-detail">${a.detail}</div>
       </div>
     </div>`).join('');
@@ -580,15 +512,15 @@ function buildClimateChapterHTML(environment, locationInfo) {
   if (!flood) {
     takeaway = 'Flood zone data was unavailable — look up this address at msc.fema.gov before closing. It\'s a 2-minute check that can reveal a $1,500–$3,500/year insurance requirement you won\'t see anywhere else in the listing.';
   } else if (flood.risk === 'High' || flood.risk === 'Very High') {
-    takeaway = `Zone ${esc(flood.zone)} is a federally designated high-risk flood area. Flood insurance is required and will cost $1,500–$3,500/year minimum. Get the elevation certificate and insurance quote before your inspection period ends — this number changes your total monthly cost.`;
+    takeaway = `Zone ${escapeHtml(flood.zone)} is a federally designated high-risk flood area. Flood insurance is required and will cost $1,500–$3,500/year minimum. Get the elevation certificate and insurance quote before your inspection period ends — this number changes your total monthly cost.`;
   } else if (flood.risk === 'Moderate') {
-    takeaway = `Zone ${esc(flood.zone)} is a moderate-risk area — no federal requirement, but a preferred-risk policy is cheap here ($300–$700/year). Verify the boundary at msc.fema.gov; flood map updates can shift a parcel from X to AE without any visible change to the property.`;
+    takeaway = `Zone ${escapeHtml(flood.zone)} is a moderate-risk area — no federal requirement, but a preferred-risk policy is cheap here ($300–$700/year). Verify the boundary at msc.fema.gov; flood map updates can shift a parcel from X to AE without any visible change to the property.`;
   } else {
-    takeaway = `Zone ${esc(flood.zone)}: outside high-risk flood areas — no flood insurance required. Confirm at msc.fema.gov to lock in that status. Zone X properties still account for 1 in 4 flood insurance claims, usually from heavy rain rather than river overflow.`;
+    takeaway = `Zone ${escapeHtml(flood.zone)}: outside high-risk flood areas — no flood insurance required. Confirm at msc.fema.gov to lock in that status. Zone X properties still account for 1 in 4 flood insurance claims, usually from heavy rain rather than river overflow.`;
   }
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const floodBadge = flood ? `<span class="prem-badge ${badgeColor(floodBadgeColor)}">Zone ${esc(flood.zone)} · ${esc(flood.risk)} Risk</span>` : `<span class="prem-badge badge-muted">Zone Unknown</span>`;
+  const floodBadge = flood ? `<span class="prem-badge ${badgeColor(floodBadgeColor)}">Zone ${escapeHtml(flood.zone)} · ${escapeHtml(flood.risk)} Risk</span>` : `<span class="prem-badge badge-muted">Zone Unknown</span>`;
 
   // Flood zone banner (full-width moment)
   const bannerClass = (!flood || flood.zone === 'X') ? 'flood-banner--low'
@@ -602,7 +534,7 @@ function buildClimateChapterHTML(environment, locationInfo) {
       <div class="prem-flood-zone-icon">${floodIcon}</div>
       <div>
         <div class="prem-flood-zone-label">FEMA Flood Zone — Parcel Level</div>
-        <div class="prem-flood-zone-name">Zone ${flood ? esc(flood.zone) : 'Unknown'} — ${flood ? esc(flood.risk) : 'Data Unavailable'} Risk</div>
+        <div class="prem-flood-zone-name">Zone ${flood ? escapeHtml(flood.zone) : 'Unknown'} — ${flood ? escapeHtml(flood.risk) : 'Data Unavailable'} Risk</div>
         <div class="prem-flood-zone-desc">${(floodPara || '').split('.')[0]}.</div>
       </div>
     </div>
@@ -629,14 +561,9 @@ function buildClimateChapterHTML(environment, locationInfo) {
 
 // Airport analysis (Google Places) ───────────────────────────────────────────
 
-// Keywords that indicate a non-airport aviation venue (paragliding, skydiving, etc.)
-const NON_AIRPORT_RE = /paragli|skydiv|balloon|ultralight|glider|soaring|ppg|hang.?glid|flying.?club|flight.?school|air.?sport|airfield.?club/i;
-// Keywords that confirm it's a real airport
-const AIRPORT_RE = /airport|airfield|air\s*force\s*base|\bafb\b|international|regional|municipal|executive|aviation\s*center|jetport/i;
-
 async function getAirportData(lat, lng, googleMapsClient, googleMapsApiKey) {
   const resp = await googleMapsClient.placesNearby({
-    params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: 32000, type: 'airport' },
+    params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: AIRPORT_SEARCH_RADIUS_M, type: 'airport' },
   });
   const airports = (resp.data.results || [])
     .filter((p) => !NON_AIRPORT_RE.test(p.name) && AIRPORT_RE.test(p.name))
@@ -644,7 +571,7 @@ async function getAirportData(lat, lng, googleMapsClient, googleMapsApiKey) {
       name: p.name,
       distanceMiles: haversineDistance(lat, lng, p.geometry.location.lat, p.geometry.location.lng),
     }))
-    .filter((a) => a.distanceMiles <= 20)
+    .filter((a) => a.distanceMiles <= AIRPORT_MAX_DISTANCE_MILES)
     .sort((a, b) => a.distanceMiles - b.distanceMiles);
   return airports.length ? airports : null;
 }
@@ -673,14 +600,6 @@ async function getRoadNoise(lat, lng) {
   }
 }
 
-// Fetch from Overpass API with fallback to alternative instances
-const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://lz4.overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.openstreetmap.fr/api/interpreter',
-];
-
 async function fetchOverpass(query, timeoutMs = 15000) {
   for (let i = 0; i < OVERPASS_ENDPOINTS.length; i++) {
     const base = OVERPASS_ENDPOINTS[i];
@@ -702,7 +621,7 @@ async function fetchOverpass(query, timeoutMs = 15000) {
 async function getRoadNoiseOSM(lat, lng) {
   const query =
     `[out:json][timeout:15];` +
-    `(way(around:4000,${lat},${lng})["highway"~"motorway|trunk|primary|secondary"];);` +
+    `(way(around:${OSM_ROAD_NOISE_RADIUS_M},${lat},${lng})["highway"~"motorway|trunk|primary|secondary"];);` +
     `out center tags;`;
   const resp = await fetchOverpass(query, 16000);
   if (!resp) return null;
@@ -744,7 +663,7 @@ async function getRailProximity(lat, lng) {
   try {
     const query =
       `[out:json][timeout:15];` +
-      `(way(around:4800,${lat},${lng})["railway"~"rail|light_rail|tram"];);` +
+      `(way(around:${OSM_RAIL_RADIUS_M},${lat},${lng})["railway"~"rail|light_rail|tram"];);` +
       `out center tags;`;
     const resp = await fetchOverpass(query, 16000);
     if (!resp) return null;
@@ -777,7 +696,7 @@ async function getLightPollution(lat, lng, fips) {
 }
 
 async function fetchLanduseOSM(lat, lng) {
-  const query = `[out:json][timeout:10];(way(around:800,${lat},${lng})["landuse"];);out center tags 10;`;
+  const query = `[out:json][timeout:10];(way(around:${OSM_LANDUSE_RADIUS_M},${lat},${lng})["landuse"];);out center tags 10;`;
   const resp = await fetchOverpass(query, 11000);
   if (!resp) return null;
   const d = await resp.json();
@@ -819,7 +738,7 @@ async function getWaterQuality(lat, lng) {
   try {
     const facResp = await fetch(
       `https://echodata.epa.gov/echo/sdw_rest_services.get_facilities` +
-      `?output=JSON&p_lat=${lat}&p_long=${lng}&p_radius=10&p_wt_type=CWS`,
+      `?output=JSON&p_lat=${lat}&p_long=${lng}&p_radius=${WATER_QUALITY_SEARCH_RADIUS_MILES}&p_wt_type=CWS`,
       { signal: AbortSignal.timeout(12000) },
     );
     if (!facResp.ok) return null;
@@ -873,13 +792,6 @@ async function getWaterQuality(lat, lng) {
 // Radon zone (EPA static county-level lookup) ─────────────────────────────────
 
 // State FIPS → default EPA radon zone (1=high, 2=moderate, 3=low)
-const RADON_ZONE_BY_STATE = {
-  '08': 1, '17': 1, '18': 1, '19': 1, '20': 1, '21': 1, '26': 1,
-  '27': 1, '29': 1, '30': 1, '31': 1, '38': 1, '39': 1, '42': 1,
-  '46': 1, '55': 1, '56': 1,
-  '12': 3, '15': 3, '22': 3,
-};
-
 function getRadonZone(fips) {
   if (!fips?.state) return null;
   const zone = RADON_ZONE_BY_STATE[fips.state] ?? 2;
@@ -1071,20 +983,11 @@ async function getNewConstructionContext(fips) {
   } catch { return null; }
 }
 
-const COMMERCIAL_DEV_TYPES = [
-  { type: 'shopping_mall',    label: 'Shopping Center', icon: '🏬' },
-  { type: 'supermarket',      label: 'Grocery Store',   icon: '🛒' },
-  { type: 'department_store', label: 'Major Retail',    icon: '🏪' },
-  { type: 'gym',              label: 'Fitness Center',  icon: '💪' },
-  { type: 'movie_theater',    label: 'Entertainment',   icon: '🎬' },
-  { type: 'bank',             label: 'Financial',       icon: '🏦' },
-];
-
 async function getRecentDevelopmentActivity(lat, lng, googleMapsClient, googleMapsApiKey) {
   const results = await Promise.allSettled(
     COMMERCIAL_DEV_TYPES.map(({ type }) =>
       googleMapsClient.placesNearby({
-        params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: 2400, type },
+        params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M, type },
       })
     )
   );
@@ -1126,127 +1029,6 @@ async function getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsC
 }
 
 // ── FR-031: What Will Grow Here ───────────────────────────────────────────────
-
-const FROST_DATE_TABLE = {
-  '1':  { lastSpring: 'June 15', firstFall: 'August 1',   days: 47  },
-  '2':  { lastSpring: 'June 1',  firstFall: 'August 15',  days: 75  },
-  '2a': { lastSpring: 'June 1',  firstFall: 'August 15',  days: 75  },
-  '2b': { lastSpring: 'June 1',  firstFall: 'August 15',  days: 75  },
-  '3':  { lastSpring: 'May 20',  firstFall: 'September 10', days: 113 },
-  '3a': { lastSpring: 'May 25',  firstFall: 'September 1', days: 99  },
-  '3b': { lastSpring: 'May 15',  firstFall: 'September 15', days: 123 },
-  '4':  { lastSpring: 'May 7',   firstFall: 'September 22', days: 138 },
-  '4a': { lastSpring: 'May 7',   firstFall: 'September 22', days: 138 },
-  '4b': { lastSpring: 'May 1',   firstFall: 'September 25', days: 147 },
-  '5':  { lastSpring: 'April 25', firstFall: 'October 5',  days: 163 },
-  '5a': { lastSpring: 'April 25', firstFall: 'October 5',  days: 163 },
-  '5b': { lastSpring: 'April 15', firstFall: 'October 15', days: 183 },
-  '6':  { lastSpring: 'April 10', firstFall: 'October 20', days: 193 },
-  '6a': { lastSpring: 'April 10', firstFall: 'October 20', days: 193 },
-  '6b': { lastSpring: 'April 15', firstFall: 'October 15', days: 183 },
-  '7':  { lastSpring: 'March 25', firstFall: 'November 5', days: 225 },
-  '7a': { lastSpring: 'March 25', firstFall: 'November 5', days: 225 },
-  '7b': { lastSpring: 'March 15', firstFall: 'November 15', days: 245 },
-  '8':  { lastSpring: 'March 1',  firstFall: 'December 1', days: 275 },
-  '8a': { lastSpring: 'March 1',  firstFall: 'December 1', days: 275 },
-  '8b': { lastSpring: 'February 15', firstFall: 'December 15', days: 303 },
-  '9':  { lastSpring: 'February 1',  firstFall: 'December 20', days: 322 },
-  '9a': { lastSpring: 'February 1',  firstFall: 'December 20', days: 322 },
-  '9b': { lastSpring: 'January 20',  firstFall: 'December 31', days: 345 },
-  '10': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
-  '10a': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
-  '10b': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
-  '11': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
-  '11a': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
-  '11b': { lastSpring: 'January 1',  firstFall: 'December 31', days: 365 },
-  '12': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
-  '13': { lastSpring: 'January 1',   firstFall: 'December 31', days: 365 },
-};
-
-// Genera/species to exclude from native plant results (weedy, toxic, or undesirable)
-const NATIVE_PLANT_EXCLUDE = new Set([
-  'ambrosia', 'toxicodendron', 'conium', 'solanum carolinense',
-  'urtica', 'arctium', 'phytolacca', 'robinia pseudoacacia',
-  'cynanchum laeve', 'packera glabella', 'ageratina altissima',
-]);
-
-// Common names to exclude from native plants
-const NATIVE_PLANT_EXCLUDE_NAMES = ['ragweed', 'poison ivy', 'poison oak', 'poison sumac',
-  'hemlock', 'horsenettle', 'pokeweed', 'stinging nettle', 'black locust'];
-
-// Introduced species that are benign — exclude from "invasive" list
-const BENIGN_INTRODUCED = new Set([
-  'trifolium repens', 'trifolium pratense', 'cichorium intybus', 'glechoma hederacea',
-  'lamium purpureum', 'veronica persica', 'medicago lupulina',
-  'stellaria media', 'taraxacum officinale', 'plantago major',
-  'poa annua', 'capsella bursa-pastoris', 'cerastium fontanum',
-  'tussilago farfara', 'sherardia arvensis', 'geranium molle',
-  'lolium perenne', 'dactylis glomerata', 'phleum pratense',
-  'trifolium incarnatum', 'trifolium hybridum', 'lamium amplexicaule',
-  'vicia sativa', 'veronica arvensis', 'ornithogalum umbellatum',
-  'potentilla indica', 'ajuga reptans', 'rumex acetosella',
-  'hypericum perforatum', 'lotus corniculatus', 'achillea millefolium',
-]);
-
-// Mammals to exclude from "yard wildlife" list (domestic, feral, or aquatic-only species)
-const DOMESTIC_MAMMALS = new Set([
-  'felis catus', 'canis lupus familiaris', 'sus scrofa domesticus',
-  'myocastor coypus',  // Coypu/Nutria — aquatic invasive, not a yard animal
-]);
-
-const STATE_EXTENSION = {
-  AL: { name: 'Alabama Cooperative Extension System', url: 'www.aces.edu' },
-  AK: { name: 'University of Alaska Cooperative Extension', url: 'www.uaf.edu/ces' },
-  AZ: { name: 'University of Arizona Cooperative Extension', url: 'extension.arizona.edu' },
-  AR: { name: 'University of Arkansas Cooperative Extension', url: 'www.uaex.uada.edu' },
-  CA: { name: 'UC Cooperative Extension', url: 'ucanr.edu' },
-  CO: { name: 'Colorado State University Extension', url: 'extension.colostate.edu' },
-  CT: { name: 'UConn Extension', url: 'extension.uconn.edu' },
-  DE: { name: 'University of Delaware Cooperative Extension', url: 'sites.udel.edu/extension' },
-  FL: { name: 'UF/IFAS Extension', url: 'extension.ifas.ufl.edu' },
-  GA: { name: 'UGA Cooperative Extension', url: 'extension.uga.edu' },
-  HI: { name: 'University of Hawaii Cooperative Extension', url: 'www.ctahr.hawaii.edu/site/Ext.aspx' },
-  ID: { name: 'University of Idaho Extension', url: 'www.uidaho.edu/extension' },
-  IL: { name: 'University of Illinois Extension', url: 'extension.illinois.edu' },
-  IN: { name: 'Purdue Extension', url: 'extension.purdue.edu' },
-  IA: { name: 'Iowa State University Extension', url: 'www.extension.iastate.edu' },
-  KS: { name: 'K-State Research and Extension', url: 'www.ksre.k-state.edu' },
-  KY: { name: 'UK Cooperative Extension Service', url: 'extension.ca.uky.edu' },
-  LA: { name: 'LSU AgCenter', url: 'www.lsuagcenter.com' },
-  ME: { name: 'University of Maine Cooperative Extension', url: 'extension.umaine.edu' },
-  MD: { name: 'University of Maryland Extension', url: 'extension.umd.edu' },
-  MA: { name: 'UMass Extension', url: 'ag.umass.edu/extension' },
-  MI: { name: 'MSU Extension', url: 'www.canr.msu.edu/outreach' },
-  MN: { name: 'University of Minnesota Extension', url: 'extension.umn.edu' },
-  MS: { name: 'Mississippi State University Extension', url: 'extension.msstate.edu' },
-  MO: { name: 'University of Missouri Extension', url: 'extension.missouri.edu' },
-  MT: { name: 'Montana State University Extension', url: 'www.msuextension.org' },
-  NE: { name: 'Nebraska Extension', url: 'extension.unl.edu' },
-  NV: { name: 'University of Nevada Cooperative Extension', url: 'www.unce.unr.edu' },
-  NH: { name: 'UNH Cooperative Extension', url: 'extension.unh.edu' },
-  NJ: { name: 'Rutgers Cooperative Extension', url: 'njaes.rutgers.edu' },
-  NM: { name: 'NMSU Cooperative Extension Service', url: 'extension.nmsu.edu' },
-  NY: { name: 'Cornell Cooperative Extension', url: 'cce.cornell.edu' },
-  NC: { name: 'NC State Extension', url: 'www.ces.ncsu.edu' },
-  ND: { name: 'NDSU Extension', url: 'www.ndsu.edu/extension' },
-  OH: { name: 'Ohio State University Extension', url: 'extension.osu.edu' },
-  OK: { name: 'Oklahoma Cooperative Extension Service', url: 'extension.okstate.edu' },
-  OR: { name: 'Oregon State University Extension Service', url: 'extension.oregonstate.edu' },
-  PA: { name: 'Penn State Extension', url: 'extension.psu.edu' },
-  RI: { name: 'URI Cooperative Extension', url: 'web.uri.edu/coopext' },
-  SC: { name: 'Clemson Cooperative Extension', url: 'www.clemson.edu/extension' },
-  SD: { name: 'SDSU Extension', url: 'extension.sdstate.edu' },
-  TN: { name: 'UT Extension', url: 'extension.tennessee.edu' },
-  TX: { name: 'Texas A&M AgriLife Extension', url: 'agrilifeextension.tamu.edu' },
-  UT: { name: 'USU Extension', url: 'extension.usu.edu' },
-  VT: { name: 'UVM Extension', url: 'www.uvm.edu/extension' },
-  VA: { name: 'Virginia Cooperative Extension', url: 'ext.vt.edu' },
-  WA: { name: 'WSU Extension', url: 'extension.wsu.edu' },
-  WV: { name: 'WVU Extension Service', url: 'extension.wvu.edu' },
-  WI: { name: 'UW-Extension', url: 'fyi.extension.wisc.edu' },
-  WY: { name: 'University of Wyoming Extension', url: 'www.uwyo.edu/uwext' },
-  DC: { name: 'University of the District of Columbia Extension', url: 'udc.edu/causes/cooperative-extension' },
-};
 
 async function getHardinessZone(zip) {
   if (!zip) return null;
@@ -1349,10 +1131,10 @@ async function getGardenData(lat, lng, locationInfo) {
   const [zoneRes, nativePlantsRes, invasivePlantsRes, wildlifeRes, birdsRes] =
     await Promise.allSettled([
       getHardinessZone(zip),
-      iNatSpeciesCounts(lat, lng, 16, 47126, { native: true }, 30),
-      iNatSpeciesCounts(lat, lng, 32, 47126, { introduced: true }, 25),
-      iNatSpeciesCounts(lat, lng, 16, 40151, {}, 15),
-      iNatSpeciesCounts(lat, lng, 16, 3, {}, 20),
+      iNatSpeciesCounts(lat, lng, INAT_NATIVE_PLANTS_RADIUS_KM,   47126, { native: true },      INAT_NATIVE_PLANTS_PER_PAGE),
+      iNatSpeciesCounts(lat, lng, INAT_INVASIVE_PLANTS_RADIUS_KM, 47126, { introduced: true },  INAT_INVASIVE_PLANTS_PER_PAGE),
+      iNatSpeciesCounts(lat, lng, INAT_WILDLIFE_RADIUS_KM,         40151, {},                   INAT_WILDLIFE_PER_PAGE),
+      iNatSpeciesCounts(lat, lng, INAT_BIRDS_RADIUS_KM,            3,     {},                   INAT_BIRDS_PER_PAGE),
     ]);
 
   const val = (r, fallback) => r.status === 'fulfilled' ? r.value : fallback;
@@ -1380,9 +1162,9 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   if (hardinessZone) {
     const { zone, tempRange, frost } = hardinessZone;
     const zoneNote = tempRange ? ` (average winter low: ${tempRange}°F)` : '';
-    conditionsPara = `This property sits in USDA Hardiness Zone ${esc(zone)}${zoneNote}. `;
+    conditionsPara = `This property sits in USDA Hardiness Zone ${escapeHtml(zone)}${zoneNote}. `;
     if (frost) {
-      conditionsPara += `The last spring frost typically falls around <strong>${esc(frost.lastSpring)}</strong> and the first fall frost arrives around <strong>${esc(frost.firstFall)}</strong> — giving you a growing season of roughly ${frost.days} days. `;
+      conditionsPara += `The last spring frost typically falls around <strong>${escapeHtml(frost.lastSpring)}</strong> and the first fall frost arrives around <strong>${escapeHtml(frost.firstFall)}</strong> — giving you a growing season of roughly ${frost.days} days. `;
       if (frost.days >= 180) {
         conditionsPara += `That's enough time for tomatoes, peppers, squash, and most vegetables to complete a full cycle.`;
       } else if (frost.days >= 120) {
@@ -1404,9 +1186,9 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
     if (isUrban) {
       soilPara = `This address is on developed urban land — standard soil survey data isn't available for this parcel. For drainage and foundation soil information, request a geotechnical report or ask the seller about any known drainage issues.`;
     } else {
-      soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? ` — USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
+      soilPara = `The lot sits on ${escapeHtml(name)}${soil.drainagecl ? ` — USDA drainage class: ${escapeHtml(soil.drainagecl.toLowerCase())}` : ''}. `;
       if (drain && drain.color !== 'muted') {
-        soilPara += esc(drain.implication) + ' ';
+        soilPara += escapeHtml(drain.implication) + ' ';
       }
       if (drain?.color === 'green' || drain?.color === 'lightgreen') {
         soilPara += `A layer of compost before planting and you're in good shape.`;
@@ -1420,7 +1202,7 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   let nativePlantsHTML = '';
   if (nativePlants.length > 0) {
     const items = nativePlants.map((p) =>
-      `<li class="grow-plant-item"><span class="grow-plant-name">${esc(p.name)}</span> <em class="grow-plant-sci">(${esc(p.sci)})</em></li>`
+      `<li class="grow-plant-item"><span class="grow-plant-name">${escapeHtml(p.name)}</span> <em class="grow-plant-sci">(${escapeHtml(p.sci)})</em></li>`
     ).join('\n');
     nativePlantsHTML = `
     <div class="grow-subsection">
@@ -1435,7 +1217,7 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   let invasivePlantsHTML = '';
   if (invasivePlants.length > 0) {
     const items = invasivePlants.map((p) =>
-      `<li class="grow-plant-item"><span class="grow-plant-name">${esc(p.name)}</span> <em class="grow-plant-sci">(${esc(p.sci)})</em></li>`
+      `<li class="grow-plant-item"><span class="grow-plant-name">${escapeHtml(p.name)}</span> <em class="grow-plant-sci">(${escapeHtml(p.sci)})</em></li>`
     ).join('\n');
     invasivePlantsHTML = `
     <div class="grow-subsection">
@@ -1451,14 +1233,14 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   if (wildlife.length > 0 || birds.length > 0) {
     let wildlifePara = '';
     if (wildlife.length > 0) {
-      const mammalNames = wildlife.slice(0, 4).map((w) => esc(w.name)).join(', ');
+      const mammalNames = wildlife.slice(0, 4).map((w) => escapeHtml(w.name)).join(', ');
       wildlifePara += `Common mammals observed in this area include ${mammalNames}. `;
       if (wildlife.some((w) => w.name.toLowerCase().includes('deer'))) {
         wildlifePara += `If deer are active nearby, plan any vegetable garden or ornamental plantings with deer-resistant species or fencing. `;
       }
     }
     if (birds.length > 0) {
-      const birdNames = birds.slice(0, 5).map((b) => esc(b.name)).join(', ');
+      const birdNames = birds.slice(0, 5).map((b) => escapeHtml(b.name)).join(', ');
       wildlifePara += `Common backyard birds in this area include ${birdNames}. A simple feeder and a water source will bring them close.`;
     }
     wildlifeHTML = `
@@ -1471,8 +1253,8 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   // ── Extension Office CTA ──
   let extCTA = '';
   if (ext) {
-    const countyLabel = county ? `${esc(county)}` : esc(state);
-    extCTA = `<p class="grow-ext-cta">Your local Cooperative Extension office offers free soil testing and planting guides specific to your county. For ${countyLabel}: <strong>${esc(ext.name)}</strong> — <a href="https://${ext.url}" target="_blank" rel="noopener noreferrer">${esc(ext.url)}</a></p>`;
+    const countyLabel = county ? `${escapeHtml(county)}` : escapeHtml(state);
+    extCTA = `<p class="grow-ext-cta">Your local Cooperative Extension office offers free soil testing and planting guides specific to your county. For ${countyLabel}: <strong>${escapeHtml(ext.name)}</strong> — <a href="https://${ext.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(ext.url)}</a></p>`;
   } else {
     extCTA = `<p class="grow-ext-cta">Your local Cooperative Extension office offers free soil testing and planting guides specific to your county — search for your state's land-grant university extension service for county-specific resources.</p>`;
   }
@@ -1514,9 +1296,9 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
     </div>` : extCTA}
     <div class="key-takeaway">
       <span class="kt-icon">🔑</span>
-      <div class="kt-body"><strong>Key Takeaway:</strong> ${hardinessZone ? `Zone ${esc(hardinessZone.zone)} gives you ${hardinessZone.frost ? `a ${hardinessZone.frost.days}-day growing season` : 'a defined growing season'}. Native plants adapted to this region require the least effort and give back the most.` : 'Native plants adapted to your region require the least effort and give back the most.'}</div>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${hardinessZone ? `Zone ${escapeHtml(hardinessZone.zone)} gives you ${hardinessZone.frost ? `a ${hardinessZone.frost.days}-day growing season` : 'a defined growing season'}. Native plants adapted to this region require the least effort and give back the most.` : 'Native plants adapted to your region require the least effort and give back the most.'}</div>
     </div>
-    <p class="prem-disclaimer">Hardiness zone: USDA phzmapi.org, ZIP-code level. Frost dates are 30-year climate normals correlated with USDA hardiness zone. ${sources ? `Sources: ${esc(sources)}. ` : ''}Wildlife observations: iNaturalist research-grade, 10-mile radius. Research date: ${today}.</p>`;
+    <p class="prem-disclaimer">Hardiness zone: USDA phzmapi.org, ZIP-code level. Frost dates are 30-year climate normals correlated with USDA hardiness zone. ${sources ? `Sources: ${escapeHtml(sources)}. ` : ''}Wildlife observations: iNaturalist research-grade, 10-mile radius. Research date: ${today}.</p>`;
 
   // Frost timeline full-width visual
   let frostFullHTML = null;
@@ -1535,12 +1317,12 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
       <div class="grow-frost-timeline">
         <div class="grow-frost-inner">
           <div class="grow-frost-days">${frost.days}<span class="grow-frost-days-unit"> days</span></div>
-          <div class="grow-frost-track" role="img" aria-label="Growing season: ${frost.days} days from ${esc(frost.lastSpring)} to ${esc(frost.firstFall)}">
+          <div class="grow-frost-track" role="img" aria-label="Growing season: ${frost.days} days from ${escapeHtml(frost.lastSpring)} to ${escapeHtml(frost.firstFall)}">
             <div class="grow-frost-fill" style="margin-left:${startPct}%" data-final-width="${fillWidth}%"></div>
           </div>
           <div class="grow-frost-labels">
-            <span class="grow-frost-label">${esc(frost.lastSpring)}</span>
-            <span class="grow-frost-label">${esc(frost.firstFall)}</span>
+            <span class="grow-frost-label">${escapeHtml(frost.lastSpring)}</span>
+            <span class="grow-frost-label">${escapeHtml(frost.firstFall)}</span>
           </div>
         </div>
       </div>`;
@@ -1624,12 +1406,6 @@ async function getBroadbandData(lat, lng) {
       Array.isArray(data)               ? data              : [];
     if (!availability.length) return null;
 
-    const TECH_MAP = {
-      10: 'DSL', 11: 'ADSL2+', 12: 'VDSL', 40: 'Cable', 41: 'DOCSIS 3.0',
-      42: 'DOCSIS 3.1+', 50: 'Fiber', 60: 'Satellite', 70: 'Fixed Wireless',
-      300: 'LTE Fixed Wireless', 400: 'Licensed Fixed Wireless', 500: 'Unlicensed Fixed Wireless',
-    };
-
     let maxDownload = 0;
     let hasFiber    = false;
     const seenNames = new Set();
@@ -1645,7 +1421,7 @@ async function getBroadbandData(lat, lng) {
         seenNames.add(name);
         providers.push({
           name,
-          tech:     TECH_MAP[techCode] || `Type ${techCode}`,
+          tech:     BROADBAND_TECH_CODES[techCode] || `Type ${techCode}`,
           download,
           upload:   Number(item.max_advertised_upload_speed ?? item.upload_speed ?? 0),
         });
@@ -1783,9 +1559,9 @@ function premiumCard(chKey, chNum, iconSvg, eyebrow, title, introHTML, leftHTML,
       <header class="chapter-hd">
         <div class="chapter-eyebrow">
           ${iconSvg ? `<span class="chapter-icon">${iconSvg}</span>` : ''}
-          ${esc(eyebrow)}
+          ${escapeHtml(eyebrow)}
         </div>
-        <h2 class="chapter-title">${esc(title)}</h2>
+        <h2 class="chapter-title">${escapeHtml(title)}</h2>
       </header>
       ${introHTML ? `<p class="chapter-intro">${introHTML}</p>` : ''}
       <div class="chapter-body">
@@ -1830,11 +1606,11 @@ function buildSchoolRatingsHTML(schools) {
     return `
     <div class="prem-school-card">
       <div class="prem-school-header">
-        <div class="prem-school-level">Public ${esc(s.level)} School</div>
-        <div class="prem-school-name">${esc(s.name)}</div>
-        <div class="prem-school-addr">${esc(s.address)}</div>
+        <div class="prem-school-level">Public ${escapeHtml(s.level)} School</div>
+        <div class="prem-school-name">${escapeHtml(s.name)}</div>
+        <div class="prem-school-addr">${escapeHtml(s.address)}</div>
         <div class="prem-school-meta">
-          <span class="prem-school-dist">${esc(s.distanceMiles)} mi away</span>
+          <span class="prem-school-dist">${escapeHtml(s.distanceMiles)} mi away</span>
           ${s.driveTimeMinutes != null ? `<span class="prem-school-time">${s.driveTimeMinutes} min drive</span>` : ''}
         </div>
       </div>
@@ -1846,8 +1622,8 @@ function buildSchoolRatingsHTML(schools) {
   if (privateSchools.length > 0) {
     const privateItems = privateSchools.map((s) => `
       <div class="prem-school-choice-item">
-        <div class="prem-school-choice-name">${esc(s.name)}</div>
-        <div class="prem-school-choice-meta">${esc(s.distanceMiles)} mi away · ${esc(s.address)}</div>
+        <div class="prem-school-choice-name">${escapeHtml(s.name)}</div>
+        <div class="prem-school-choice-meta">${escapeHtml(s.distanceMiles)} mi away · ${escapeHtml(s.address)}</div>
       </div>`).join('');
     privateHTML = `
     <div class="prem-school-choice-section">
@@ -1906,7 +1682,7 @@ function buildSchoolRatingsHTML(schools) {
   const takeawayHTML = takeawayText ? `
     <div class="key-takeaway">
       <span class="kt-icon">🔑</span>
-      <div class="kt-body"><strong>Key Takeaway:</strong> ${esc(takeawayText)}</div>
+      <div class="kt-body"><strong>Key Takeaway:</strong> ${escapeHtml(takeawayText)}</div>
     </div>` : '';
 
   const body = `
@@ -1944,7 +1720,7 @@ function buildCrimeHTML(crime, emergency) {
       mins <= 12 ? `That's an average response time. For medical emergencies, every minute matters — knowing basic first aid and having a plan adds a real margin of safety.` :
       mins <= 20 ? `A ${mins}-minute response estimate is common for rural and exurban areas. Working smoke detectors, a CO detector, and a family emergency plan matter more when professional help is further away.` :
       `At ${mins} minutes, response is extended — typical for sparsely populated rural areas. Fire extinguishers on each floor, interconnected smoke alarms, and a practiced family escape plan are practical necessities here, not just suggestions.`;
-    policePara = `The nearest police station is ${esc(police.name)}, ${police.distanceMiles} miles away. Estimated response time: <strong>~${mins} minutes</strong> <span class="prem-inline-badge ${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
+    policePara = `The nearest police station is ${escapeHtml(police.name)}, ${police.distanceMiles} miles away. Estimated response time: <strong>~${mins} minutes</strong> <span class="prem-inline-badge ${badgeColor(cat.color)}">${escapeHtml(cat.label)}</span>. ${context}`;
   }
 
   // ── Fire response ─────────────────────────────────────────────────────────
@@ -1957,7 +1733,7 @@ function buildCrimeHTML(crime, emergency) {
       mins <= 8  ? `A ${mins}-minute fire response is solid — this is the range where professional suppression and modern systems work well together.` :
       mins <= 12 ? `A ${mins}-minute fire response means a fire has time to spread beyond one room. Working smoke detectors in every bedroom and a household fire escape plan are essential.` :
       `A ${mins}-minute fire response time is extended. A house fire doubles in size every minute — this is a meaningful practical consideration. Ask your insurance agent for the ISO fire protection class rating, which directly affects your premium.`;
-    firePara = `${esc(fire.name)} is ${fire.distanceMiles} miles away. Estimated fire response: <strong>~${mins} minutes</strong> <span class="prem-inline-badge ${badgeColor(cat.color)}">${esc(cat.label)}</span>. ${context}`;
+    firePara = `${escapeHtml(fire.name)} is ${fire.distanceMiles} miles away. Estimated fire response: <strong>~${mins} minutes</strong> <span class="prem-inline-badge ${badgeColor(cat.color)}">${escapeHtml(cat.label)}</span>. ${context}`;
   }
 
   // ── Insurance / ISO note ──────────────────────────────────────────────────
@@ -1978,7 +1754,7 @@ function buildCrimeHTML(crime, emergency) {
     {
       icon: '📞',
       label: 'Call the community resource officer',
-      detail: `Call the non-emergency line for ${city ? esc(city) + ' Police' : 'the local police department'} and ask for the community resource officer for this precinct. They'll tell you more about the area than any statistic.`,
+      detail: `Call the non-emergency line for ${city ? escapeHtml(city) + ' Police' : 'the local police department'} and ask for the community resource officer for this precinct. They'll tell you more about the area than any statistic.`,
     },
     {
       icon: '🔐',
@@ -1991,7 +1767,7 @@ function buildCrimeHTML(crime, emergency) {
     <div class="prem-safety-action">
       <span class="prem-safety-action-icon">${a.icon}</span>
       <div class="prem-safety-action-text">
-        <div class="prem-safety-action-label">${esc(a.label)}</div>
+        <div class="prem-safety-action-label">${escapeHtml(a.label)}</div>
         <div class="prem-safety-action-detail">${a.detail}</div>
       </div>
     </div>`).join('');
@@ -2025,7 +1801,7 @@ function buildCrimeHTML(crime, emergency) {
       <span class="kt-icon">🔑</span>
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
-    <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}. For current safety data, contact ${city ? esc(city) + ' Police or' : ''} ${esc(county)} Emergency Management.</p>`;
+    <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}. For current safety data, contact ${city ? escapeHtml(city) + ' Police or' : ''} ${escapeHtml(county)} Emergency Management.</p>`;
   const shieldSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
   return premiumCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, null, null);
 }
@@ -2044,16 +1820,16 @@ function buildSensoryEnvironmentalHTML(env) {
     const n = airports[0];
     const d = n.distanceMiles.toFixed(1);
     if (n.distanceMiles < 5) {
-      airportPara = `${esc(n.name)} is ${d} miles away — close enough that aircraft on approach or departure are frequently audible, particularly in the mornings and evenings. Consider visiting the property during early morning hours (6–9am weekdays) before committing.`;
+      airportPara = `${escapeHtml(n.name)} is ${d} miles away — close enough that aircraft on approach or departure are frequently audible, particularly in the mornings and evenings. Consider visiting the property during early morning hours (6–9am weekdays) before committing.`;
     } else if (n.distanceMiles < 10) {
-      airportPara = `${esc(n.name)} is approximately ${d} miles away. Aircraft on approach or departure paths may be audible at this distance during peak periods. Worth visiting at different times of day to gauge the actual sound level.`;
+      airportPara = `${escapeHtml(n.name)} is approximately ${d} miles away. Aircraft on approach or departure paths may be audible at this distance during peak periods. Worth visiting at different times of day to gauge the actual sound level.`;
     } else if (n.distanceMiles < 15) {
-      airportPara = `The nearest airport, ${esc(n.name)}, is ${d} miles away. Depending on prevailing winds and runway configuration, some approach traffic may occasionally be audible overhead. At this distance, it's not typically disruptive.`;
+      airportPara = `The nearest airport, ${escapeHtml(n.name)}, is ${d} miles away. Depending on prevailing winds and runway configuration, some approach traffic may occasionally be audible overhead. At this distance, it's not typically disruptive.`;
     } else {
-      airportPara = `The nearest airport, ${esc(n.name)}, is ${d} miles away. At that distance, aircraft are at altitude and not meaningfully audible at ground level. Flight noise is not a daily factor here.`;
+      airportPara = `The nearest airport, ${escapeHtml(n.name)}, is ${d} miles away. At that distance, aircraft are at altitude and not meaningfully audible at ground level. Flight noise is not a daily factor here.`;
     }
     if (airports.length > 1) {
-      const others = airports.slice(1, 3).map((a) => `${esc(a.name)} (${a.distanceMiles.toFixed(1)} mi)`).join(' and ');
+      const others = airports.slice(1, 3).map((a) => `${escapeHtml(a.name)} (${a.distanceMiles.toFixed(1)} mi)`).join(' and ');
       airportPara += ` ${others} ${airports.length === 2 ? 'is' : 'are'} also in the region.`;
     }
   }
@@ -2064,7 +1840,7 @@ function buildSensoryEnvironmentalHTML(env) {
   } else {
     const { dnl, source, nearestRoad } = roadNoise;
     const srcNote = source === 'BTS' ? ' (BTS National Transportation Noise Map)' : ' (estimated from highway proximity)';
-    const roadRef = nearestRoad?.name ? ` Nearest major road: ${esc(nearestRoad.name)}.` : '';
+    const roadRef = nearestRoad?.name ? ` Nearest major road: ${escapeHtml(nearestRoad.name)}.` : '';
     if (dnl < 55) {
       roadNoisePara = `Road noise is low — approximately ${dnl} dB day-night average${srcNote}. That's well below the FHWA's 65 dB residential threshold, and in a range most people describe as quiet.${roadRef}`;
     } else if (dnl < 65) {
@@ -2079,7 +1855,7 @@ function buildSensoryEnvironmentalHTML(env) {
     railPara = 'No freight or passenger rail lines run within 3 miles of this address. Train noise is not a factor here.';
   } else {
     const typeLabel = rail.type === 'light_rail' ? 'light rail' : rail.type === 'tram' ? 'tram' : 'rail';
-    const nameStr = rail.name ? `${esc(rail.name)} ` : '';
+    const nameStr = rail.name ? `${escapeHtml(rail.name)} ` : '';
     if (rail.distanceMiles < 0.25) {
       railPara = `A ${nameStr}${typeLabel} line runs less than a quarter mile from this address. At that proximity, trains will be audible indoors. Freight schedules aren't fixed — trains can pass at any hour, including overnight.`;
     } else if (rail.distanceMiles < 0.75) {
@@ -2106,7 +1882,7 @@ function buildSensoryEnvironmentalHTML(env) {
     lightPara = 'Night sky brightness data was not available for this address.';
   } else {
     const { bortle, label, desc } = lightPollution;
-    lightPara = `The night sky here is roughly Bortle ${bortle} — a ${esc(label)}. ${esc(desc)} This is estimated from Census tract population density and nearby land use patterns, not satellite measurement.`;
+    lightPara = `The night sky here is roughly Bortle ${bortle} — a ${escapeHtml(label)}. ${escapeHtml(desc)} This is estimated from Census tract population density and nearby land use patterns, not satellite measurement.`;
   }
 
   const sectionB = `
@@ -2122,8 +1898,8 @@ function buildSensoryEnvironmentalHTML(env) {
   let airPara;
   if (airQuality) {
     const { aqi, category: c, primaryPollutant } = airQuality;
-    const pollNote = primaryPollutant && primaryPollutant !== 'N/A' ? ` Primary pollutant: ${esc(primaryPollutant)}.` : '';
-    airPara = `Air quality in this region averages AQI ${aqi} — ${esc(c.label.toLowerCase())}. ${esc(c.description)}${pollNote} Source: EPA AirNow, nearest monitoring station.`;
+    const pollNote = primaryPollutant && primaryPollutant !== 'N/A' ? ` Primary pollutant: ${escapeHtml(primaryPollutant)}.` : '';
+    airPara = `Air quality in this region averages AQI ${aqi} — ${escapeHtml(c.label.toLowerCase())}. ${escapeHtml(c.description)}${pollNote} Source: EPA AirNow, nearest monitoring station.`;
   } else {
     airPara = 'Air quality data was not available for this address. Check EPA AirNow (airnow.gov) for current conditions in your area.';
   }
@@ -2132,12 +1908,12 @@ function buildSensoryEnvironmentalHTML(env) {
   if (!waterQuality) {
     waterPara = 'EPA drinking water records were not accessible for this address. Check historical water quality at <a href="https://www.ewg.org/tapwater/" target="_blank" rel="noopener">EWG\'s Tap Water Database</a> (search by zip code) and request your utility\'s Consumer Confidence Report before closing.';
   } else if (!waterQuality.violations?.length) {
-    waterPara = `Water here is supplied by ${esc(waterQuality.systemName)}. EPA Safe Drinking Water records show no health-based violations in the last five years — a clean record. You can request the annual Consumer Confidence Report from the utility for full detail.`;
+    waterPara = `Water here is supplied by ${escapeHtml(waterQuality.systemName)}. EPA Safe Drinking Water records show no health-based violations in the last five years — a clean record. You can request the annual Consumer Confidence Report from the utility for full detail.`;
   } else {
     const v = waterQuality.violations[0];
     const dateStr = v.date ? ` in ${v.date.slice(0, 4)}` : '';
-    const statusStr = (v.status && v.status !== 'Unknown') ? ` — ${esc(v.status)}` : '';
-    waterPara = `Water here is supplied by ${esc(waterQuality.systemName)}. EPA records show ${waterQuality.violations.length} violation${waterQuality.violations.length > 1 ? 's' : ''} in the last five years. The most recent: ${esc(v.type)}${dateStr}${statusStr}. Request the utility's Consumer Confidence Report before closing to understand current status.`;
+    const statusStr = (v.status && v.status !== 'Unknown') ? ` — ${escapeHtml(v.status)}` : '';
+    waterPara = `Water here is supplied by ${escapeHtml(waterQuality.systemName)}. EPA records show ${waterQuality.violations.length} violation${waterQuality.violations.length > 1 ? 's' : ''} in the last five years. The most recent: ${escapeHtml(v.type)}${dateStr}${statusStr}. Request the utility's Consumer Confidence Report before closing to understand current status.`;
   }
 
   let radonPara;
@@ -2180,12 +1956,12 @@ function buildSensoryEnvironmentalHTML(env) {
 
   let takeaway;
   if (airports?.length && airports[0].distanceMiles < 10) {
-    takeaway = `${esc(airports[0].name)} is ${airports[0].distanceMiles.toFixed(1)} miles away. Visit the property during morning hours (6–9am weekdays) to hear the actual aircraft noise level before committing.`;
+    takeaway = `${escapeHtml(airports[0].name)} is ${airports[0].distanceMiles.toFixed(1)} miles away. Visit the property during morning hours (6–9am weekdays) to hear the actual aircraft noise level before committing.`;
   } else if (roadNoise?.dnl >= 65) {
     takeaway = `Road noise at this location (~${roadNoise.dnl} dB) exceeds the FHWA residential standard of 65 dB. Evaluate it on-site during peak traffic hours.`;
   } else if (waterQuality?.violations?.length) {
     const v = waterQuality.violations[0];
-    takeaway = `EPA records show a recent water quality violation (${esc(v.type)}). Request the utility's Consumer Confidence Report before closing.`;
+    takeaway = `EPA records show a recent water quality violation (${escapeHtml(v.type)}). Request the utility's Consumer Confidence Report before closing.`;
   } else if (radon?.zone === 1) {
     takeaway = 'This is a high-radon county (EPA Zone 1). Include radon testing in your inspection scope — a $20 kit prevents a costly and dangerous surprise.';
   } else if (ejscreen?.flagged) {
@@ -2193,7 +1969,7 @@ function buildSensoryEnvironmentalHTML(env) {
   } else if (rail && rail.distanceMiles < 0.5) {
     takeaway = `A rail line runs ${Math.round(rail.distanceMiles * 5280)} feet from this address. Visit during evening or overnight hours to evaluate train noise.`;
   } else {
-    const aqLabel = airQuality ? esc(airQuality.category.label.toLowerCase()) : 'not reported';
+    const aqLabel = airQuality ? escapeHtml(airQuality.category.label.toLowerCase()) : 'not reported';
     takeaway = `No major noise, water, or hazard concerns were identified for this location. Air quality is ${aqLabel} per EPA monitoring.`;
   }
 
@@ -2230,7 +2006,7 @@ function buildSensoryEnvironmentalHTML(env) {
         <span>1 — Darkest skies</span>
         <span>9 — City center</span>
       </div>
-      <p class="prem-bortle-desc">${lightPollution ? `Bortle ${bortleNum} — <strong>${esc(lightPollution.label)}</strong>: ${esc(lightPollution.desc)}` : 'Night sky brightness could not be estimated for this address.'}</p>
+      <p class="prem-bortle-desc">${lightPollution ? `Bortle ${bortleNum} — <strong>${escapeHtml(lightPollution.label)}</strong>: ${escapeHtml(lightPollution.desc)}` : 'Night sky brightness could not be estimated for this address.'}</p>
     </div>`;
 
   const eyeSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -2245,19 +2021,19 @@ function buildEmergencyServicesHTML(emergency) {
   function serviceCard(icon, label, station) {
     if (!station) return `
     <div class="prem-emergency-card">
-      <div class="prem-emergency-head">${icon} <span class="prem-emergency-label">${esc(label)}</span></div>
-      <p class="prem-na">No ${esc(label.toLowerCase())} station found nearby.</p>
+      <div class="prem-emergency-head">${icon} <span class="prem-emergency-label">${escapeHtml(label)}</span></div>
+      <p class="prem-na">No ${escapeHtml(label.toLowerCase())} station found nearby.</p>
     </div>`;
     const cat = station.response.category;
     return `
     <div class="prem-emergency-card">
       <div class="prem-emergency-head">
-        ${icon} <span class="prem-emergency-label">${esc(label)}</span>
+        ${icon} <span class="prem-emergency-label">${escapeHtml(label)}</span>
         <span class="prem-badge prem-badge-right ${badgeColor(cat.color)}">~${station.response.estimate} min</span>
       </div>
-      <div class="prem-emergency-name">${esc(station.name)}</div>
-      <div class="prem-emergency-addr">${esc(station.address)}</div>
-      <div class="prem-emergency-dist">${esc(station.distanceMiles)} miles away · Response: <strong>${esc(cat.label)}</strong></div>
+      <div class="prem-emergency-name">${escapeHtml(station.name)}</div>
+      <div class="prem-emergency-addr">${escapeHtml(station.address)}</div>
+      <div class="prem-emergency-dist">${escapeHtml(station.distanceMiles)} miles away · Response: <strong>${escapeHtml(cat.label)}</strong></div>
     </div>`;
   }
 
@@ -2300,12 +2076,12 @@ function buildWalkabilityHTML(walk) {
   let para1HTML;
   if (score >= 70) {
     const examples = nearby.length
-      ? `${nearby.slice(0, 2).map((d) => `${esc(d.name)} (${d.walkMinutes} min)`).join(' and ')} ${nearby.length > 1 ? 'are' : 'is'} reachable on foot without a second thought. `
+      ? `${nearby.slice(0, 2).map((d) => `${escapeHtml(d.name)} (${d.walkMinutes} min)`).join(' and ')} ${nearby.length > 1 ? 'are' : 'is'} reachable on foot without a second thought. `
       : '';
     para1HTML = `<p class="prem-narrative-lead">${examples}Walking here is practical, not aspirational. Morning coffee, a quick errand, an evening stroll—these happen without involving the car. That low-friction access compounds quietly: you stop thinking about it after a week, and start missing it immediately if you ever move somewhere without it.</p>`;
   } else if (score >= 50) {
     const firstDest = (destinations || [])[0];
-    const example = firstDest ? `${esc(firstDest.name)} is ${firstDest.walkMinutes} minutes on foot. ` : '';
+    const example = firstDest ? `${escapeHtml(firstDest.name)} is ${firstDest.walkMinutes} minutes on foot. ` : '';
     para1HTML = `<p class="prem-narrative-lead">${example}Walking is a realistic option here—for some trips, on some days. It's a pleasant supplement to a car-based routine, not a replacement for it. On a nice evening or a relaxed weekend morning, you'll use your feet. On a typical Tuesday errand run, you'll drive.</p>`;
   } else if (score >= 30) {
     para1HTML = `<p class="prem-narrative-lead">This is car-dependent territory. Not because it's unwalkable for exercise or leisure—it's fine for that—but because the distances and infrastructure don't support walking as a way to run errands or access daily services. Plan your life around the car, and enjoy the walking for what it is: recreation, not transportation.</p>`;
@@ -2316,18 +2092,18 @@ function buildWalkabilityHTML(walk) {
   // Second paragraph: what IS and ISN'T walkable
   let para2HTML = '';
   if (score >= 70 && (nearby.length || reachable.length)) {
-    const nearbyNames = nearby.map((d) => esc(d.name)).join(', ');
-    const reachableNames = reachable.map((d) => esc(d.name)).join(', ');
+    const nearbyNames = nearby.map((d) => escapeHtml(d.name)).join(', ');
+    const reachableNames = reachable.map((d) => escapeHtml(d.name)).join(', ');
     let text = '';
     if (nearbyNames) text += `Within easy walking distance: ${nearbyNames}.`;
     if (reachableNames) text += ` A bit further but still walkable: ${reachableNames}.`;
     if (text) text += ' A full grocery haul or anything that needs a car seat still gets driven—walkability here doesn\'t eliminate the car, it just reduces how often you reach for the keys.';
     if (text) para2HTML = `<p class="prem-narrative-body">${text}</p>`;
   } else if (score >= 50 && (destinations || []).length) {
-    const destNames = (destinations || []).slice(0, 3).map((d) => esc(d.name)).join(', ');
+    const destNames = (destinations || []).slice(0, 3).map((d) => escapeHtml(d.name)).join(', ');
     para2HTML = `<p class="prem-narrative-body">The walkable options nearby—${destNames}—are genuinely useful when the timing is right, but they don't add up to a fully walkable lifestyle. Most daily needs still require a car trip.</p>`;
   } else if (score < 30 && (destinations || []).length) {
-    const destNames = (destinations || []).slice(0, 2).map((d) => esc(d.name)).join(' and ');
+    const destNames = (destinations || []).slice(0, 2).map((d) => escapeHtml(d.name)).join(' and ');
     para2HTML = `<p class="prem-narrative-body">${destNames ? `The closest options on foot are ${destNames}—` : ''}worth knowing for a neighborhood stroll, but not practical for regular errands given the distances involved.</p>`;
   }
 
@@ -2352,8 +2128,8 @@ function buildWalkabilityHTML(walk) {
       <div class="prem-walk-dest">
         <span class="prem-walk-dest-icon">${d.icon}</span>
         <div class="prem-walk-dest-info">
-          <div class="prem-walk-dest-name">${esc(d.name)}</div>
-          <div class="prem-walk-dest-cat">${esc(d.label)}</div>
+          <div class="prem-walk-dest-name">${escapeHtml(d.name)}</div>
+          <div class="prem-walk-dest-cat">${escapeHtml(d.label)}</div>
         </div>
         <div class="prem-walk-dest-time">${d.walkMinutes} min walk<div class="prem-walk-dest-dist">${distDisplay}</div></div>
       </div>`;
@@ -2364,15 +2140,15 @@ function buildWalkabilityHTML(walk) {
   const featHTML = `
     <div class="prem-walk-section-label">Pedestrian Environment</div>
     <div class="prem-walk-features">
-      ${features.present.map((f) => `<div class="prem-walk-feature prem-walk-feat-yes">✓ ${esc(f)}</div>`).join('')}
-      ${features.note ? `<div class="prem-walk-feature prem-walk-feat-note">◎ ${esc(features.note)}</div>` : ''}
+      ${features.present.map((f) => `<div class="prem-walk-feature prem-walk-feat-yes">✓ ${escapeHtml(f)}</div>`).join('')}
+      ${features.note ? `<div class="prem-walk-feature prem-walk-feat-note">◎ ${escapeHtml(features.note)}</div>` : ''}
     </div>`;
 
   const walkFullHTML = `
     <div class="walk-verdict-block">
       <div class="walk-score-num walk-score--${verdictMod}">${score}</div>
       <div class="walk-score-label">walkability score (0–100)</div>
-      <div class="prem-walk-verdict walk-verdict--${verdictMod}">${esc(category.label)}</div>
+      <div class="prem-walk-verdict walk-verdict--${verdictMod}">${escapeHtml(category.label)}</div>
     </div>`;
 
   const walkLeftHTML = `
@@ -2397,10 +2173,10 @@ function buildPropertyDataHTML(p) {
   const taxLow  = p.taxRate < 0.5;
   const taxHigh = p.taxRate > 1.5;
   const taxPara = taxLow
-    ? `${esc(p.state)}'s ${p.taxRate.toFixed(2)}% effective property tax rate is among the lowest in the country — a meaningful long-term advantage. For a $350,000 home, that's roughly $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month in property tax, not $${Math.round(350000 * 1.5 / 100 / 12).toLocaleString()}+/month in higher-tax states. Check whether your county or city layers additional levies on top of the state average.`
+    ? `${escapeHtml(p.state)}'s ${p.taxRate.toFixed(2)}% effective property tax rate is among the lowest in the country — a meaningful long-term advantage. For a $350,000 home, that's roughly $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month in property tax, not $${Math.round(350000 * 1.5 / 100 / 12).toLocaleString()}+/month in higher-tax states. Check whether your county or city layers additional levies on top of the state average.`
     : taxHigh
-    ? `${esc(p.state)}'s ${p.taxRate.toFixed(2)}% effective rate is on the higher end nationally. For a $350,000 home, that's roughly $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month in property taxes. In many high-tax states the trade-off is strong school funding and well-maintained public infrastructure — but factor this into your total monthly cost math.`
-    : `${esc(p.state)}'s ${p.taxRate.toFixed(2)}% effective property tax rate is close to the national average. For a $350,000 home, budget approximately $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month for property taxes.`;
+    ? `${escapeHtml(p.state)}'s ${p.taxRate.toFixed(2)}% effective rate is on the higher end nationally. For a $350,000 home, that's roughly $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month in property taxes. In many high-tax states the trade-off is strong school funding and well-maintained public infrastructure — but factor this into your total monthly cost math.`
+    : `${escapeHtml(p.state)}'s ${p.taxRate.toFixed(2)}% effective property tax rate is close to the national average. For a $350,000 home, budget approximately $${Math.round(350000 * p.taxRate / 100 / 12).toLocaleString()}/month for property taxes.`;
 
   // ── Carrying cost breakdown ───────────────────────────────────────────────
   // Show for $300k and $400k price points
@@ -2445,7 +2221,7 @@ function buildPropertyDataHTML(p) {
   const homesteadHTML = p.homesteadNote ? `
     <div class="prem-market-note prem-homestead-note">
       <span class="prem-market-note-icon">🏡</span>
-      <span><strong>Homestead Exemption:</strong> ${esc(p.homesteadNote)}</span>
+      <span><strong>Homestead Exemption:</strong> ${escapeHtml(p.homesteadNote)}</span>
     </div>` : '';
 
   // ── Valuation redirect ────────────────────────────────────────────────────
@@ -2459,11 +2235,11 @@ function buildPropertyDataHTML(p) {
   const lowestCarrying = rows[0];
   let takeaway;
   if (taxHigh) {
-    takeaway = `Property taxes in ${esc(p.state)} add ~${formatMoney(rows[0].taxMo)}/month for a $300k home. Factor this into your offer price math — the tax gap between high- and low-tax states compounds significantly over a 30-year mortgage.`;
+    takeaway = `Property taxes in ${escapeHtml(p.state)} add ~${formatMoney(rows[0].taxMo)}/month for a $300k home. Factor this into your offer price math — the tax gap between high- and low-tax states compounds significantly over a 30-year mortgage.`;
   } else if (taxLow) {
-    takeaway = `${esc(p.state)}'s low property tax rate is a genuine long-term savings advantage. On a $350k home, you'd pay ~${formatMoney(Math.round(350000 * p.taxRate / 100 / 12))}/month vs ~${formatMoney(Math.round(350000 * 1.5 / 100 / 12))}/month in a high-tax state — a difference that compounds significantly over 30 years.`;
+    takeaway = `${escapeHtml(p.state)}'s low property tax rate is a genuine long-term savings advantage. On a $350k home, you'd pay ~${formatMoney(Math.round(350000 * p.taxRate / 100 / 12))}/month vs ~${formatMoney(Math.round(350000 * 1.5 / 100 / 12))}/month in a high-tax state — a difference that compounds significantly over 30 years.`;
   } else {
-    takeaway = `Total carrying costs for a $300k home in ${esc(p.state)} run approximately ${formatMoney(lowestCarrying.total)}/month before the mortgage — ${formatMoney(lowestCarrying.taxMo)} tax, ${formatMoney(lowestCarrying.insMo)} insurance, ${formatMoney(lowestCarrying.utilMo)} utilities. Add your mortgage payment for the true monthly cost.`;
+    takeaway = `Total carrying costs for a $300k home in ${escapeHtml(p.state)} run approximately ${formatMoney(lowestCarrying.total)}/month before the mortgage — ${formatMoney(lowestCarrying.taxMo)} tax, ${formatMoney(lowestCarrying.insMo)} insurance, ${formatMoney(lowestCarrying.utilMo)} utilities. Add your mortgage payment for the true monthly cost.`;
   }
 
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -2478,7 +2254,7 @@ function buildPropertyDataHTML(p) {
       <span class="kt-icon">🔑</span>
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
-    <p class="prem-disclaimer">Property tax rate: ${esc(p.state)} state effective average (Lincoln Institute, 2024). Insurance: NAIC 2024 state averages, scaled to home price. Utilities: EIA/BLS state averages, 2024. These are estimates — your actual costs will vary. Research date: ${today}.</p>`;
+    <p class="prem-disclaimer">Property tax rate: ${escapeHtml(p.state)} state effective average (Lincoln Institute, 2024). Insurance: NAIC 2024 state averages, scaled to home price. Utilities: EIA/BLS state averages, 2024. These are estimates — your actual costs will vary. Research date: ${today}.</p>`;
   const chartSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`;
   return premiumCard('costs', '14', chartSvg, 'Property Costs & Market', 'The monthly numbers behind the asking price.', null, body, null, null, null);
 }
@@ -2490,14 +2266,14 @@ function buildDemographicsHTML(d) {
   function ageBar(label, pct) {
     return `
     <div class="prem-age-row">
-      <span class="prem-age-label">${esc(label)}</span>
+      <span class="prem-age-label">${escapeHtml(label)}</span>
       <div class="prem-age-track"><div class="prem-age-fill" style="width:${pct}%"></div></div>
       <span class="prem-age-pct">${pct}%</span>
     </div>`;
   }
 
-  const incomeBadge = `<span class="prem-badge ${badgeColor(d.income.level.color)}">${esc(d.income.level.label)}</span>`;
-  const eduBadge = `<span class="prem-badge ${badgeColor(d.education.level.color)}">${esc(d.education.level.label)}</span>`;
+  const incomeBadge = `<span class="prem-badge ${badgeColor(d.income.level.color)}">${escapeHtml(d.income.level.label)}</span>`;
+  const eduBadge = `<span class="prem-badge ${badgeColor(d.education.level.color)}">${escapeHtml(d.education.level.label)}</span>`;
 
   const ageNarrative = (() => {
     const under18 = d.age.under18;
@@ -2573,7 +2349,7 @@ function buildDemographicsHTML(d) {
     <div class="prem-demo-grid">
       <div class="prem-demo-card">
         <div class="prem-demo-title">👨‍👩‍👧‍👦 Age Distribution</div>
-        <div class="prem-demo-summary">${esc(d.age.primaryGroup)}</div>
+        <div class="prem-demo-summary">${escapeHtml(d.age.primaryGroup)}</div>
         ${ageBar('Under 18', d.age.under18)}
         ${ageBar('18–34', d.age.age18to34)}
         ${ageBar('35–64', d.age.age35to64)}
@@ -2595,8 +2371,8 @@ function buildDemographicsHTML(d) {
       </div>
       <div class="prem-demo-card">
         <div class="prem-demo-title">${d.community.densityType.icon} Community</div>
-        <div class="prem-community-item">${d.community.densityType.icon} ${esc(d.community.densityType.label)} area</div>
-        <div class="prem-community-item">${d.community.type.icon} ${esc(d.community.type.label)}</div>
+        <div class="prem-community-item">${d.community.densityType.icon} ${escapeHtml(d.community.densityType.label)} area</div>
+        <div class="prem-community-item">${d.community.type.icon} ${escapeHtml(d.community.type.label)}</div>
         <div class="prem-community-item">🏠 ${d.community.ownershipRate}% homeownership</div>
         ${d.community.medianTenureYears ? `<div class="prem-community-item">📅 ~${d.community.medianTenureYears} yr median resident tenure</div>` : ''}
         ${d.community.avgHHSize ? `<div class="prem-community-item">👥 ${d.community.avgHHSize} avg household size</div>` : ''}
@@ -2628,8 +2404,8 @@ function buildGrowthAndDevelopmentHTML(growth) {
   const hasManual    = namedProjects.some((p) => !p.automated);
   const hasAutomated = namedProjects.some((p) => p.automated);
   const sectionLabel = hasManual
-    ? `Confirmed Projects Near ${esc(city || county)}`
-    : `Developments Reported Near ${esc(city || county)}`;
+    ? `Confirmed Projects Near ${escapeHtml(city || county)}`
+    : `Developments Reported Near ${escapeHtml(city || county)}`;
 
   let namedProjectsHTML = '';
   if (namedProjects.length) {
@@ -2640,19 +2416,19 @@ function buildGrowthAndDevelopmentHTML(growth) {
           <div class="prem-growth-named-project-header">
             <span class="prem-growth-named-project-icon">${p.icon}</span>
             <div class="prem-growth-named-project-title">
-              <div class="prem-growth-named-project-name">${esc(p.name)}</div>
-              <div class="prem-growth-named-project-type">${esc(p.type)}</div>
+              <div class="prem-growth-named-project-name">${escapeHtml(p.name)}</div>
+              <div class="prem-growth-named-project-type">${escapeHtml(p.type)}</div>
             </div>
-            <div class="prem-growth-named-project-status ${statusClass}">${esc(p.status)}</div>
+            <div class="prem-growth-named-project-status ${statusClass}">${escapeHtml(p.status)}</div>
           </div>
-          ${p.expectedOpening ? `<div class="prem-growth-named-project-timeline">Expected: ${esc(p.expectedOpening)}</div>` : ''}
-          <div class="prem-growth-named-project-impact">${esc(p.impact)}</div>
-          ${p.automated ? `<div class="prem-growth-named-project-source">Source: ${esc(p.source || 'News report')}${p.sourceUrl ? ` · <a href="${esc(p.sourceUrl)}" target="_blank" rel="noopener noreferrer" class="prem-growth-source-link">view article</a>` : ''}</div>` : ''}
+          ${p.expectedOpening ? `<div class="prem-growth-named-project-timeline">Expected: ${escapeHtml(p.expectedOpening)}</div>` : ''}
+          <div class="prem-growth-named-project-impact">${escapeHtml(p.impact)}</div>
+          ${p.automated ? `<div class="prem-growth-named-project-source">Source: ${escapeHtml(p.source || 'News report')}${p.sourceUrl ? ` · <a href="${escapeHtml(p.sourceUrl)}" target="_blank" rel="noopener noreferrer" class="prem-growth-source-link">view article</a>` : ''}</div>` : ''}
         </div>`;
     }).join('');
 
     const automatedNote = hasAutomated && !hasManual
-      ? `<div class="prem-growth-automated-note">Projects discovered via news search — verify with ${esc(county)} Planning &amp; Zoning before making decisions.</div>`
+      ? `<div class="prem-growth-automated-note">Projects discovered via news search — verify with ${escapeHtml(county)} Planning &amp; Zoning before making decisions.</div>`
       : '';
 
     namedProjectsHTML = `
@@ -2678,14 +2454,14 @@ function buildGrowthAndDevelopmentHTML(growth) {
         : permits.trend === 'declining'
         ? `Construction has slowed from recent levels. That can reflect a maturing market or broader economic conditions.`
         : `Construction activity is holding steady — neither a boom nor a slowdown.`;
-    growthPara = `${esc(county)} issued ${countStr} building permits${yearStr}, ${trendCtx}. ${trendDesc}`;
+    growthPara = `${escapeHtml(county)} issued ${countStr} building permits${yearStr}, ${trendCtx}. ${trendDesc}`;
   } else if (newConstruction) {
     const pct = newConstruction.newConstructionPct;
     if (pct >= 20)      growthPara = `${pct}% of housing in this Census tract was built after 2010 — a significant share of relatively recent construction, indicating an active growth area.`;
     else if (pct >= 10) growthPara = `About ${pct}% of housing in this Census tract was built after 2010, reflecting moderate new construction activity in the area.`;
     else                growthPara = `Only ${pct}% of housing in this Census tract was built after 2010, indicating an established neighborhood with limited recent new construction.`;
   } else {
-    growthPara = `Building permit trend data was not available for ${esc(county)} at this time. For current construction activity, contact the ${esc(county)} Planning and Zoning office directly.`;
+    growthPara = `Building permit trend data was not available for ${escapeHtml(county)} at this time. For current construction activity, contact the ${escapeHtml(county)} Planning and Zoning office directly.`;
   }
 
   // ── Commercial landscape ──────────────────────────────────────────────────
@@ -2695,12 +2471,12 @@ function buildGrowthAndDevelopmentHTML(growth) {
     const nearby     = establishments.filter((e) => e.distanceMiles <= 0.5);
     const withinMile = establishments.filter((e) => e.distanceMiles > 0.5 && e.distanceMiles <= 1);
     if (nearby.length) {
-      activityPara = `Within a half mile: ${nearby.slice(0, 3).map((e) => esc(e.name)).join(', ')}. The commercial environment immediately surrounding this address is active and established.`;
+      activityPara = `Within a half mile: ${nearby.slice(0, 3).map((e) => escapeHtml(e.name)).join(', ')}. The commercial environment immediately surrounding this address is active and established.`;
     } else if (withinMile.length) {
-      activityPara = `Within a mile: ${withinMile.slice(0, 3).map((e) => esc(e.name)).join(', ')}. The local commercial corridor is accessible without a long drive.`;
+      activityPara = `Within a mile: ${withinMile.slice(0, 3).map((e) => escapeHtml(e.name)).join(', ')}. The local commercial corridor is accessible without a long drive.`;
     } else {
       const e = establishments[0];
-      activityPara = `The nearest major commercial establishment is ${esc(e.name)} (${e.distanceMiles.toFixed(1)} mi). Commercial density in the immediate area is lower.`;
+      activityPara = `The nearest major commercial establishment is ${escapeHtml(e.name)} (${e.distanceMiles.toFixed(1)} mi). Commercial density in the immediate area is lower.`;
     }
     placesHTML = `
       <div class="prem-growth-section">
@@ -2710,8 +2486,8 @@ function buildGrowthAndDevelopmentHTML(growth) {
           <div class="prem-growth-place">
             <span class="prem-growth-place-icon">${e.icon}</span>
             <div class="prem-growth-place-info">
-              <div class="prem-growth-place-name">${esc(e.name)}</div>
-              <div class="prem-growth-place-cat">${esc(e.label)}</div>
+              <div class="prem-growth-place-name">${escapeHtml(e.name)}</div>
+              <div class="prem-growth-place-cat">${escapeHtml(e.label)}</div>
             </div>
             <div class="prem-growth-place-dist">${e.distanceMiles.toFixed(1)} mi</div>
           </div>`).join('')}
@@ -2720,7 +2496,7 @@ function buildGrowthAndDevelopmentHTML(growth) {
   }
 
   // ── Pipeline note ─────────────────────────────────────────────────────────
-  const planningPara = `For development projects in the pipeline — approved applications, zoning changes, pending permits — check with ${esc(county)} Planning and Zoning. Those records are public but require a direct inquiry. Specific projects (a proposed apartment complex, a road widening, a new commercial pad) won't show up in any API; they live in the county's planning portal.`;
+  const planningPara = `For development projects in the pipeline — approved applications, zoning changes, pending permits — check with ${escapeHtml(county)} Planning and Zoning. Those records are public but require a direct inquiry. Specific projects (a proposed apartment complex, a road widening, a new commercial pad) won't show up in any API; they live in the county's planning portal.`;
 
   // ── Key Takeaway ──────────────────────────────────────────────────────────
   let takeaway;
@@ -2728,20 +2504,20 @@ function buildGrowthAndDevelopmentHTML(growth) {
     const underConstruction = namedProjects.filter((p) => p.status === 'Under Construction');
     const approved          = namedProjects.filter((p) => p.status === 'Approved');
     if (underConstruction.length) {
-      takeaway = `${esc(underConstruction[0].name)} is currently under construction${underConstruction[0].timeline ? ` (expected ${esc(underConstruction[0].timeline)})` : ''} — a significant change coming to this area within the next year or two.`;
+      takeaway = `${escapeHtml(underConstruction[0].name)} is currently under construction${underConstruction[0].timeline ? ` (expected ${escapeHtml(underConstruction[0].timeline)})` : ''} — a significant change coming to this area within the next year or two.`;
     } else if (approved.length) {
-      takeaway = `${esc(approved[0].name)} has been approved${approved[0].timeline ? ` (expected ${esc(approved[0].timeline)})` : ''} — this development is confirmed and on the way.`;
+      takeaway = `${escapeHtml(approved[0].name)} has been approved${approved[0].timeline ? ` (expected ${escapeHtml(approved[0].timeline)})` : ''} — this development is confirmed and on the way.`;
     } else {
       takeaway = `${namedProjects.length} confirmed development project${namedProjects.length > 1 ? 's are' : ' is'} on the way near this address. See details above.`;
     }
   } else if (permits?.trend === 'rising' && permits.percentChange >= 20) {
-    takeaway = `${esc(county)} is in an active growth phase — building permits are up ${permits.percentChange}% year-over-year. Expect continued residential and commercial expansion near this area.`;
+    takeaway = `${escapeHtml(county)} is in an active growth phase — building permits are up ${permits.percentChange}% year-over-year. Expect continued residential and commercial expansion near this area.`;
   } else if (permits?.trend === 'declining' && permits.percentChange !== null && permits.percentChange <= -20) {
-    takeaway = `Construction activity in ${esc(county)} has slowed significantly (${permits.percentChange}%). Ask your agent about what's driving the change.`;
+    takeaway = `Construction activity in ${escapeHtml(county)} has slowed significantly (${permits.percentChange}%). Ask your agent about what's driving the change.`;
   } else if (establishments?.length && establishments.filter((e) => e.distanceMiles <= 0.5).length >= 2) {
-    takeaway = `The immediate area has active commercial infrastructure within a half mile. For specific planned projects near this address, contact ${esc(county)} Planning and Zoning directly.`;
+    takeaway = `The immediate area has active commercial infrastructure within a half mile. For specific planned projects near this address, contact ${escapeHtml(county)} Planning and Zoning directly.`;
   } else {
-    takeaway = `For the most current picture of planned development near this address, contact ${esc(county)} Planning and Zoning — their records show pending applications and approved projects that don't yet appear in any public data feed.`;
+    takeaway = `For the most current picture of planned development near this address, contact ${escapeHtml(county)} Planning and Zoning — their records show pending applications and approved projects that don't yet appear in any public data feed.`;
   }
 
   const sources = [];
@@ -2763,7 +2539,7 @@ function buildGrowthAndDevelopmentHTML(growth) {
       <span class="kt-icon">🔑</span>
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
-    <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Permit data is county-level — not neighborhood-specific. Specific planned projects require direct inquiry with the county planning department.</p>`;
+    <p class="prem-disclaimer">Sources: ${escapeHtml(sources.join('; ') || 'See notes above')}. Research date: ${today}. Permit data is county-level — not neighborhood-specific. Specific planned projects require direct inquiry with the county planning department.</p>`;
 
   const craneSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="14" width="6" height="8"/><rect x="9" y="10" width="6" height="12"/><rect x="16" y="6" width="6" height="16"/><line x1="2" y1="22" x2="22" y2="22"/></svg>`;
   return premiumCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, null, null);
@@ -2781,14 +2557,14 @@ function buildPropertyIntelligenceHTML(propIntel) {
   if (era?.medianYearBuilt) {
     const ctx = era.context;
     eraPara = ctx
-      ? `${esc(ctx.era)}. The median year built for homes in this Census tract is ${era.medianYearBuilt}${era.newConstructionPct !== undefined ? `, with ${era.newConstructionPct}% of housing built after 2010` : ''}.`
+      ? `${escapeHtml(ctx.era)}. The median year built for homes in this Census tract is ${era.medianYearBuilt}${era.newConstructionPct !== undefined ? `, with ${era.newConstructionPct}% of housing built after 2010` : ''}.`
       : `The median year built for homes in this Census tract is ${era.medianYearBuilt}.`;
     if (ctx?.cautions?.length) {
       eraCautionsHTML = `
         <div class="prem-intel-cautions">
           <div class="prem-intel-caution-label">Inspection checklist for homes built in this era:</div>
           <ul class="prem-intel-caution-list">
-            ${ctx.cautions.map((c) => `<li>${esc(c)}</li>`).join('')}
+            ${ctx.cautions.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}
           </ul>
         </div>`;
     }
@@ -2808,10 +2584,10 @@ function buildPropertyIntelligenceHTML(propIntel) {
     if (isUrban) {
       soilPara = `This address is on developed urban land — standard soil survey data isn't available for this parcel. For drainage and foundation soil information, request a geotechnical report or ask the seller about any known drainage issues.`;
     } else {
-      soilPara = `The lot sits on ${esc(name)}${soil.drainagecl ? `, USDA drainage class: ${esc(soil.drainagecl.toLowerCase())}` : ''}. `;
+      soilPara = `The lot sits on ${escapeHtml(name)}${soil.drainagecl ? `, USDA drainage class: ${escapeHtml(soil.drainagecl.toLowerCase())}` : ''}. `;
       if (drain) {
-        soilPara += esc(drain.implication);
-        soilBadgeHTML = `<span class="prem-badge prem-intel-soil-badge ${badgeColor(drain.color)}">${esc(drain.label)}</span>`;
+        soilPara += escapeHtml(drain.implication);
+        soilBadgeHTML = `<span class="prem-badge prem-intel-soil-badge ${badgeColor(drain.color)}">${escapeHtml(drain.label)}</span>`;
       } else if (!soil.drainagecl) {
         soilPara += `No drainage classification is on record for this soil type — consult a soil engineer for site-specific drainage evaluation.`;
       }
@@ -2837,11 +2613,11 @@ function buildPropertyIntelligenceHTML(propIntel) {
       : ` Only one provider is confirmed at this address — worth verifying service reliability before committing.`;
     broadbandCardsHTML = `
       <div class="prem-intel-bb-providers">
-        <span class="prem-badge ${badgeColor(cat.color)}">${esc(cat.label)}</span>
+        <span class="prem-badge ${badgeColor(cat.color)}">${escapeHtml(cat.label)}</span>
         ${broadband.providers.map((p) => `
         <div class="prem-intel-bb-provider">
-          <span class="prem-intel-bb-name">${esc(p.name)}</span>
-          <span class="prem-intel-bb-tech">${esc(p.tech)}</span>
+          <span class="prem-intel-bb-name">${escapeHtml(p.name)}</span>
+          <span class="prem-intel-bb-tech">${escapeHtml(p.tech)}</span>
           ${p.download ? `<span class="prem-intel-bb-speed">${p.download} Mbps</span>` : ''}
         </div>`).join('')}
       </div>`;
@@ -2849,14 +2625,14 @@ function buildPropertyIntelligenceHTML(propIntel) {
 
   // ── Tax & Permit note ─────────────────────────────────────────────────────
   const assessorSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${county} county assessor property records`)}`;
-  const taxPermitPara = `Property tax history and permit records for this specific parcel are public records available from the <a href="${assessorSearchUrl}" target="_blank" rel="noopener">${esc(county)} Assessor</a> and Building Department. One call before closing reveals the full permit history (including any unpermitted work), the tax assessment trajectory, and any open permits — information that doesn't appear in any public API.`;
+  const taxPermitPara = `Property tax history and permit records for this specific parcel are public records available from the <a href="${assessorSearchUrl}" target="_blank" rel="noopener">${escapeHtml(county)} Assessor</a> and Building Department. One call before closing reveals the full permit history (including any unpermitted work), the tax assessment trajectory, and any open permits — information that doesn't appear in any public API.`;
 
   // ── Key Takeaway ──────────────────────────────────────────────────────────
   let takeaway;
   if (soil?.isHydric) {
     takeaway = 'USDA identifies this soil as hydric — a potential wetland indicator. Discuss foundation drainage and any planned additions with your inspector before closing.';
   } else if (soil?.drainageCategory?.color === 'red') {
-    takeaway = `Soil drainage here is ${esc(soil.drainageCategory.label.toLowerCase())}. Ask your inspector specifically about basement moisture and discuss drainage with the seller.`;
+    takeaway = `Soil drainage here is ${escapeHtml(soil.drainageCategory.label.toLowerCase())}. Ask your inspector specifically about basement moisture and discuss drainage with the seller.`;
   } else if (broadband === null || !broadband?.providers?.length) {
     takeaway = 'Internet connectivity at this address could not be confirmed through FCC data. If remote work or streaming is important, verify service options with local providers before committing.';
   } else if (era?.medianYearBuilt && era.medianYearBuilt < 1978 && era.context?.cautions?.length) {
@@ -2864,7 +2640,7 @@ function buildPropertyIntelligenceHTML(propIntel) {
   } else if (broadband?.hasFiber || broadband?.maxDownloadMbps >= 1000) {
     takeaway = 'Gigabit or fiber internet is available at this address — a meaningful advantage for remote workers and streaming-heavy households.';
   } else {
-    takeaway = `Request the permit history and tax record for this specific parcel from the ${esc(county)} Building Department and Assessor's office before closing — it takes one call and can reveal unpermitted work or unexpected tax increases.`;
+    takeaway = `Request the permit history and tax record for this specific parcel from the ${escapeHtml(county)} Building Department and Assessor's office before closing — it takes one call and can reveal unpermitted work or unexpected tax increases.`;
   }
 
   const sources = [
@@ -2900,7 +2676,7 @@ function buildPropertyIntelligenceHTML(propIntel) {
       <span class="kt-icon">🔑</span>
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
     </div>
-    <p class="prem-disclaimer">Sources: ${esc(sources.join('; ') || 'See notes above')}. Research date: ${today}. Construction era is a tract-level Census ACS estimate — not specific to this parcel. Parcel-level permit and tax history requires direct inquiry with the county.</p>`;
+    <p class="prem-disclaimer">Sources: ${escapeHtml(sources.join('; ') || 'See notes above')}. Research date: ${today}. Construction era is a tract-level Census ACS estimate — not specific to this parcel. Parcel-level permit and tax history requires direct inquiry with the county.</p>`;
 
   const homeSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
   return premiumCard('property', '11', homeSvg, 'Property Intelligence', 'Soil, broadband, permits, and the details that listings don\'t show.', null, body, null, null, null);
