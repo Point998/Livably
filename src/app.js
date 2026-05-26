@@ -10,7 +10,7 @@ const { geocodeCache, placesCache, driveTimeCache, cacheStats } = require('./cac
 const { QuotaExceededError, RateLimitError, getUsageStats } = require('./rateLimit');
 const { getPremiumData, buildPremiumSectionsHTML } = require('./premium');
 const { logRequest, logError, logAnalysis, readRecentLogs } = require('./logger');
-const { getMitigation, loadMitigations } = require('./errorMemory');
+const { loadMitigations } = require('./errorMemory');
 
 const { geocodeAddress } = require('./shared/google/geocoding');
 const { reverseGeocodeAddress } = require('./shared/google/reverseGeocode');
@@ -26,15 +26,8 @@ const {
   parseAddressParts, formatResearchDate, slugify, getDateSlug,
 } = require('./utils/text');
 const {
-  GROCERY_SEARCH_RADIUS_M, GROCERY_CANDIDATE_COUNT, GROCERY_EXCLUDED_TYPES,
-  HOSPITAL_SEARCH_RADIUS_M, HOSPITAL_CANDIDATE_COUNT,
-  COFFEE_SHOP_CANDIDATE_COUNT,
-  ELEMENTARY_SCHOOL_SEARCH_RADIUS_M, ELEMENTARY_SCHOOL_EXCLUSIONS,
-  HIGHWAY_MAX_DRIVE_MINUTES, HIGHWAY_INTERCHANGE_MAX_MINUTES,
-  INTERSTATE_LIST,
+  HIGHWAY_MAX_DRIVE_MINUTES,
   MAX_CONCURRENT_PDFS,
-  PARK_EXCLUDED_TYPES, PARK_LEISURE_TYPES,
-  SCHOOL_PLACE_TYPES, SCHOOL_NAME_TERMS,
   CUSTOM_DEST_ICONS, ERROR_ICONS,
 } = require('./utils/constants');
 
