@@ -8,11 +8,6 @@ const {
   GROCERY_SEARCH_RADIUS_M, GROCERY_CANDIDATE_COUNT, GROCERY_EXCLUDED_TYPES,
 } = require('../../utils/constants');
 
-function isExcludedPlaceName(name, excludeTerms) {
-  const normalized = (name || '').toLowerCase();
-  return excludeTerms.some((term) => normalized.includes(term));
-}
-
 // Returns top 3 nearest grocery stores by drive time.
 // Uses textSearch with tight radius so Google relevance is overridden by actual drive time.
 // Excludes gas stations, convenience stores, and dollar stores by place type.
