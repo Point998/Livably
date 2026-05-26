@@ -1,13 +1,8 @@
 'use strict';
-// NOTE: Cross-state school filtering (CONSTRAINT-006) is NOT implemented at this layer.
-// These functions return raw API results. Cross-state rejection happens in validate.js.
-// Jeffersonville IN is a required test address per CONSTRAINT-011:
-//   1007 Stonelilly Dr, Jeffersonville, IN 47130 — school section must not return KY school.
-//   That check happens via validate.js, not here.
-
 const mockTextSearch = jest.fn();
 const mockPlacesNearby = jest.fn();
 const mockGetDriveTime = jest.fn();
+const mockCheckCrossState = jest.fn();
 
 const makeMockCache = () => {
   const store = new Map();
@@ -25,6 +20,9 @@ jest.mock('../../../src/shared/google/client', () => ({
 }));
 jest.mock('../../../src/shared/google/distanceMatrix', () => ({
   getDriveTime: mockGetDriveTime,
+}));
+jest.mock('../../../src/shared/validate', () => ({
+  checkCrossState: mockCheckCrossState,
 }));
 jest.mock('../../../src/cache', () => ({ placesCache: mockPlacesCache }));
 jest.mock('../../../src/utils/constants', () => ({
@@ -47,6 +45,8 @@ const makePlace = (name, types = ['school'], lat = 38.3, lng = -84.4) => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockPlacesCache.clear();
+  // Default: same-state result (valid). Overridden in cross-state tests.
+  mockCheckCrossState.mockResolvedValue({ valid: true, resultState: 'KY' });
 });
 
 describe('findNearestSchool', () => {
@@ -61,7 +61,7 @@ describe('findNearestSchool', () => {
       },
     });
     mockGetDriveTime.mockResolvedValue(8);
-    const result = await findNearestSchool('38.2,-84.3');
+    const result = await findNearestSchool('38.2,-84.3', 'KY');
     expect(result.name).toBe('Georgetown Elementary School');
     expect(result.note).toContain('school district');
   });
@@ -70,9 +70,29 @@ describe('findNearestSchool', () => {
     mockPlacesNearby.mockResolvedValue({ data: { results: [makePlace('Community Center', ['establishment'])] } });
     mockTextSearch.mockResolvedValue({ data: { results: [makePlace('Lincoln Middle School', ['school'])] } });
     mockGetDriveTime.mockResolvedValue(12);
-    const result = await findNearestSchool('38.2,-84.3');
+    const result = await findNearestSchool('38.2,-84.3', 'KY');
     expect(result.name).toBe('Lincoln Middle School');
     expect(mockTextSearch).toHaveBeenCalledTimes(1);
+  });
+
+  // PM-001 regression: Jeffersonville IN must not return a KY school (CONSTRAINT-006)
+  test('rejects cross-state school result (Jeffersonville IN → KY school)', async () => {
+    mockPlacesNearby.mockResolvedValue({
+      data: { results: [makePlace('Louisville Elementary School', ['school'], 38.2, -85.7)] },
+    });
+    mockCheckCrossState.mockResolvedValue({ valid: false, resultState: 'KY' });
+    await expect(findNearestSchool('38.3,-85.7', 'IN')).rejects.toThrow(/Cross-state school rejected/);
+    await expect(findNearestSchool('38.3,-85.7', 'IN')).rejects.toThrow(/KY/);
+  });
+
+  test('accepts same-state school result', async () => {
+    mockPlacesNearby.mockResolvedValue({
+      data: { results: [makePlace('Clarksville Elementary School', ['school'], 38.3, -85.7)] },
+    });
+    mockCheckCrossState.mockResolvedValue({ valid: true, resultState: 'IN' });
+    mockGetDriveTime.mockResolvedValue(7);
+    const result = await findNearestSchool('38.3,-85.7', 'IN');
+    expect(result.name).toBe('Clarksville Elementary School');
   });
 });
 

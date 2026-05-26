@@ -5,6 +5,15 @@
 
 ---
 
+## Session Startup
+Read these two files first when starting a new Claude Code session:
+- SESSION-STATE.md (current branch, active FR, test status)
+- BACKLOG.md (this file — decisions, queue, ideas)
+
+Note: CLAUDE.md CDN caches and sometimes 404s on the raw GitHub URL — read it from disk if needed.
+
+---
+
 ## How This Works
 - Ideas go here immediately when discussed — even half-formed
 - When an idea is ready to build, it graduates to a proper FR spec in feature-requests/
@@ -27,6 +36,9 @@
 - [FR-039] Chapter templates — one file per chapter
 - [FR-040] Test suite — automated tests for all business rules
 - [FR-041] Services and routes — reportBuilder.js
+- [FR-042] What Will Grow Here Deep Dive — feature-requests/FR-042-garden-deep-dive/
+- [FR-043] Climate & Weather History & Preparedness — feature-requests/FR-043-climate-history-depth/
+- [FR-044] Progressive Disclosure — Level 1/2/3 for every chapter (spec not yet written — prereq: FR-039)
 
 ---
 
@@ -138,6 +150,14 @@ Hand-drawn house that comes to life as the buyer scrolls through the report.
 - One "wow moment" per chapter
 - No map (removed — was distracting from content)
 
+**Progressive Disclosure Pattern (FR-044)**
+Every chapter gets three levels:
+- Level 1 (always visible): skim — one headline, one key takeaway, drive time if applicable
+- Level 2 (current content): expandable — the full narrative and findings
+- Level 3 (deep dive): tabbed interface — raw data, methodology, sources, local context
+Prerequisite: FR-039 chapter templates must be complete before implementing.
+First deep-dive specs written: FR-042 (What Will Grow Here), FR-043 (Climate & Weather History).
+
 ---
 
 ## Product Direction Decisions Captured
@@ -148,11 +168,11 @@ The three-bucket framework (Things to Consider / Things to Check / Cool Things t
 **All chapters standard (no premium tier)**
 Premium upsell removed. Every buyer gets the full report. Monetization via agent subscriptions and API licensing when ready.
 
-**Pricing direction (not decided)**
-- Option A: $9.99 per report, all standard
-- Option B: Agent subscriptions for bulk access
-- Option C: API licensing for real estate platforms
-- Decision deferred until product is solid
+**Monetization direction captured (decision deferred)**
+- Agent subscriptions for real estate agents buying reports in bulk
+- $9.99 per report for individual buyers
+- API licensing for platform integrations (longer term)
+- Decision deferred until product is solid and narrative quality is proven
 
 **The unique differentiators**
 Things Livably has that nobody else has:
@@ -198,6 +218,12 @@ No module ships without tests. Every business rule has a test. Jeffersonville IN
 - docs/nathan-reports/ — NR-XXX for owner strategic reviews
 - docs/plans/ — architecture and workflow plans
 - docs/engineering-decisions/ — why decisions were made
+
+**Narrative quality audit completed**
+docs/NARRATIVE-QUALITY-AUDIT.md — 14 chapters audited against the 30-minute Google test.
+The 30-minute Google test: "Could a motivated buyer learn this from 30 minutes on Google?"
+If yes, the narrative isn't earning its place. Audit identified chapters that need deeper sourcing
+and findings that need more specific, address-level insight rather than regional generalities.
 
 ---
 

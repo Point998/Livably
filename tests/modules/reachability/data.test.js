@@ -1,10 +1,7 @@
 'use strict';
-// Manual test addresses (require real API — run the server and call /report):
-//   Georgetown KY: 100 Wishing Well Path Unit 2306, Georgetown, KY 40324
-//   Jeffersonville IN: 1007 Stonelilly Dr, Jeffersonville, IN 47130 (CONSTRAINT-011)
-
 const mockClient = { textSearch: jest.fn(), placesNearby: jest.fn() };
 const mockGetDriveTime = jest.fn();
+const mockCheckDriveTimeCoherence = jest.fn();
 
 const makeMockCache = () => {
   const store = new Map();
@@ -22,6 +19,9 @@ jest.mock('../../../src/shared/google/client', () => ({
 }));
 jest.mock('../../../src/shared/google/distanceMatrix', () => ({
   getDriveTime: mockGetDriveTime,
+}));
+jest.mock('../../../src/shared/validate', () => ({
+  checkDriveTimeCoherence: mockCheckDriveTimeCoherence,
 }));
 jest.mock('../../../src/cache', () => ({ placesCache: mockPlacesCache }));
 jest.mock('../../../src/errorMemory', () => ({ getMitigation: (_fn, _key, def) => def }));
@@ -45,6 +45,8 @@ const makePlace = (name, types = ['grocery_or_supermarket'], lat = 38.3, lng = -
 beforeEach(() => {
   jest.clearAllMocks();
   mockPlacesCache.clear();
+  // Default: coherent result. Overridden in coherence-warning tests.
+  mockCheckDriveTimeCoherence.mockReturnValue({ ok: true, reason: '' });
 });
 
 describe('findNearestGrocery', () => {
@@ -76,6 +78,22 @@ describe('findNearestGrocery', () => {
   test('throws when no results after filtering', async () => {
     mockClient.textSearch.mockResolvedValue({ data: { results: [makePlace('Gas Mart', ['gas_station'])] } });
     await expect(findNearestGrocery('38.2,-84.3')).rejects.toThrow('No grocery stores found');
+  });
+
+  test('attaches coherenceWarning for incoherent drive times (CONSTRAINT-010)', async () => {
+    mockClient.textSearch.mockResolvedValue({ data: { results: [makePlace('Far Grocer')] } });
+    mockGetDriveTime.mockResolvedValue(60);
+    mockCheckDriveTimeCoherence.mockReturnValue({ ok: false, reason: 'grocery store drive time of 60 min exceeds 45 min threshold for suburban address' });
+    const result = await findNearestGrocery('38.2,-84.3', 'suburban');
+    expect(result[0].coherenceWarning).toBe(true);
+    expect(result[0].coherenceReason).toContain('grocery store');
+  });
+
+  test('no coherenceWarning when drive time is ok', async () => {
+    mockClient.textSearch.mockResolvedValue({ data: { results: [makePlace('Near Grocer')] } });
+    mockGetDriveTime.mockResolvedValue(12);
+    const result = await findNearestGrocery('38.2,-84.3', 'suburban');
+    expect(result[0].coherenceWarning).toBeUndefined();
   });
 });
 
