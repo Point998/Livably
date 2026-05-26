@@ -6,14 +6,16 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const { Client } = require('@googlemaps/google-maps-services-js');
 const { geocodeCache, placesCache, driveTimeCache, cacheStats } = require('./cache');
-const { makeGoogleMapsRequest, QuotaExceededError, RateLimitError, getUsageStats } = require('./rateLimit');
+const { QuotaExceededError, RateLimitError, getUsageStats } = require('./rateLimit');
 const { getPremiumData, buildPremiumSectionsHTML } = require('./premium');
 const { logRequest, logError, logAnalysis, readRecentLogs } = require('./logger');
 const { getMitigation, loadMitigations } = require('./errorMemory');
 
-const { getNextTuesday8am, getNextDayAt } = require('./utils/time');
+const { geocodeAddress } = require('./shared/google/geocoding');
+const { reverseGeocodeAddress } = require('./shared/google/reverseGeocode');
+const { getDriveTime, getTrafficVariations } = require('./shared/google/distanceMatrix');
+const { googleMapsClient, googleMapsApiKey } = require('./shared/google/client');
 const {
   escapeHtml, formatDriveTime, toTitleCase,
   parseAddressParts, formatResearchDate, slugify, getDateSlug,
@@ -24,7 +26,6 @@ const {
   COFFEE_SHOP_CANDIDATE_COUNT,
   ELEMENTARY_SCHOOL_SEARCH_RADIUS_M, ELEMENTARY_SCHOOL_EXCLUSIONS,
   HIGHWAY_MAX_DRIVE_MINUTES, HIGHWAY_INTERCHANGE_MAX_MINUTES,
-  TRAFFIC_VARIATION_SLOTS,
   INTERSTATE_LIST,
   MAX_CONCURRENT_PDFS,
   PARK_EXCLUDED_TYPES, PARK_LEISURE_TYPES,
@@ -34,18 +35,6 @@ const {
 
 const app = express();
 const port = process.env.PORT || 3000;
-const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY;
-// Proxy-wrap the Maps client so every method call goes through the rate limiter + retry logic.
-const _rawMapsClient = new Client({});
-const googleMapsClient = new Proxy(_rawMapsClient, {
-  get(target, prop) {
-    const val = Reflect.get(target, prop);
-    if (typeof val === 'function') {
-      return (...args) => makeGoogleMapsRequest(() => Reflect.apply(val, target, args), prop);
-    }
-    return val;
-  },
-});
 
 const DATA_DIR = path.join(__dirname, '../data');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
@@ -89,98 +78,9 @@ function updateReportAccess(reportId) {
 
 app.use(express.static(path.join(__dirname, '../public')));
 
-async function getTrafficVariations(originLatLng, destLocation) {
-  const destLatLng = `${destLocation.lat},${destLocation.lng}`;
-  const slots = TRAFFIC_VARIATION_SLOTS.map(({ label, display, targetDay, hour }) => ({
-    label, display, ts: getNextDayAt(targetDay, hour),
-  }));
-
-  const results = await Promise.allSettled(
-    slots.map(async ({ label, display, ts }) => {
-      const cacheKey = `traffic:${originLatLng}:${destLatLng}:${label}`;
-      const cached = driveTimeCache.get(cacheKey);
-      if (cached !== null) { console.log('[CACHE HIT] traffic slot:', cacheKey); return cached; }
-
-      const resp = await googleMapsClient.distancematrix({
-        params: {
-          key: googleMapsApiKey,
-          origins: [originLatLng],
-          destinations: [destLatLng],
-          mode: 'driving',
-          departure_time: ts,
-        },
-      });
-      const el = resp.data.rows[0]?.elements?.[0];
-      if (!el || el.status !== 'OK') throw new Error('no element');
-      const result = {
-        label,
-        display,
-        minutes: Math.round((el.duration_in_traffic?.value ?? el.duration?.value) / 60),
-      };
-      driveTimeCache.set(cacheKey, result);
-      return result;
-    }),
-  );
-
-  const variations = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);
-  if (!variations.length) return null;
-
-  const allMinutes = variations.map((v) => v.minutes);
-  const min = Math.min(...allMinutes);
-  const max = Math.max(...allMinutes);
-  const avg = Math.round(allMinutes.reduce((a, b) => a + b, 0) / allMinutes.length);
-
-  return { variations, stats: { min, max, avg, range: max - min } };
-}
-
-async function geocodeAddress(address) {
-  const cacheKey = address.toLowerCase().trim();
-  const cached = geocodeCache.get(cacheKey);
-  if (cached) { console.log('[CACHE HIT] geocode:', cacheKey); return cached; }
-
-  const geocodeResponse = await googleMapsClient.geocode({
-    params: { address, key: googleMapsApiKey },
-  });
-
-  const geoResults = geocodeResponse.data.results || [];
-  if (!geoResults.length) {
-    throw new Error('Unable to geocode the address.');
-  }
-
-  const location = geoResults[0].geometry.location;
-  geocodeCache.set(cacheKey, location);
-  return location;
-}
-
 function isExcludedPlaceName(name, excludeTerms) {
   const normalized = (name || '').toLowerCase();
   return excludeTerms.some((term) => normalized.includes(term));
-}
-
-async function getDriveTime(originLatLng, destinationLatLng) {
-  const destStr = `${destinationLatLng.lat},${destinationLatLng.lng}`;
-  const cacheKey = `${originLatLng}:${destStr}`;
-  const cached = driveTimeCache.get(cacheKey);
-  if (cached !== null) { console.log('[CACHE HIT] drivetime:', cacheKey); return cached; }
-
-  const distanceResponse = await googleMapsClient.distancematrix({
-    params: {
-      key: googleMapsApiKey,
-      origins: [originLatLng],
-      destinations: [destStr],
-      mode: 'driving',
-      departure_time: getNextTuesday8am(),
-    },
-  });
-
-  const element = distanceResponse.data.rows[0]?.elements?.[0];
-  if (!element || element.status !== 'OK') {
-    throw new Error('Unable to calculate drive time for the destination.');
-  }
-
-  const minutes = Math.round((element.duration_in_traffic?.value ?? element.duration?.value) / 60);
-  driveTimeCache.set(cacheKey, minutes);
-  return minutes;
 }
 
 // Returns top 3 nearest grocery stores by drive time.
@@ -393,16 +293,7 @@ async function findNearestHighwayOnRamp(originLatLng) {
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
 
-  const reverseGeoResponse = await googleMapsClient.reverseGeocode({
-    params: {
-      key: googleMapsApiKey,
-      latlng: originLatLng,
-    },
-  });
-
-  const geoComponents = reverseGeoResponse.data.results?.[0]?.address_components || [];
-  const city = geoComponents.find((c) => c.types.includes('locality'))?.long_name || '';
-  const state = geoComponents.find((c) => c.types.includes('administrative_area_level_1'))?.short_name || '';
+  const { city, state } = await reverseGeocodeAddress(originLatLng);
   const locationLabel = city && state ? `${city}, ${state}` : originLatLng;
 
   const geocodeResults = await Promise.all(
@@ -1702,17 +1593,7 @@ app.get('/report', async (req, res) => {
     const originLatLng = `${origin.lat},${origin.lng}`;
 
     // Reverse geocode for city/state/county — used by crime data and property data
-    let locationInfo = null;
-    try {
-      const rgResp = await googleMapsClient.reverseGeocode({ params: { key: googleMapsApiKey, latlng: originLatLng } });
-      const comps = rgResp.data.results?.[0]?.address_components || [];
-      locationInfo = {
-        city:   comps.find((c) => c.types.includes('locality'))?.long_name || '',
-        state:  comps.find((c) => c.types.includes('administrative_area_level_1'))?.short_name || '',
-        county: comps.find((c) => c.types.includes('administrative_area_level_2'))?.long_name || '',
-        zip:    comps.find((c) => c.types.includes('postal_code'))?.long_name || '',
-      };
-    } catch {}
+    const locationInfo = await reverseGeocodeAddress(originLatLng);
 
     const results = await Promise.allSettled([
       findNearestGrocery(originLatLng),
