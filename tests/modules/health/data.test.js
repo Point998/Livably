@@ -2,6 +2,7 @@
 const mockTextSearch = jest.fn();
 const mockPlacesNearby = jest.fn();
 const mockGetDriveTime = jest.fn();
+const mockCheckCrossState = jest.fn();
 
 const makeMockCache = () => {
   const store = new Map();
@@ -19,6 +20,9 @@ jest.mock('../../../src/shared/google/client', () => ({
 }));
 jest.mock('../../../src/shared/google/distanceMatrix', () => ({
   getDriveTime: mockGetDriveTime,
+}));
+jest.mock('../../../src/shared/validate', () => ({
+  checkCrossState: mockCheckCrossState,
 }));
 jest.mock('../../../src/cache', () => ({ placesCache: mockPlacesCache }));
 jest.mock('../../../src/logger', () => ({ logError: jest.fn() }));
@@ -40,6 +44,8 @@ const makePlace = (name, types = ['hospital'], lat = 38.3, lng = -84.4) => ({
 beforeEach(() => {
   jest.clearAllMocks();
   mockPlacesCache.clear();
+  // Default: same-state result (valid). Overridden in cross-state tests.
+  mockCheckCrossState.mockResolvedValue({ valid: true, resultState: 'KY' });
 });
 
 describe('findNearestHospital', () => {
@@ -102,5 +108,17 @@ describe('findNearestUrgentCare', () => {
     mockGetDriveTime.mockResolvedValue(15);
     const result = await findNearestUrgentCare('38.15,-84.55');
     expect(result.name).toBe('City Urgent Care');
+  });
+
+  test('attaches crossStateWarning for cross-state urgent care (warn, not reject)', async () => {
+    mockPlacesNearby.mockResolvedValue({
+      data: { results: [makePlace('Louisville Urgent Care', ['health'], 38.2, -85.7)] },
+    });
+    mockCheckCrossState.mockResolvedValue({ valid: false, resultState: 'KY' });
+    mockGetDriveTime.mockResolvedValue(8);
+    const result = await findNearestUrgentCare('38.3,-85.7', 'IN');
+    expect(result.crossStateWarning).toBe(true);
+    expect(result.crossStateNote).toContain('KY');
+    expect(result.name).toBe('Louisville Urgent Care'); // not rejected — safety-critical
   });
 });

@@ -39,6 +39,14 @@ const INAT_BIRDS_PER_PAGE              = 20;
 const HIGHWAY_MAX_DRIVE_MINUTES        = 20;
 const HIGHWAY_INTERCHANGE_MAX_MINUTES  = 50;
 
+// ── Rural Mode Detection Thresholds (CONSTRAINT-007) ─────────────────────────
+
+const RURAL_MODE_URBAN_POP_MIN              = 5001;
+const RURAL_MODE_SUBURBAN_POP_MIN           = 1001;
+const RURAL_MODE_REMOTE_POP_MAX             = 200;
+const RURAL_MODE_SUBURBAN_MAX_DRIVE_MINUTES = 20;
+const DRIVE_TIME_COHERENCE_THRESHOLD_MINUTES = 45;
+
 // ── Report UI ─────────────────────────────────────────────────────────────────
 
 const MAX_CONCURRENT_PDFS = 3;
@@ -507,4 +515,10 @@ module.exports = {
   DEV_MAX_ARTICLE_AGE,
   DEV_TYPE_MAP,
   DEV_STATUS_MAP,
+  // Rural mode detection (CONSTRAINT-007)
+  RURAL_MODE_URBAN_POP_MIN,
+  RURAL_MODE_SUBURBAN_POP_MIN,
+  RURAL_MODE_REMOTE_POP_MAX,
+  RURAL_MODE_SUBURBAN_MAX_DRIVE_MINUTES,
+  DRIVE_TIME_COHERENCE_THRESHOLD_MINUTES,
 };

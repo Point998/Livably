@@ -1,8 +1,7 @@
 'use strict';
-// NOTE: Cross-state school filtering (CONSTRAINT-006) is NOT implemented at this layer.
-// These functions return raw API results. Cross-state rejection happens in validate.js.
 const { googleMapsClient, googleMapsApiKey } = require('../../shared/google/client');
 const { getDriveTime } = require('../../shared/google/distanceMatrix');
+const { checkCrossState } = require('../../shared/validate');
 const { placesCache } = require('../../cache');
 const {
   SCHOOL_PLACE_TYPES, SCHOOL_NAME_TERMS,
@@ -23,7 +22,9 @@ function isValidSchoolPlace(p) {
 // Returns nearest school by distance.
 // Note: nearest by distance is not the assigned school for the parcel.
 // Assigned school requires verification with the school district.
-async function findNearestSchool(originLatLng) {
+// originState: 2-letter abbreviation from reverse geocoding at report start.
+// CONSTRAINT-006: Result is rejected if it is in a different state than the origin address.
+async function findNearestSchool(originLatLng, originState = '') {
   const cacheKey = `school:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -58,6 +59,11 @@ async function findNearestSchool(originLatLng) {
     throw new Error('No school found near that address.');
   }
 
+  const { valid, resultState } = await checkCrossState(place.geometry.location, originState);
+  if (!valid) {
+    throw new Error(`Cross-state school rejected: ${place.name} is in ${resultState}, origin is ${originState}`);
+  }
+
   const result = {
     name: place.name,
     address: place.vicinity || place.formatted_address || place.name,
@@ -69,7 +75,9 @@ async function findNearestSchool(originLatLng) {
   return result;
 }
 
-async function findNearestElementarySchool(originLatLng) {
+// originState: 2-letter abbreviation from reverse geocoding at report start.
+// CONSTRAINT-006: Result is rejected if it is in a different state than the origin address.
+async function findNearestElementarySchool(originLatLng, originState = '') {
   const cacheKey = `elementary:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -86,6 +94,12 @@ async function findNearestElementarySchool(originLatLng) {
     (p) => !isExcludedPlaceName(p.name, ELEMENTARY_SCHOOL_EXCLUSIONS),
   )[0];
   if (!place) throw new Error('No elementary school found near that address.');
+
+  const { valid, resultState } = await checkCrossState(place.geometry.location, originState);
+  if (!valid) {
+    throw new Error(`Cross-state school rejected: ${place.name} is in ${resultState}, origin is ${originState}`);
+  }
+
   const result = {
     name: place.name,
     address: place.formatted_address || place.vicinity || place.name,

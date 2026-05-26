@@ -1,6 +1,7 @@
 'use strict';
 const { googleMapsClient, googleMapsApiKey } = require('../../shared/google/client');
 const { getDriveTime } = require('../../shared/google/distanceMatrix');
+const { checkDriveTimeCoherence } = require('../../shared/validate');
 const { placesCache } = require('../../cache');
 const { getMitigation } = require('../../errorMemory');
 const { logError } = require('../../logger');
@@ -11,7 +12,9 @@ const {
 // Returns top 3 nearest grocery stores by drive time.
 // Uses textSearch with tight radius so Google relevance is overridden by actual drive time.
 // Excludes gas stations, convenience stores, and dollar stores by place type.
-async function findNearestGrocery(originLatLng) {
+// ruralMode: 'urban'|'suburban'|'rural'|'remote' from detectRuralMode().
+// CONSTRAINT-010: Results >45 min are flagged with coherenceWarning for non-rural addresses.
+async function findNearestGrocery(originLatLng, ruralMode = 'suburban') {
   const cacheKey = `grocery:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -55,9 +58,12 @@ async function findNearestGrocery(originLatLng) {
 
   const valid = withDriveTimes.filter(Boolean);
   valid.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
-  const result = valid.slice(0, 3);
-  placesCache.set(cacheKey, result);
-  return result;
+  const top3 = valid.slice(0, 3).map((store) => {
+    const coherence = checkDriveTimeCoherence(store.driveTimeMinutes, 'grocery store', ruralMode);
+    return coherence.ok ? store : { ...store, coherenceWarning: true, coherenceReason: coherence.reason };
+  });
+  placesCache.set(cacheKey, top3);
+  return top3;
 }
 
 async function findNearestPharmacy(originLatLng) {

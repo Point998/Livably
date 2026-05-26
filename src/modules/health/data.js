@@ -3,6 +3,7 @@
 // NOT by Google search rank. Never trust Google's relevance ranking for safety-critical destinations.
 const { googleMapsClient, googleMapsApiKey } = require('../../shared/google/client');
 const { getDriveTime } = require('../../shared/google/distanceMatrix');
+const { checkCrossState } = require('../../shared/validate');
 const { placesCache } = require('../../cache');
 const { logError } = require('../../logger');
 const {
@@ -22,7 +23,9 @@ function isRetailEmbeddedHealth(place) {
 
 // Gets top 5 hospital results, calculates actual drive time to each,
 // and returns the one with the shortest drive time — not just Google's first result.
-async function findNearestHospital(originLatLng) {
+// originState: 2-letter abbreviation. Cross-state hospital is warned, not rejected —
+// for safety-critical results, a cross-state hospital is better than no result.
+async function findNearestHospital(originLatLng, originState = '') {
   const cacheKey = `hospital:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -79,11 +82,18 @@ async function findNearestHospital(originLatLng) {
 
   valid.sort((a, b) => a.driveTimeMinutes - b.driveTimeMinutes);
   const result = valid[0];
+
+  const { valid: sameState, resultState } = await checkCrossState(result.location, originState);
+  if (!sameState) {
+    result.crossStateWarning = true;
+    result.crossStateNote = `This hospital is in ${resultState}. No in-state hospital was found within the search radius.`;
+  }
+
   placesCache.set(cacheKey, result);
   return result;
 }
 
-async function findNearestUrgentCare(originLatLng) {
+async function findNearestUrgentCare(originLatLng, originState = '') {
   const cacheKey = `urgentcare:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -126,6 +136,13 @@ async function findNearestUrgentCare(originLatLng) {
     location: place.geometry.location,
     driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
   };
+
+  const { valid: sameState, resultState } = await checkCrossState(result.location, originState);
+  if (!sameState) {
+    result.crossStateWarning = true;
+    result.crossStateNote = `This urgent care is in ${resultState}. No in-state facility was found within the search radius.`;
+  }
+
   placesCache.set(cacheKey, result);
   return result;
 }
