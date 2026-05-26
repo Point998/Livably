@@ -5,12 +5,21 @@
   "description": "Residential address intelligence report prototype for homebuyers.",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/tests/**/*.test.js"]
   },
   "dependencies": {
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "dotenv": "^17.4.2",
     "express": "^4.18.2",
     "puppeteer": "^25.0.4"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2"
   }
 }
