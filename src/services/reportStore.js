@@ -15,8 +15,9 @@ function ensureReportsFile() {
 function loadReports() {
   try {
     return JSON.parse(fs.readFileSync(REPORTS_FILE, 'utf8'));
-  } catch {
-    return {};
+  } catch (err) {
+    if (err.code === 'ENOENT') return {};
+    throw err;
   }
 }
 
@@ -38,10 +39,10 @@ function getReport(reportId) {
 function updateReportAccess(reportId) {
   ensureReportsFile();
   const reports = loadReports();
-  if (reports[reportId]) {
-    reports[reportId].lastAccessed = new Date().toISOString();
-    fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
-  }
+  if (!reports[reportId]) return false;
+  reports[reportId].lastAccessed = new Date().toISOString();
+  fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
+  return true;
 }
 
 module.exports = { ensureReportsFile, loadReports, saveReport, getReport, updateReportAccess };

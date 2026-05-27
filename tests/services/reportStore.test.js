@@ -28,6 +28,7 @@ describe('saveReport', () => {
     const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
     const entry = Object.values(written)[0];
     expect(entry.address).toBe('100 Main St, Louisville, KY');
+    expect(fs.writeFileSync.mock.calls[0][0]).toContain('reports.json');
   });
 });
 
@@ -58,7 +59,8 @@ describe('updateReportAccess', () => {
   });
 
   test('does nothing for unknown ID', () => {
-    reportStore.updateReportAccess('unknown');
+    const result = reportStore.updateReportAccess('unknown');
+    expect(result).toBe(false);
     expect(fs.writeFileSync).not.toHaveBeenCalled();
   });
 });
