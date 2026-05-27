@@ -121,4 +121,25 @@ describe('classifyError', () => {
     const result = classifyError(err);
     expect(result.type).toBe('SERVER_ERROR');
   });
+
+  test('classifies QuotaExceededError as QUOTA_EXCEEDED', () => {
+    const { QuotaExceededError } = require('../../src/rateLimit');
+    const result = classifyError(new QuotaExceededError('quota hit'));
+    expect(result.type).toBe('QUOTA_EXCEEDED');
+  });
+
+  test('classifies RateLimitError as RATE_LIMIT with retryAfter', () => {
+    const { RateLimitError } = require('../../src/rateLimit');
+    const err = new RateLimitError('rate limit', 60);
+    const result = classifyError(err);
+    expect(result.type).toBe('RATE_LIMIT');
+    expect(result.retryAfter).toBe(60);
+  });
+
+  test('classifies HTTP 429 response as RATE_LIMIT', () => {
+    const err = new Error('Request failed');
+    err.response = { status: 429 };
+    const result = classifyError(err);
+    expect(result.type).toBe('RATE_LIMIT');
+  });
 });
