@@ -1,4 +1,4 @@
-const dotenv = require('dotenv');
+﻿const dotenv = require('dotenv');
 
 dotenv.config();
 
@@ -30,6 +30,9 @@ const {
   MAX_CONCURRENT_PDFS,
   CUSTOM_DEST_ICONS, ERROR_ICONS,
 } = require('./utils/constants');
+const { buildHealthSafetyChapterHTML } = require('./templates/chapters/health');
+const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('./templates/chapters/reachability');
+const { buildTrafficCardHTML } = require('./templates/chapters/traffic');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -142,181 +145,6 @@ function buildSchoolSection(school) {
     </div>`;
 }
 
-function generateDailyConveniencesNarrative(grocery, pharmacy, gasStation) {
-  const g = Array.isArray(grocery) ? grocery[0] : grocery;
-  const stores = Array.isArray(grocery) ? grocery : (grocery ? [grocery] : []);
-  const times = [g, pharmacy, gasStation].filter(Boolean).map((s) => s.driveTimeMinutes);
-  if (!times.length) return null;
-  const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
-
-  let opening;
-  if (avg < 8) opening = 'Daily errands are genuinely effortless here—everything you need is within a short drive.';
-  else if (avg < 15) opening = "A quick drive covers the essentials. You're close enough that nothing feels like a production.";
-  else if (avg < 25) opening = 'Services are accessible, just not around the corner. Most residents plan ahead and batch errands together.';
-  else opening = "This is a location where you plan ahead. Services are farther out, so keeping a well-stocked home becomes part of the rhythm.";
-
-  const paragraphs = [];
-
-  if (g) {
-    let gPara = `Your nearest grocery option is ${g.name}, ${g.driveTimeMinutes} minutes away.`;
-    if (stores.length > 1 && stores[1]) {
-      gPara += ` ${stores[1].name} is another option at ${stores[1].driveTimeMinutes} minutes—useful if you want variety or have store preferences.`;
-    } else if (g.driveTimeMinutes <= 8) {
-      gPara += " That's close enough to make mid-week top-offs practical, not just big Sunday hauls.";
-    } else {
-      gPara += ' Most residents find it easiest to do one bigger weekly shop rather than multiple trips.';
-    }
-    paragraphs.push(gPara);
-  }
-
-  const p2Parts = [];
-  if (pharmacy) p2Parts.push(`Pharmacy runs take ${pharmacy.driveTimeMinutes} minutes to ${pharmacy.name}—convenient for prescriptions or last-minute needs.`);
-  if (gasStation) p2Parts.push(`The nearest gas station is ${gasStation.driveTimeMinutes} minutes at ${gasStation.name}.`);
-  if (p2Parts.length) paragraphs.push(p2Parts.join(' '));
-
-  if (avg < 10) {
-    paragraphs.push("Most people don't think twice about running out for a forgotten ingredient or picking up a prescription after work. That's the kind of low-friction living this location offers.");
-  } else if (avg < 20) {
-    paragraphs.push("The distance is easy to build into a routine—swing by on the way home, combine trips, and it rarely becomes a burden. The flip side: you're far enough out that this still feels like a neighborhood, not a strip mall parking lot.");
-  } else {
-    paragraphs.push("If quiet and space matter more to you than convenience, this trade-off tends to feel worth it over time. The adjustment is real, but most people who choose locations like this say they'd do it again.");
-  }
-
-  const items = [
-    g ? { label: 'Grocery', name: g.name, time: g.driveTimeMinutes } : null,
-    pharmacy ? { label: 'Pharmacy', name: pharmacy.name, time: pharmacy.driveTimeMinutes } : null,
-    gasStation ? { label: 'Gas', name: gasStation.name, time: gasStation.driveTimeMinutes } : null,
-  ].filter(Boolean);
-
-  return { opening, paragraphs, items };
-}
-
-function generatePeaceOfMindNarrative(hospital, urgentCare) {
-  if (!hospital) return null;
-
-  let opening;
-  if (hospital.driveTimeMinutes < 10) opening = 'Medical care is genuinely close. You could cover the distance quickly in any situation.';
-  else if (hospital.driveTimeMinutes < 20) opening = `The nearest hospital is ${hospital.driveTimeMinutes} minutes away—reassuring distance without being in the thick of a medical district.`;
-  else if (hospital.driveTimeMinutes < 30) opening = `Hospital access takes ${hospital.driveTimeMinutes} minutes. Worth knowing the route before you ever actually need it.`;
-  else opening = 'The nearest hospital is more than 30 minutes away. If immediate medical access matters to you—young children, elderly parents, chronic conditions—this is something to weigh seriously.';
-
-  const paragraphs = [];
-
-  let hPara = `${hospital.name} is the closest full-service hospital at ${hospital.driveTimeMinutes} minutes.`;
-  if (hospital.driveTimeMinutes > 20) {
-    hPara += " Save the route in your phone now. In a real emergency, you don't want to be searching for it.";
-  } else {
-    hPara += ' The kind of distance that\'s manageable in nearly any situation.';
-  }
-  paragraphs.push(hPara);
-
-  if (urgentCare) {
-    const ucPara = urgentCare.driveTimeMinutes < hospital.driveTimeMinutes - 5
-      ? `For non-emergencies—ear infections, minor injuries, high fevers—${urgentCare.name} is closer at ${urgentCare.driveTimeMinutes} minutes. Urgent care handles the vast majority of situations that don't require a full ER, often with shorter waits and lower bills.`
-      : `${urgentCare.name} provides urgent care ${urgentCare.driveTimeMinutes} minutes away. For anything short of a true emergency, it's often the smarter first stop than an ER.`;
-    paragraphs.push(ucPara);
-  }
-
-  paragraphs.push('Worth doing before you need it: find a primary care physician and pediatrician nearby, and save a list of after-hours clinics on your phone. Five minutes of prep pays real dividends.');
-
-  const items = [
-    { label: 'Hospital', name: hospital.name, time: hospital.driveTimeMinutes },
-    urgentCare ? { label: 'Urgent Care', name: urgentCare.name, time: urgentCare.driveTimeMinutes } : null,
-  ].filter(Boolean);
-
-  return { opening, paragraphs, items };
-}
-
-function generateGettingAroundNarrative(highwayRamp) {
-  if (!highwayRamp) return null;
-
-  let opening;
-  if (highwayRamp.driveTimeMinutes < 5) opening = "Highway access is essentially immediate—you're on the ramp in under five minutes.";
-  else if (highwayRamp.driveTimeMinutes < 10) opening = `The highway is ${highwayRamp.driveTimeMinutes} minutes away. Close enough for easy commuting, far enough to avoid interchange noise.`;
-  else if (highwayRamp.driveTimeMinutes < 20) opening = `You're ${highwayRamp.driveTimeMinutes} minutes from the highway—a buffer from road noise and commercial traffic without sacrificing connectivity.`;
-  else opening = `Highway access is ${highwayRamp.driveTimeMinutes} minutes from here. If you commute daily, test the drive during your actual rush hour before committing.`;
-
-  const paragraphs = [];
-  paragraphs.push(`${highwayRamp.name} is your nearest on-ramp at ${highwayRamp.driveTimeMinutes} minutes. Once you're on, you can cover significant ground quickly—regional employment centers, airports, and weekend destinations all become more reachable.`);
-
-  if (highwayRamp.driveTimeMinutes < 8) {
-    paragraphs.push("The proximity is an underrated advantage. Grocery runs, airport pickups, and visiting family all get easier when you're this close to a major route. The noise and commercial clutter that comes with being right at an interchange stays far enough back not to register.");
-  } else if (highwayRamp.driveTimeMinutes >= 15) {
-    paragraphs.push("If you work remotely or have a reverse commute, this distance barely registers in daily life. Daily commuters heading into a busy corridor should do a test run at actual rush hour—trip times often vary more than you'd expect depending on direction and congestion patterns.");
-  }
-
-  return {
-    opening,
-    paragraphs,
-    items: [{ label: 'Highway Access', name: highwayRamp.name, time: highwayRamp.driveTimeMinutes }],
-  };
-}
-
-function generateCallouts(grocery, pharmacy, hospital) {
-  const g = Array.isArray(grocery) ? grocery[0] : grocery;
-  const callouts = [];
-
-  if (hospital && hospital.driveTimeMinutes > 30) {
-    callouts.push({
-      icon: '⚠️',
-      title: 'Worth Noting',
-      message: `The nearest hospital is ${hospital.driveTimeMinutes} minutes away. If immediate medical access is important to you, this is something to consider.`,
-    });
-  }
-
-  if (g && g.driveTimeMinutes > 30) {
-    callouts.push({
-      icon: '⚠️',
-      title: 'Worth Noting',
-      message: `Grocery shopping takes ${g.driveTimeMinutes} minutes each way. You'll want to plan larger shopping trips and keep a well-stocked pantry.`,
-    });
-  }
-
-  const avgTimes = [g, pharmacy, hospital].filter(Boolean).map((s) => s.driveTimeMinutes);
-  if (avgTimes.length === 3) {
-    const avg = Math.round(avgTimes.reduce((a, b) => a + b, 0) / avgTimes.length);
-    if (avg > 40) {
-      callouts.push({
-        icon: 'ℹ️',
-        title: 'Heads Up',
-        message: "This is a remote location. You'll enjoy peace, space, and privacy—but services are farther out. Most errands will be 30–45+ minutes.",
-      });
-    }
-  }
-
-  return callouts;
-}
-
-function buildInsightItemsHTML(items) {
-  return items.map((item) => `
-        <div class="insight-item">
-          <span class="item-label">${escapeHtml(item.label)}</span>
-          <span class="item-place">${escapeHtml(item.name)}</span>
-          <span class="item-time">${item.time} min</span>
-        </div>`).join('');
-}
-
-function buildInsightSectionHTML(icon, title, subtitle, narrative) {
-  if (!narrative) return '';
-  const parasHTML = (narrative.paragraphs || [])
-    .map((p) => `<p class="insight-para">${escapeHtml(p)}</p>`)
-    .join('');
-  return `
-    <div class="insight-section">
-      <div class="insight-header">
-        <span class="insight-icon">${icon}</span>
-        <div>
-          <div class="insight-title">${escapeHtml(title)}</div>
-          <div class="insight-subtitle">${escapeHtml(subtitle)}</div>
-        </div>
-      </div>
-      <p class="insight-opening">${escapeHtml(narrative.opening)}</p>
-      ${parasHTML}
-      <div class="insight-breakdown">
-        ${buildInsightItemsHTML(narrative.items)}
-      </div>
-    </div>`;
-}
 
 function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
   const findings = [];
@@ -326,13 +154,13 @@ function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
   if (flood) {
     if (flood.risk === 'High' || flood.risk === 'Very High') {
       findings.push({ bucket: 'Things to Check', cls: 'check',
-        text: `FEMA Flood Zone ${flood.zone} — flood insurance required, adds $1,500–$4,000/year.` });
+        text: `FEMA Flood Zone ${flood.zone} â€” flood insurance required, adds $1,500â€“$4,000/year.` });
     } else if (flood.zone === 'X') {
       findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
-        text: `Outside FEMA high-risk flood zones (Zone X) — flood insurance not federally required.` });
+        text: `Outside FEMA high-risk flood zones (Zone X) â€” flood insurance not federally required.` });
     } else {
       findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `FEMA Flood Zone ${flood.zone} — moderate risk area, worth pricing flood insurance before closing.` });
+        text: `FEMA Flood Zone ${flood.zone} â€” moderate risk area, worth pricing flood insurance before closing.` });
     }
   }
 
@@ -344,30 +172,30 @@ function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
   if (hospital) {
     if (hospital.driveTimeMinutes > 20) {
       findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `Nearest ER (${hospital.name}) is ${hospital.driveTimeMinutes} min away — farther than average.` });
+        text: `Nearest ER (${hospital.name}) is ${hospital.driveTimeMinutes} min away â€” farther than average.` });
     } else if (hospital.driveTimeMinutes <= 10) {
       findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
-        text: `${hospital.name} is ${hospital.driveTimeMinutes} min away — full emergency department within quick reach.` });
+        text: `${hospital.name} is ${hospital.driveTimeMinutes} min away â€” full emergency department within quick reach.` });
     } else {
       findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `Nearest ER (${hospital.name}) is ${hospital.driveTimeMinutes} min — know your route before you need it.` });
+        text: `Nearest ER (${hospital.name}) is ${hospital.driveTimeMinutes} min â€” know your route before you need it.` });
     }
   }
 
   if (highwayRamp) {
     if (highwayRamp.driveTimeMinutes <= 8) {
       findings.push({ bucket: 'Cool Things to Know', cls: 'cool',
-        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min away — quick highway access.` });
+        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min away â€” quick highway access.` });
     } else if (highwayRamp.driveTimeMinutes > HIGHWAY_MAX_DRIVE_MINUTES) {
       findings.push({ bucket: 'Things to Consider', cls: 'consider',
-        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min — regional travel adds meaningful time.` });
+        text: `${highwayRamp.name} is ${highwayRamp.driveTimeMinutes} min â€” regional travel adds meaningful time.` });
     }
   }
 
   const radon = env?.radon;
   if (radon && radon.zone === 1) {
     findings.push({ bucket: 'Things to Check', cls: 'check',
-      text: `EPA Radon Zone 1 (high potential) — a $15–$30 test before closing is strongly recommended.` });
+      text: `EPA Radon Zone 1 (high potential) â€” a $15â€“$30 test before closing is strongly recommended.` });
   }
 
   if (!findings.length) return '';
@@ -391,291 +219,6 @@ function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
     </div>`).join('')}`;
 }
 
-function buildHealthSafetyChapterHTML(hospital, emergency) {
-  if (!hospital && !emergency) return '';
-  const fire   = emergency?.fire;
-  const police = emergency?.police;
-
-  // ── ER narrative ────────────────────────────────────────────────────────────
-  let erHTML = '';
-  if (hospital) {
-    const mins = hospital.driveTimeMinutes;
-    const narrative =
-      mins <= 10
-        ? `${escapeHtml(hospital.name)} is ${mins} minutes away — a full-service emergency department within quick reach. For cardiac events or serious trauma, that proximity matters.`
-        : mins <= 20
-          ? `${escapeHtml(hospital.name)} is ${mins} minutes away. That's workable for most emergencies, though not the fastest access. Drive the route on a weekday morning before you close — traffic patterns at 8am can add several minutes.`
-          : `${escapeHtml(hospital.name)} is ${mins} minutes away — extended for a time-critical emergency. This doesn't disqualify a property, but it raises the importance of smoke detectors, CO alarms, and basic first aid readiness in the household.`;
-    erHTML = `<p class="ch01-er-text">${narrative}</p>`;
-  }
-
-  // ── Station rows ─────────────────────────────────────────────────────────────
-  function stationRow(icon, label, station) {
-    if (!station) return '';
-    const { estimate, category } = station.response;
-    const badgeClass = category.color === 'green'  ? 'badge-response-green'
-                     : category.color === 'gold'   ? 'badge-response-gold'
-                     : category.color === 'orange' ? 'badge-response-orange'
-                     :                               'badge-response-red';
-    return `
-      <div class="ch01-station-row">
-        <span class="ch01-station-icon">${icon}</span>
-        <div class="ch01-station-info">
-          <span class="ch01-station-name">${escapeHtml(station.name)}</span>
-          <span class="ch01-station-dist">${station.distanceMiles} mi</span>
-        </div>
-        <span class="ch01-response-badge ${badgeClass}">~${estimate} min · ${escapeHtml(category.label)}</span>
-      </div>`;
-  }
-
-  const stationsHTML = [stationRow('🚒', 'Fire', fire), stationRow('🚔', 'Police/EMS', police)].join('');
-
-  // ── Key Takeaway ─────────────────────────────────────────────────────────────
-  let takeaway;
-  const erMins  = hospital?.driveTimeMinutes;
-  const fireMins = fire?.response?.estimate;
-  if (fireMins > 12) {
-    takeaway = `Fire response of ~${fireMins} min means a fire can spread significantly before suppression arrives. Ask your insurance agent for the ISO PPC rating for this address — it directly affects your fire coverage premium and is address-specific.`;
-  } else if (erMins > 20) {
-    takeaway = `The nearest full-service ER is ${erMins} minutes away. Make sure every adult in the household knows the route, and keep a basic first aid kit stocked.`;
-  } else if (fireMins <= 5 && erMins <= 10) {
-    takeaway = `Fast fire response (~${fireMins} min) and a close ER (${erMins} min) are genuine safety assets here. Still ask your insurance agent for the ISO PPC rating — it's address-specific and free to look up.`;
-  } else {
-    takeaway = `Response times and ER access are within normal range for this area. Confirm the ISO fire protection class with your insurance agent before closing — it sets your fire coverage rate and takes one phone call.`;
-  }
-
-  // ── Things to Check ──────────────────────────────────────────────────────────
-  const checks = [
-    { icon: '🔐', label: 'Get the ISO fire protection rating', detail: 'Ask your homeowner\'s insurance agent for the ISO PPC rating for this specific address. It\'s free, takes one phone call, and directly determines your annual fire coverage cost. Ratings 1–4 are excellent; 8–10 indicate limited coverage and higher premiums.' },
-    { icon: '🏥', label: 'Drive the ER route before you close', detail: `${hospital ? `${escapeHtml(hospital.name)} is your nearest full-service ER.` : 'Locate your nearest full-service ER.'} Drive the actual route on a weekday morning — GPS timing and real traffic at 8am can differ. Know which entrance to use for emergencies.` },
-    { icon: '🔥', label: 'Test detectors on move-in day', detail: 'Confirm working smoke detectors in every bedroom and hallway and a working CO detector on each floor. Replace batteries regardless of what the seller says. A $20 investment.' },
-  ];
-
-  const checksHTML = checks.map((c) => `
-    <div class="ch01-check-row">
-      <span class="ch01-check-icon">${c.icon}</span>
-      <div class="ch01-check-text">
-        <div class="ch01-check-label">${escapeHtml(c.label)}</div>
-        <p class="ch01-check-detail">${c.detail}</p>
-      </div>
-    </div>`).join('');
-
-  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  const erSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:96" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" style="--path-len:96"/></svg>`;
-
-  return `
-  <section class="chapter" data-ch="health">
-    <div class="chapter-inner">
-      <div class="chapter-num" aria-hidden="true">01</div>
-      <header class="chapter-hd">
-        <div class="chapter-eyebrow">
-          <span class="chapter-icon">${erSvg}</span>
-          Health &amp; Safety
-        </div>
-        <h2 class="chapter-title">When it matters most, proximity is everything.</h2>
-      </header>
-      <p class="chapter-intro">Emergency access shapes real outcomes. These are the numbers that matter most if something goes wrong.</p>
-      <div class="chapter-body">
-        <div class="chapter-left">
-          ${erHTML}
-          ${checksHTML ? `<div class="ch01-checks"><div class="ch01-checks-label">Things to Check Before You Close</div>${checksHTML}</div>` : ''}
-          <div class="key-takeaway">
-            <span class="kt-icon">🔑</span>
-            <div class="kt-body"><strong>Key Takeaway:</strong> ${escapeHtml(takeaway)}</div>
-          </div>
-          <p class="ch01-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}.</p>
-        </div>
-        <div class="chapter-right">
-          ${stationsHTML ? `<div class="snapshot-card"><div class="snapshot-card-label">Emergency Response</div><div class="ch01-stations">${stationsHTML}</div></div>` : ''}
-        </div>
-      </div>
-    </div>
-  </section>
-  <div class="chapter-rule"></div>`;
-}
-
-function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation) {
-  const daily = generateDailyConveniencesNarrative(grocery, pharmacy, gasStation);
-  const peace = generatePeaceOfMindNarrative(hospital, urgentCare);
-  const getting = generateGettingAroundNarrative(highwayRamp);
-  const callouts = generateCallouts(grocery, pharmacy, hospital);
-
-  const sectionsHTML = [
-    buildInsightSectionHTML('🛒', 'Daily Conveniences', 'The errands and routines that shape your week', daily),
-    buildInsightSectionHTML('🏥', 'Peace of Mind', 'Healthcare access when it matters most', peace),
-    buildInsightSectionHTML('🛣️', 'Getting Around', 'Connectivity to work, family, and beyond', getting),
-  ].join('');
-
-  const calloutsHTML = callouts.map((c) => `
-    <div class="insight-callout">
-      <span class="callout-icon">${c.icon}</span>
-      <div class="callout-body">
-        <div class="callout-title">${escapeHtml(c.title)}</div>
-        <p class="callout-message">${escapeHtml(c.message)}</p>
-      </div>
-    </div>`).join('');
-
-  if (!sectionsHTML.trim() && !calloutsHTML.trim()) return '';
-
-  const sunSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:120" aria-hidden="true"><circle cx="12" cy="12" r="5" style="--path-len:32"/><line x1="12" y1="1" x2="12" y2="3" style="--path-len:16"/><line x1="12" y1="21" x2="12" y2="23" style="--path-len:16"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" style="--path-len:12"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" style="--path-len:12"/><line x1="1" y1="12" x2="3" y2="12" style="--path-len:16"/><line x1="21" y1="12" x2="23" y2="12" style="--path-len:16"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" style="--path-len:12"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" style="--path-len:12"/></svg>`;
-
-  return `
-  <section class="chapter chapter--alt" data-ch="daily">
-    <div class="chapter-inner">
-      <div class="chapter-num" aria-hidden="true">02</div>
-      <header class="chapter-hd">
-        <div class="chapter-eyebrow">
-          <span class="chapter-icon">${sunSvg}</span>
-          Daily Life
-        </div>
-        <h2 class="chapter-title">What living here actually feels like.</h2>
-      </header>
-      <p class="chapter-intro">The stuff you'd only learn after living here for two years — or by reading this.</p>
-      <div class="chapter-body">
-        <div class="chapter-left">
-          ${sectionsHTML}
-        </div>
-        <div class="chapter-right">
-          ${calloutsHTML}
-        </div>
-      </div>
-    </div>
-  </section>
-  <div class="chapter-rule"></div>`;
-}
-
-
-function buildCustomDestinationsCardHTML(customDestinations) {
-  if (!customDestinations || !customDestinations.length) return '';
-
-  const itemsHTML = customDestinations.map((dest) => {
-    const icon = CUSTOM_DEST_ICONS[dest.type] || '📍';
-    const timeHTML = dest.driveTimeMinutes != null
-      ? `<div class="custom-dest-time">${formatDriveTime(dest.driveTimeMinutes)}</div>`
-      : `<div class="custom-dest-time-na">—</div>`;
-    return `
-    <div class="custom-dest-item">
-      <div class="custom-dest-icon">${icon}</div>
-      <div class="custom-dest-info">
-        <div class="custom-dest-name">${escapeHtml(dest.name)}</div>
-        <div class="custom-dest-addr">${escapeHtml(dest.address)}</div>
-      </div>
-      ${timeHTML}
-    </div>`;
-  }).join('');
-
-  return `
-  <section class="chapter chapter--alt" data-ch="custom">
-    <div class="chapter-inner">
-      <div class="chapter-num" aria-hidden="true">★</div>
-      <header class="chapter-hd">
-        <div class="chapter-eyebrow">Your Places</div>
-        <h2 class="chapter-title">Custom Destinations</h2>
-      </header>
-      <div class="chapter-body">
-        <div class="chapter-left">
-          ${itemsHTML}
-        </div>
-        <div class="chapter-right"></div>
-      </div>
-    </div>
-  </section>
-  <div class="chapter-rule"></div>`;
-}
-
-function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
-  if (!elementarySchool && !park && !coffeeShop) return '';
-
-  const narrativeParts = [];
-  if (coffeeShop) {
-    narrativeParts.push(coffeeShop.driveTimeMinutes <= 5
-      ? `${coffeeShop.name} is ${coffeeShop.driveTimeMinutes} minutes away—close enough to become a morning habit.`
-      : `There's coffee nearby at ${coffeeShop.name}, ${coffeeShop.driveTimeMinutes} minutes out.`);
-  }
-  if (park) {
-    narrativeParts.push(park.driveTimeMinutes <= 5
-      ? `${park.name} is ${park.driveTimeMinutes} minutes away—the kind of proximity that actually changes how you use your weekends.`
-      : `${park.name} is ${park.driveTimeMinutes} minutes away for outdoor time.`);
-  }
-  if (elementarySchool) {
-    narrativeParts.push(elementarySchool.driveTimeMinutes <= 5
-      ? `The nearest elementary school is ${elementarySchool.driveTimeMinutes} minutes away. For families, that's a meaningful part of the morning routine.`
-      : `The nearest elementary school is ${elementarySchool.driveTimeMinutes} minutes away—verify your assigned school directly with the district.`);
-  }
-  const narrativeHTML = narrativeParts.length
-    ? `<p class="services-intro">${escapeHtml(narrativeParts.join(' '))}</p>`
-    : '';
-
-  return `
-  <div class="chapter-inner chapter-inner--addon">
-    ${narrativeHTML}
-    <div class="services-grid">
-      ${elementarySchool ? `<div class="services-grid-item">${buildDestSection('Elementary School', elementarySchool)}</div>` : ''}
-      ${park ? `<div class="services-grid-item">${buildDestSection('Park', park)}</div>` : ''}
-      ${coffeeShop ? `<div class="services-grid-item">${buildDestSection('Coffee Shop', coffeeShop)}</div>` : ''}
-    </div>
-  </div>`;
-}
-
-function buildTrafficItemHTML(name, traffic) {
-  const { variations, stats } = traffic;
-  const barsHTML = variations.map((v) => {
-    const widthPct = stats.max > 0 ? Math.round((v.minutes / stats.max) * 100) : 100;
-    const isBest = v.minutes === stats.min;
-    const isWorst = v.minutes === stats.max && stats.range > 0;
-    let barClass = 'traffic-bar-mid';
-    if (isBest) barClass = 'traffic-bar-best';
-    else if (isWorst) barClass = 'traffic-bar-worst';
-    else if (v.minutes < stats.avg) barClass = 'traffic-bar-good';
-    const tagHTML = isBest
-      ? ' <span class="traffic-tag traffic-tag-best">Best</span>'
-      : isWorst
-      ? ' <span class="traffic-tag traffic-tag-worst">Worst</span>'
-      : '';
-    return `
-      <div class="traffic-row">
-        <span class="traffic-slot">${escapeHtml(v.display)}</span>
-        <div class="traffic-bar-track"><div class="traffic-bar ${barClass}" style="width:${widthPct}%"></div></div>
-        <span class="traffic-mins">${v.minutes}&nbsp;min${tagHTML}</span>
-      </div>`;
-  }).join('');
-
-  const warningHTML = stats.range > 10 ? ' <span class="traffic-warning">High variation</span>' : '';
-  return `
-  <div class="traffic-dest-section">
-    <div class="traffic-dest-name">${escapeHtml(name)}</div>
-    ${barsHTML}
-    <div class="traffic-stat-row">Avg ${stats.avg} min &nbsp;·&nbsp; Range ${stats.min}–${stats.max} min${warningHTML}</div>
-  </div>`;
-}
-
-function buildTrafficCardHTML(trafficData) {
-  if (!trafficData || !trafficData.length) return '';
-  const sectionsHTML = trafficData
-    .map((t, i) => (i > 0 ? '<div class="traffic-section-divider"></div>' : '') + buildTrafficItemHTML(t.name, t.traffic))
-    .join('');
-  const waveSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><polyline points="2 12 6 4 10 20 14 8 18 16 22 12" style="--path-len:80"/></svg>`;
-
-  return `
-  <section class="chapter" data-ch="traffic">
-    <div class="chapter-inner">
-      <div class="chapter-num" aria-hidden="true">04</div>
-      <header class="chapter-hd">
-        <div class="chapter-eyebrow">
-          <span class="chapter-icon">${waveSvg}</span>
-          Traffic Patterns
-        </div>
-        <h2 class="chapter-title">Drive times shift. Know the range before you commit.</h2>
-      </header>
-      <p class="chapter-intro">Drive times aren't fixed — they shift significantly based on when you leave. The "Worst" time is the one to internalize if you're planning a regular commute.</p>
-    </div>
-    <div class="chapter-full">
-      ${sectionsHTML}
-    </div>
-  </section>
-  <div class="chapter-rule"></div>`;
-}
 
 function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }) {
   const { street, cityState } = parseAddressParts(address);
@@ -684,7 +227,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const sectionsHTML = [
     buildGrocerySection(grocery),
     buildDestSection('Pharmacy', pharmacy),
-    buildDestSection('Hospital — Full Emergency Department', hospital),
+    buildDestSection('Hospital â€” Full Emergency Department', hospital),
     buildDestSection('Urgent Care', urgentCare),
     buildDestSection('Highway Access', highwayRamp),
     buildDestSection('Gas Station', gasStation),
@@ -747,14 +290,14 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <\/script>` : '';
 
 
-  const safeAddrShort = escapeHtml(address.length > 50 ? address.slice(0, 47) + '…' : address);
+  const safeAddrShort = escapeHtml(address.length > 50 ? address.slice(0, 47) + 'â€¦' : address);
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Livably Report — ${escapeHtml(address)}</title>
+  <title>Livably Report â€” ${escapeHtml(address)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -762,7 +305,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer><\/script>
 </head>
 <body class="report-page">
-  <!-- Sticky nav — becomes visible on scroll -->
+  <!-- Sticky nav â€” becomes visible on scroll -->
   <nav class="report-nav no-print" id="reportNav" aria-hidden="true">
     <div class="nav-logo">Liv<span class="logo-gold">ably</span></div>
     <div class="nav-address">${safeAddrShort}</div>
@@ -811,17 +354,17 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     ${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${premiumSectionsHTML}
     <footer class="footer">
       <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
-      <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>
+      <div class="footer-meta">${researchDate} Â· ${escapeHtml(address)}</div>
       <div class="footer-legal">Drive times are estimates from Google Maps for 8am Tuesday departure. Assigned school requires verification with the local school district. For informational purposes only.</div>
       <div class="footer-actions no-print">
         <a id="pdfLink" href="#" class="btn-pdf" onclick="this.href='/report/pdf'+location.search.replace(/[?&]fetch=1/,'')">Download PDF</a>
       </div>
-      <a href="/" class="back-link no-print">← Back to address form</a>
+      <a href="/" class="back-link no-print">â† Back to address form</a>
     </footer>
   </div>
 
   <script>
-    // Sticky nav — appears after scrolling past hero
+    // Sticky nav â€” appears after scrolling past hero
     (function () {
       var nav = document.getElementById('reportNav');
       if (!nav) return;
@@ -864,7 +407,7 @@ function classifyError(error) {
 
 
 function buildErrorHTML(type, title, message, address, retryAfter) {
-  const icon = ERROR_ICONS[type] || '⚠️';
+  const icon = ERROR_ICONS[type] || 'âš ï¸';
   const tryAgainLink = address
     ? `\n    <a href="/?address=${encodeURIComponent(address)}" class="btn-retry">Try again</a>`
     : '';
@@ -918,7 +461,7 @@ function buildLoadingHTML(address) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Livably — Building your report…</title>
+  <title>Livably â€” Building your reportâ€¦</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -930,18 +473,18 @@ function buildLoadingHTML(address) {
   <div class="loading-progress-track">
     <div class="loading-progress-fill" id="loading-progress"></div>
   </div>
-  <p class="loading-message" id="loading-msg">Finding your address…</p>
+  <p class="loading-message" id="loading-msg">Finding your addressâ€¦</p>
   <script>
     (function () {
       var messages = [
-        'Finding your address…',
-        'Checking your flood zone…',
-        'Finding the nearest emergency room…',
-        'Calculating 8am Tuesday drive times…',
-        'Identifying native plants for your yard…',
-        'Locating nearby schools…',
-        'Checking air quality and radon zone…',
-        'Building your report…'
+        'Finding your addressâ€¦',
+        'Checking your flood zoneâ€¦',
+        'Finding the nearest emergency roomâ€¦',
+        'Calculating 8am Tuesday drive timesâ€¦',
+        'Identifying native plants for your yardâ€¦',
+        'Locating nearby schoolsâ€¦',
+        'Checking air quality and radon zoneâ€¦',
+        'Building your reportâ€¦'
       ];
       var msgEl = document.getElementById('loading-msg');
       var progressEl = document.getElementById('loading-progress');
@@ -970,21 +513,21 @@ function buildLoadingHTML(address) {
         clearInterval(cycleInterval);
         msgEl.style.opacity = '0';
         setTimeout(function () {
-          msgEl.textContent = 'This is taking longer than usual…';
+          msgEl.textContent = 'This is taking longer than usualâ€¦';
           msgEl.style.opacity = '1';
         }, 280);
       }, 18000);
 
       function startCountdown(retryFn) {
         var secs = 30;
-        msgEl.textContent = 'Too many requests. Retrying in ' + secs + 's…';
+        msgEl.textContent = 'Too many requests. Retrying in ' + secs + 'sâ€¦';
         var timer = setInterval(function () {
           secs--;
           if (secs <= 0) {
             clearInterval(timer);
             retryFn();
           } else {
-            msgEl.textContent = 'Too many requests. Retrying in ' + secs + 's…';
+            msgEl.textContent = 'Too many requests. Retrying in ' + secs + 'sâ€¦';
           }
         }, 1000);
       }
@@ -1063,7 +606,7 @@ app.get('/report', async (req, res) => {
     const origin = await geocodeAddress(address);
     const originLatLng = `${origin.lat},${origin.lng}`;
 
-    // Reverse geocode for city/state/county — used by crime data and property data
+    // Reverse geocode for city/state/county â€” used by crime data and property data
     const locationInfo = await reverseGeocodeAddress(originLatLng);
 
     const results = await Promise.allSettled([
@@ -1150,7 +693,7 @@ app.get('/report', async (req, res) => {
   }
 });
 
-// ── Admin ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 app.get('/admin/health', (req, res) => {
   const ip = req.ip || req.socket?.remoteAddress || '';
@@ -1173,7 +716,7 @@ app.get('/admin/health', (req, res) => {
         <td style="padding:6px 10px;font-family:monospace;font-size:13px">${fn}</td>
         <td style="padding:6px 10px;text-align:right">${f.failures}</td>
         <td style="padding:6px 10px;text-align:right;color:${f.flagged ? '#b8922a' : '#1a1a1a'};font-weight:${f.flagged ? '600' : '400'}">${pct(f.failureRate)}</td>
-        <td style="padding:6px 10px;font-size:12px;color:#555">${f.topErrors[0] || '—'}</td>
+        <td style="padding:6px 10px;font-size:12px;color:#555">${f.topErrors[0] || 'â€”'}</td>
       </tr>`).join('');
 
   const mitRows = Object.entries(mitigations)
@@ -1182,14 +725,14 @@ app.get('/admin/health', (req, res) => {
       <tr>
         <td style="padding:6px 10px;font-family:monospace;font-size:13px">${fn}</td>
         <td style="padding:6px 10px">${JSON.stringify(Object.fromEntries(Object.entries(m).filter(([k]) => !['reason','appliedAt'].includes(k))))}</td>
-        <td style="padding:6px 10px;font-size:12px;color:#555">${m.reason || '—'}</td>
-        <td style="padding:6px 10px;font-size:12px;color:#888">${m.appliedAt ? new Date(m.appliedAt).toLocaleDateString() : '—'}</td>
+        <td style="padding:6px 10px;font-size:12px;color:#555">${m.reason || 'â€”'}</td>
+        <td style="padding:6px 10px;font-size:12px;color:#888">${m.appliedAt ? new Date(m.appliedAt).toLocaleDateString() : 'â€”'}</td>
       </tr>`).join('');
 
   const errorRows = recentErrors.map((e) => `
     <tr>
       <td style="padding:5px 10px;font-size:12px;color:#888">${new Date(e.ts).toLocaleTimeString()}</td>
-      <td style="padding:5px 10px;font-family:monospace;font-size:12px">${e.fn || '—'}</td>
+      <td style="padding:5px 10px;font-family:monospace;font-size:12px">${e.fn || 'â€”'}</td>
       <td style="padding:5px 10px;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(e.address || '')}">${escapeHtml((e.address || '').slice(0, 40))}</td>
       <td style="padding:5px 10px;font-size:12px;color:#c0392b">${escapeHtml(e.errorMsg || '')}</td>
     </tr>`).join('');
@@ -1209,7 +752,7 @@ app.get('/admin/health', (req, res) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Livably — Health Dashboard</title>
+  <title>Livably â€” Health Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -1232,14 +775,14 @@ app.get('/admin/health', (req, res) => {
 </head>
 <body>
   <h1>Livably Health Dashboard</h1>
-  <div class="meta">7-day window · analyzed ${patterns?.analyzedAt ? new Date(patterns.analyzedAt).toLocaleString() : 'never'} · API usage resets on restart</div>
+  <div class="meta">7-day window Â· analyzed ${patterns?.analyzedAt ? new Date(patterns.analyzedAt).toLocaleString() : 'never'} Â· API usage resets on restart</div>
 
-  ${flagged.length ? `<div class="flag-banner">⚠️ <strong>${flagged.length} function${flagged.length > 1 ? 's' : ''} flagged:</strong> ${flagged.map(([fn, f]) => `${fn} (${pct(f.failureRate)})`).join(', ')}</div>` : ''}
+  ${flagged.length ? `<div class="flag-banner">âš ï¸ <strong>${flagged.length} function${flagged.length > 1 ? 's' : ''} flagged:</strong> ${flagged.map(([fn, f]) => `${fn} (${pct(f.failureRate)})`).join(', ')}</div>` : ''}
 
   <div class="cards">
     <div class="card">
       <div class="card-label">Total Requests (7d)</div>
-      <div class="card-value">${stats?.total ?? '—'}</div>
+      <div class="card-value">${stats?.total ?? 'â€”'}</div>
     </div>
     <div class="card">
       <div class="card-label">Success Rate (7d)</div>
@@ -1247,7 +790,7 @@ app.get('/admin/health', (req, res) => {
     </div>
     <div class="card">
       <div class="card-label">Errors (7d)</div>
-      <div class="card-value ${(stats?.error || 0) > 0 ? 'warn' : 'ok'}">${stats?.error ?? '—'}</div>
+      <div class="card-value ${(stats?.error || 0) > 0 ? 'warn' : 'ok'}">${stats?.error ?? 'â€”'}</div>
     </div>
     <div class="card">
       <div class="card-label">API Calls (24h)</div>
@@ -1296,7 +839,7 @@ function buildCompareFormHTML() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compare Addresses — Livably</title>
+  <title>Compare Addresses â€” Livably</title>
   <link rel="stylesheet" href="/report.css">
 </head>
 <body class="compare-page">
@@ -1343,14 +886,14 @@ function buildCompareLoadingHTML(addressesParam) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Livably — Comparing…</title>
+  <title>Livably â€” Comparingâ€¦</title>
   <link rel="stylesheet" href="/report.css">
 </head>
 <body class="loading-page" data-addresses="${escapeHtml(addressesParam)}">
   <div class="loading-container">
     <div class="loading-logo">Liv<span class="logo-gold">ably</span></div>
     <div class="loading-spinner"></div>
-    <p class="loading-message">Researching addresses…</p>
+    <p class="loading-message">Researching addressesâ€¦</p>
   </div>
   <script>
     (function () {
@@ -1415,9 +958,9 @@ function buildCompareResultsHTML(reports) {
     const validTimes = times.filter((t) => t !== null);
     const minTime = validTimes.length ? Math.min(...validTimes) : null;
     const cells = times.map((time) => {
-      if (time === null) return '<td class="compare-cell compare-cell-na">—</td>';
+      if (time === null) return '<td class="compare-cell compare-cell-na">â€”</td>';
       const best = time === minTime && validTimes.length > 1;
-      return `<td class="compare-cell${best ? ' compare-cell-best' : ''}">${time} min${best ? ' <span class="compare-winner">✓</span>' : ''}</td>`;
+      return `<td class="compare-cell${best ? ' compare-cell-best' : ''}">${time} min${best ? ' <span class="compare-winner">âœ“</span>' : ''}</td>`;
     }).join('');
     return `<tr><td class="compare-service">${escapeHtml(label)}</td>${cells}</tr>`;
   }).join('');
@@ -1432,7 +975,7 @@ function buildCompareResultsHTML(reports) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Address Comparison — Livably</title>
+  <title>Address Comparison â€” Livably</title>
   <link rel="stylesheet" href="/report.css">
 </head>
 <body class="compare-page">
@@ -1457,7 +1000,7 @@ function buildCompareResultsHTML(reports) {
         </tbody>
       </table>
     </div>
-    <a href="/compare" class="back-link">← Compare different addresses</a>
+    <a href="/compare" class="back-link">â† Compare different addresses</a>
   </div>
 </body>
 </html>`;
@@ -1516,7 +1059,7 @@ app.get('/admin/cache-stats', (req, res) => {
   res.json(cacheStats());
 });
 
-// ── PDF Export (FR-016) ──────────────────────────────────────────────────────
+// â”€â”€ PDF Export (FR-016) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let activePDFs = 0;
 
@@ -1540,7 +1083,7 @@ app.get('/report/pdf', async (req, res) => {
     browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
 
-    // Block external font CDN requests — prevents large font embedding in PDF.
+    // Block external font CDN requests â€” prevents large font embedding in PDF.
     // The report falls back to system fonts (Georgia / system-ui) which are print-friendly.
     await page.setRequestInterception(true);
     page.on('request', (req) => {
@@ -1577,7 +1120,7 @@ app.get('/report/pdf', async (req, res) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 ensureReportsFile();
 app.listen(port, () => {

@@ -5,6 +5,7 @@ const { renderBucket, renderBuckets }   = require('./buckets');
 const { renderChecklist }               = require('./checklist');
 const { renderDestCard, renderDestSection } = require('./destCard');
 const { renderFooter }                  = require('./footer');
+const { renderChapterCard }             = require('./chapterCard');
 
 module.exports = {
   renderKeyTakeaway,
@@ -13,4 +14,5 @@ module.exports = {
   renderChecklist,
   renderDestCard, renderDestSection,
   renderFooter,
+  renderChapterCard,
 };
