@@ -19,7 +19,7 @@ function buildTrafficItemHTML(name, traffic) {
     return `
       <div class="traffic-row">
         <span class="traffic-slot">${escapeHtml(v.display)}</span>
-        <div class="traffic-bar-track"><div class="traffic-bar ${barClass}" style="width:${widthPct}%"></div></div>
+        <div class="traffic-bar-track"><div class="traffic-bar ${barClass}" data-w="${widthPct}"></div></div>
         <span class="traffic-mins">${v.minutes}&nbsp;min${tagHTML}</span>
       </div>`;
   }).join('');

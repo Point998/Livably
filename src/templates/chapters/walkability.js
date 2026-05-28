@@ -109,8 +109,8 @@ function buildWalkabilityHTML(walk) {
 
   const walkFullHTML = `
     <div class="walk-verdict-block">
-      <div class="walk-score-num walk-score--${verdictMod}">${score}</div>
-      <div class="walk-score-label">walkability score (0–100)</div>
+      <div class="walk-display-num walk-display--${verdictMod}">${score}</div>
+      <div class="walk-display-label">walkability index (0–100)</div>
       <div class="prem-walk-verdict walk-verdict--${verdictMod}">${escapeHtml(category.label)}</div>
     </div>`;
 

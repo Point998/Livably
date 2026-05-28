@@ -173,7 +173,7 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
         <div class="grow-frost-inner">
           <div class="grow-frost-days">${frost.days}<span class="grow-frost-days-unit"> days</span></div>
           <div class="grow-frost-track" role="img" aria-label="Growing season: ${frost.days} days from ${escapeHtml(frost.lastSpring)} to ${escapeHtml(frost.firstFall)}">
-            <div class="grow-frost-fill" style="margin-left:${startPct}%" data-final-width="${fillWidth}%"></div>
+            <div class="grow-frost-fill" style="--start-pct:${startPct}" data-final-width="${fillWidth}%"></div>
           </div>
           <div class="grow-frost-labels">
             <span class="grow-frost-label">${escapeHtml(frost.lastSpring)}</span>

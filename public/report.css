@@ -1458,6 +1458,7 @@ body.report-page {
   height: 100%;
   background: var(--ch-garden);
   width: 0%;
+  margin-left: calc(var(--start-pct, 0) * 1%);
   transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
 }
 
@@ -1730,7 +1731,7 @@ body.report-page {
   border-radius: 12px;
 }
 
-.walk-score-num {
+.walk-display-num {
   font-family: 'Fraunces', serif;
   font-size: 72px;
   font-weight: 300;
@@ -1738,7 +1739,7 @@ body.report-page {
   line-height: 1;
 }
 
-.walk-score-label {
+.walk-display-label {
   font-size: 13px;
   color: var(--ink-60);
   margin-top: 4px;
@@ -2880,14 +2881,13 @@ body.report-page {
 .prem-flood-zone-name { color: inherit; }
 .prem-flood-zone-desc { color: inherit; opacity: 0.8; }
 
-/* ── Walkability Score Colors ────────────────────────────────────── */
-/* Replaces verdictColor inline style on .walk-score-num             */
+/* ── Walkability Display Colors ──────────────────────────────────── */
 
-.walk-score--green      { color: var(--walk-green);      }
-.walk-score--lightgreen { color: var(--walk-lightgreen); }
-.walk-score--gold       { color: var(--walk-gold);       }
-.walk-score--orange     { color: var(--walk-orange);     }
-.walk-score--red        { color: var(--walk-red);        }
+.walk-display--green      { color: var(--walk-green);      }
+.walk-display--lightgreen { color: var(--walk-lightgreen); }
+.walk-display--gold       { color: var(--walk-gold);       }
+.walk-display--orange     { color: var(--walk-orange);     }
+.walk-display--red        { color: var(--walk-red);        }
 
 /* ── Walkability Verdict Badge ───────────────────────────────────── */
 /* Replaces verdictColor/verdictBg inline attrs on .prem-walk-verdict */

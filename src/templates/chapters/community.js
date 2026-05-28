@@ -9,7 +9,7 @@ function buildDemographicsHTML(d) {
     return `
     <div class="prem-age-row">
       <span class="prem-age-label">${escapeHtml(label)}</span>
-      <div class="prem-age-track"><div class="prem-age-fill" style="width:${pct}%"></div></div>
+      <div class="prem-age-track"><div class="prem-age-fill" data-w="${pct}"></div></div>
       <span class="prem-age-pct">${pct}%</span>
     </div>`;
   }

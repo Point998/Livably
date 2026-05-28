@@ -119,13 +119,13 @@
   function initTrafficBars() {
     if (!window.IntersectionObserver) {
       document.querySelectorAll('.traffic-bar').forEach(function (b) {
-        if (b.dataset.finalWidth) b.style.width = b.dataset.finalWidth;
+        b.style.width = b.dataset.w !== undefined ? b.dataset.w + '%' : '0%';
       });
       return;
     }
 
     document.querySelectorAll('.traffic-bar').forEach(function (bar) {
-      var w = bar.style.width || '0%';
+      var w = bar.dataset.w !== undefined ? bar.dataset.w + '%' : '0%';
       bar.dataset.finalWidth = w;
       bar.style.width = '0';
     });
@@ -154,7 +154,7 @@
     if (!window.IntersectionObserver) return;
 
     document.querySelectorAll('.prem-age-fill').forEach(function (fill) {
-      var w = fill.style.width || '0%';
+      var w = fill.dataset.w !== undefined ? fill.dataset.w + '%' : '0%';
       fill.dataset.finalWidth = w;
       fill.style.width = '0';
     });
@@ -211,13 +211,13 @@
   }
 
   // ── 8. Bortle scale marker ─────────────────────────────
-  // Marker has inline style.left set to target; animate from 0.
+  // Marker position is stored in data-left; animate from 0 on scroll.
 
   function initBortleMarker() {
     var marker = document.querySelector('.prem-bortle-marker');
     if (!marker || reduced) return;
 
-    var targetLeft = marker.style.left || '50%';
+    var targetLeft = marker.dataset.left !== undefined ? marker.dataset.left + '%' : '50%';
     marker.style.left = '0%';
     marker.style.transition = 'none';
 

@@ -195,7 +195,7 @@ function buildSensoryEnvironmentalHTML(env) {
   const bortleFullHTML = `
     <div class="prem-bortle-scale">
       <div class="prem-bortle-track" role="img" aria-label="Bortle scale: ${bortleNum} of 9">
-        <div class="prem-bortle-marker" style="left:${bortlePct}%"></div>
+        <div class="prem-bortle-marker" data-left="${bortlePct}"></div>
       </div>
       <div class="prem-bortle-labels">
         <span>1 — Darkest skies</span>
