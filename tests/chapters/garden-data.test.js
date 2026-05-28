@@ -107,6 +107,31 @@ describe('categorizeSeasonalBirds', () => {
     expect(result.yearRound).toHaveLength(0);
     expect(result.spring).toHaveLength(0);
   });
+
+  test('bird in exactly 2 seasons is NOT classified as yearRound', () => {
+    const warbler = makeInatResult('Yellow Warbler', 'Setophaga petechia', 20);
+    const seasonal = {
+      spring: [warbler], summer: [warbler], fall: [], winter: [],
+    };
+    const result = categorizeSeasonalBirds(seasonal);
+    expect(result.yearRound.some((b) => b.name === 'Yellow Warbler')).toBe(false);
+    // Should appear in spring (first season it occurs in) not summer
+    expect(result.spring.some((b) => b.name === 'Yellow Warbler')).toBe(true);
+    expect(result.summer.some((b) => b.name === 'Yellow Warbler')).toBe(false);
+  });
+
+  test('bird in spring+summer appears only in spring output (no duplicates)', () => {
+    const bird = makeInatResult('Common Grackle', 'Quiscalus quiscula', 15);
+    const seasonal = {
+      spring: [bird], summer: [bird], fall: [], winter: [],
+    };
+    const result = categorizeSeasonalBirds(seasonal);
+    const allBirds = [
+      ...result.yearRound, ...result.spring, ...result.summer, ...result.fall, ...result.winter,
+    ];
+    const count = allBirds.filter((b) => b.name === 'Common Grackle').length;
+    expect(count).toBe(1);
+  });
 });
 
 describe('categorizePlantsByForm', () => {

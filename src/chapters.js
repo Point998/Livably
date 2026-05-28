@@ -1005,7 +1005,6 @@ function categorizeSeasonalBirds({ spring, summer, fall, winter }) {
   };
 
   const yearRoundItems = dedup(allRaw.filter((r) => yearRoundSci.has(r.taxon.name))).slice(0, 8);
-  yearRoundItems.forEach((b) => seen.add(b.sci));
 
   const seasonal = (arr) => (arr || [])
     .filter((r) => !yearRoundSci.has(r.taxon.name) && r.taxon.preferred_common_name)
@@ -1096,14 +1095,15 @@ async function getGardenData(lat, lng, locationInfo) {
 
   const val = (r, fallback) => r.status === 'fulfilled' ? r.value : fallback;
   const rawNativePlants = val(nativePlantsRes, []);
+  const filteredNativePlants = filterNativePlants(rawNativePlants);
 
   return {
     hardinessZone:  val(zoneRes, null),
-    nativePlants:   filterNativePlants(rawNativePlants),
+    nativePlants:   filteredNativePlants,
     invasivePlants: filterInvasivePlants(val(invasivePlantsRes, [])),
     wildlife:       filterWildlife(val(wildlifeRes, [])),
     birds:          filterBirds(val(birdsRes, [])),
-    nativePlantsByForm: categorizePlantsByForm(filterNativePlants(rawNativePlants.slice(0, 50))),
+    nativePlantsByForm: categorizePlantsByForm(filteredNativePlants),
     reptiles:       filterReptiles(val(reptilesRes, [])),
     insects:        filterInsects(val(insectsRes, [])),
     butterflies:    filterButterflies(val(butterfliesRes, [])),
