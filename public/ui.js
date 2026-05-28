@@ -295,6 +295,51 @@
     });
   }
 
+  // ── 12. Garden deep dive — toggle + tab switching ─────
+
+  function initGardenDeepDive() {
+    var toggles = document.querySelectorAll('.garden-deep-toggle');
+    toggles.forEach(function(toggle) {
+      var dive = toggle.nextElementSibling;
+      if (!dive) return;
+      toggle.addEventListener('click', function() {
+        var expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        if (expanded) {
+          dive.hidden = true;
+        } else {
+          dive.hidden = false;
+        }
+      });
+    });
+
+    var navs = document.querySelectorAll('.garden-tab-nav');
+    navs.forEach(function(nav) {
+      var deepDive = nav.closest('.garden-deep-dive');
+      var panels = deepDive ? deepDive.querySelectorAll('.garden-tab-panel') : [];
+      nav.addEventListener('click', function(e) {
+        var btn = e.target.closest('[role="tab"]');
+        if (!btn) return;
+        var tabId = btn.getAttribute('aria-controls');
+        nav.querySelectorAll('[role="tab"]').forEach(function(t) {
+          t.setAttribute('aria-selected', 'false');
+          t.classList.remove('garden-tab--active');
+        });
+        btn.setAttribute('aria-selected', 'true');
+        btn.classList.add('garden-tab--active');
+        panels.forEach(function(panel) {
+          panel.classList.remove('garden-tab-panel--active');
+          panel.hidden = true;
+        });
+        var activePanel = document.getElementById(tabId);
+        if (activePanel) {
+          activePanel.classList.add('garden-tab-panel--active');
+          activePanel.hidden = false;
+        }
+      });
+    });
+  }
+
   // ── Init ───────────────────────────────────────────────
 
   function run() {
@@ -309,6 +354,7 @@
     initBortleMarker();
     initDestItems();
     initFocusRing();
+    initGardenDeepDive();
 
     // Initialize Lucide icons if available
     if (window.lucide) window.lucide.createIcons();
