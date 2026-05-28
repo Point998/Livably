@@ -1,6 +1,6 @@
 'use strict';
 
-// Premium data module — FR-017 through FR-024 (excluding FR-022 paywall)
+// Chapter data module — FR-017 through FR-024
 
 const { discoverDevelopments } = require('./development-discovery');
 const { haversineDistance } = require('./utils/geo');
@@ -1130,7 +1130,7 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
 
 // ── Master fetch ──────────────────────────────────────────────────────────────
 
-async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
+async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
   const fips = await getCensusFIPS(lat, lng);
 
   const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel, gardenData] =
@@ -1168,9 +1168,9 @@ async function getPremiumData({ lat, lng, originLatLng, locationInfo, googleMaps
 
 // ── HTML builders ──────────────────────────────────────────────────────────────
 
-// badgeColor and premiumCard extracted to src/templates/components/
+// badgeColor and chapterCard extracted to src/templates/components/
 const badgeColor = badgeClass;
-const premiumCard = renderChapterCard;
+const chapterCard = renderChapterCard;
 
 // FR-017: Schools & Education
 const { buildSchoolRatingsHTML } = require('./templates/chapters/schools');
@@ -1185,20 +1185,20 @@ const { buildGrowthAndDevelopmentHTML } = require('./templates/chapters/growth')
 const { buildPropertyIntelligenceHTML } = require('./templates/chapters/property');
 
 
-function buildPremiumSectionsHTML(premium) {
-  if (!premium) return '';
+function buildChaptersHTML(chapters) {
+  if (!chapters) return '';
   return [
-    buildSchoolRatingsHTML(premium.schools),
-    buildCrimeHTML(premium.safetyLocation, premium.emergency),
-    buildDemographicsHTML(premium.demographics),
-    buildGrowthAndDevelopmentHTML(premium.growth),
-    buildClimateChapterHTML(premium.environment, premium.locationInfo),
-    buildWhatWillGrowHTML(premium.gardenData, premium.propIntel?.soil, premium.locationInfo),
-    buildPropertyIntelligenceHTML(premium.propIntel),
-    buildSensoryEnvironmentalHTML(premium.environment),
-    buildWalkabilityHTML(premium.walkability),
-    buildPropertyDataHTML(premium.propertyData),
+    buildSchoolRatingsHTML(chapters.schools),
+    buildCrimeHTML(chapters.safetyLocation, chapters.emergency),
+    buildDemographicsHTML(chapters.demographics),
+    buildGrowthAndDevelopmentHTML(chapters.growth),
+    buildClimateChapterHTML(chapters.environment, chapters.locationInfo),
+    buildWhatWillGrowHTML(chapters.gardenData, chapters.propIntel?.soil, chapters.locationInfo),
+    buildPropertyIntelligenceHTML(chapters.propIntel),
+    buildSensoryEnvironmentalHTML(chapters.environment),
+    buildWalkabilityHTML(chapters.walkability),
+    buildPropertyDataHTML(chapters.propertyData),
   ].join('');
 }
 
-module.exports = { getPremiumData, buildPremiumSectionsHTML };
+module.exports = { getChapterData, buildChaptersHTML };

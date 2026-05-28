@@ -14,13 +14,13 @@ const mockFindNearestSchool = jest.fn();
 const mockFindNearestElementarySchool = jest.fn();
 const mockFindNearestPark = jest.fn();
 const mockFindNearestCoffeeShop = jest.fn();
-const mockGetPremiumData = jest.fn();
+const mockGetChapterData = jest.fn();
 const mockSaveReport = jest.fn();
 const mockLogRequest = jest.fn();
 const mockLogError = jest.fn();
 const mockLogAnalysis = jest.fn();
 const mockBuildReportHTML = jest.fn();
-const mockBuildPremiumSectionsHTML = jest.fn();
+const mockBuildChaptersHTML = jest.fn();
 
 jest.mock('../../src/shared/google/geocoding', () => ({ geocodeAddress: mockGeocodeAddress }));
 jest.mock('../../src/shared/google/reverseGeocode', () => ({ reverseGeocodeAddress: mockReverseGeocode }));
@@ -31,7 +31,7 @@ jest.mock('../../src/modules/access/data', () => ({ findNearestHighwayOnRamp: mo
 jest.mock('../../src/modules/health/data', () => ({ findNearestHospital: mockFindNearestHospital, findNearestUrgentCare: mockFindNearestUrgentCare }));
 jest.mock('../../src/modules/schools/data', () => ({ findNearestSchool: mockFindNearestSchool, findNearestElementarySchool: mockFindNearestElementarySchool }));
 jest.mock('../../src/modules/recreation/data', () => ({ findNearestPark: mockFindNearestPark, findNearestCoffeeShop: mockFindNearestCoffeeShop }));
-jest.mock('../../src/premium', () => ({ getPremiumData: mockGetPremiumData, buildPremiumSectionsHTML: mockBuildPremiumSectionsHTML }));
+jest.mock('../../src/chapters', () => ({ getChapterData: mockGetChapterData, buildChaptersHTML: mockBuildChaptersHTML }));
 jest.mock('../../src/services/reportStore', () => ({ saveReport: mockSaveReport }));
 jest.mock('../../src/logger', () => ({ logRequest: mockLogRequest, logError: mockLogError, logAnalysis: mockLogAnalysis }));
 jest.mock('../../src/templates/pages/reportPage', () => ({ buildReportHTML: mockBuildReportHTML }));
@@ -55,11 +55,11 @@ beforeEach(() => {
   mockFindNearestPark.mockResolvedValue(null);
   mockFindNearestCoffeeShop.mockResolvedValue(null);
   mockFindNearestElementarySchool.mockResolvedValue(null);
-  mockGetPremiumData.mockResolvedValue(null);
+  mockGetChapterData.mockResolvedValue(null);
   mockGetTrafficVariations.mockResolvedValue(null);
   mockSaveReport.mockReturnValue('abc12345');
   mockBuildReportHTML.mockReturnValue('<html>report</html>');
-  mockBuildPremiumSectionsHTML.mockReturnValue('');
+  mockBuildChaptersHTML.mockReturnValue('');
 });
 
 describe('buildReport', () => {

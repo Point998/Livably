@@ -54,7 +54,7 @@ describe('buildReportHTML', () => {
     grocery: null, pharmacy: null, hospital: null, urgentCare: null,
     highwayRamp: null, school: null, gasStation: null, park: null,
     coffeeShop: null, elementarySchool: null, customDestinations: [],
-    trafficData: [], origin: { lat: 38.3, lng: -84.4 }, reportId: null, premium: null,
+    trafficData: [], origin: { lat: 38.3, lng: -84.4 }, reportId: null, chapters: null,
   };
 
   test('returns a complete HTML document', () => {

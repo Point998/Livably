@@ -130,11 +130,10 @@ function buildClimateChapterHTML(environment, locationInfo) {
   return renderChapterCard('climate', '09', cloudSvg, 'Climate & Weather Risks', 'The risks that come with the address, not just the house.', null, leftHTML, null, floodBannerHTML, null);
 }
 
-// getTornadoTier is needed here — imported from premium.js indirectly via the caller.
+// getTornadoTier is needed here — imported from chapters.js indirectly via the caller.
 // For now, callers pass locationInfo which has already been processed — the tornado tier
-// is computed in premium.js before calling this function. This function receives `environment`
+// is computed in chapters.js before calling this function. This function receives `environment`
 // which already includes the tornado context via the caller chain.
-// TODO (FR-041): move getTornadoTier to shared/constants or utils when reportBuilder is built.
 function getTornadoTier(state) {
   const { TORNADO_TIER } = require('../../utils/constants');
   if (TORNADO_TIER.high.includes(state))     return { tier: 'High',     color: 'orange', note: `${state} averages among the highest tornado frequency in the US. Verify home has an interior shelter or basement.` };

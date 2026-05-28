@@ -1,7 +1,7 @@
 'use strict';
 
 // Single source of truth for all hardcoded arrays, objects, thresholds, and
-// magic numbers previously scattered across app.js, premium.js, and
+// magic numbers previously scattered across app.js, chapters.js, and
 // development-discovery.js. This file imports from nothing.
 
 // ── Search Radii (meters unless noted) ───────────────────────────────────────

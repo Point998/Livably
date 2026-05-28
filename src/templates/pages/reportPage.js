@@ -5,7 +5,7 @@ const { HIGHWAY_MAX_DRIVE_MINUTES } = require('../../utils/constants');
 const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('../chapters/reachability');
 const { buildTrafficCardHTML } = require('../chapters/traffic');
 const { buildHealthSafetyChapterHTML } = require('../chapters/health');
-const { buildPremiumSectionsHTML } = require('../../premium');
+const { buildChaptersHTML } = require('../../chapters');
 
 function buildGrocerySection(stores) {
   const label = '<div class="dest-label">Grocery Stores</div>';
@@ -65,9 +65,9 @@ function buildSchoolSection(school) {
 }
 
 
-function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
+function buildHeroInsightRowsHTML(hospital, school, highwayRamp, chapters) {
   const findings = [];
-  const env = premium?.environment;
+  const env = chapters?.environment;
 
   const flood = env?.floodRisk;
   if (flood) {
@@ -139,7 +139,7 @@ function buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium) {
 }
 
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, premium }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, chapters }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -157,11 +157,11 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
-  const premiumSectionsHTML = buildPremiumSectionsHTML(premium || null);
-  const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, premium?.emergency);
+  const chapterSectionsHTML = buildChaptersHTML(chapters || null);
+  const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, chapters?.emergency);
 
   // Hero At-a-Glance insight rows (rendered inside the editorial hero block)
-  const heroInsightRowsHTML = buildHeroInsightRowsHTML(hospital, school, highwayRamp, premium);
+  const heroInsightRowsHTML = buildHeroInsightRowsHTML(hospital, school, highwayRamp, chapters);
 
   const safeAddrJS = JSON.stringify(address).replace(/</g, '\\u003c');
   const saveHistoryScriptHTML = `
@@ -270,7 +270,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
       </div>
     </section>
     <div class="chapter-rule"></div>
-    ${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${premiumSectionsHTML}
+    ${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${chapterSectionsHTML}
     <footer class="footer">
       <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
       <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>

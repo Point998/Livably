@@ -9,7 +9,7 @@ const { findNearestHighwayOnRamp } = require('../modules/access/data');
 const { findNearestHospital, findNearestUrgentCare } = require('../modules/health/data');
 const { findNearestSchool, findNearestElementarySchool } = require('../modules/schools/data');
 const { findNearestPark, findNearestCoffeeShop } = require('../modules/recreation/data');
-const { getPremiumData } = require('../premium');
+const { getChapterData } = require('../chapters');
 const { saveReport } = require('./reportStore');
 const { logRequest, logError, logAnalysis } = require('../logger');
 const { buildReportHTML } = require('../templates/pages/reportPage');
@@ -96,9 +96,9 @@ async function buildReport(address, options = {}) {
     .filter((t) => t.traffic !== null);
 
   const highwayDriveMinutes = highwayRamp?.driveTimeMinutes ?? null;
-  let premium = null;
+  let chapters = null;
   try {
-    premium = await getPremiumData({
+    chapters = await getChapterData({
       lat: origin.lat,
       lng: origin.lng,
       originLatLng,
@@ -108,9 +108,9 @@ async function buildReport(address, options = {}) {
       getDriveTime,
       highwayDriveMinutes,
     });
-  } catch (premErr) {
-    console.error('[Premium] fetch error:', premErr.message);
-    logError('getPremiumData', address, premErr);
+  } catch (chapErr) {
+    console.error('[Chapters] fetch error:', chapErr.message);
+    logError('getChapterData', address, chapErr);
   }
 
   let reportId = null;
@@ -121,7 +121,7 @@ async function buildReport(address, options = {}) {
   const html = buildReportHTML(address, {
     grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation,
     park, coffeeShop, elementarySchool, customDestinations, trafficData,
-    origin, reportId, premium,
+    origin, reportId, chapters,
   });
 
   return { html, reportId, address };
