@@ -29,10 +29,18 @@ const INAT_BIRDS_RADIUS_KM           = 16;
 const GROCERY_CANDIDATE_COUNT          = 8;
 const HOSPITAL_CANDIDATE_COUNT         = 5;
 const COFFEE_SHOP_CANDIDATE_COUNT      = 5;
-const INAT_NATIVE_PLANTS_PER_PAGE      = 30;
+const INAT_NATIVE_PLANTS_PER_PAGE      = 50;
 const INAT_INVASIVE_PLANTS_PER_PAGE    = 25;
 const INAT_WILDLIFE_PER_PAGE           = 15;
 const INAT_BIRDS_PER_PAGE              = 20;
+
+// Garden deep dive — Level 3 taxon queries
+const INAT_REPTILES_RADIUS_KM      = 16;
+const INAT_REPTILES_PER_PAGE       = 15;
+const INAT_INSECTS_RADIUS_KM       = 16;
+const INAT_INSECTS_PER_PAGE        = 20;
+const INAT_BUTTERFLIES_RADIUS_KM   = 16;
+const INAT_BUTTERFLIES_PER_PAGE    = 20;
 
 // ── Highway Thresholds ────────────────────────────────────────────────────────
 
@@ -236,6 +244,140 @@ const BENIGN_INTRODUCED = new Set([
 const DOMESTIC_MAMMALS = new Set([
   'felis catus', 'canis lupus familiaris', 'sus scrofa domesticus',
   'myocastor coypus',
+]);
+
+// ── Garden: Plant growth form lookup (scientific name lowercase → form) ────────
+const PLANT_GROWTH_FORMS = new Map([
+  // Trees — canopy
+  ['quercus alba', 'tree'], ['quercus rubra', 'tree'], ['quercus macrocarpa', 'tree'],
+  ['quercus velutina', 'tree'], ['quercus stellata', 'tree'], ['quercus palustris', 'tree'],
+  ['quercus bicolor', 'tree'], ['quercus coccinea', 'tree'], ['quercus imbricaria', 'tree'],
+  ['acer saccharum', 'tree'], ['acer rubrum', 'tree'], ['acer saccharinum', 'tree'],
+  ['acer negundo', 'tree'], ['acer pensylvanicum', 'tree'],
+  ['liriodendron tulipifera', 'tree'], ['platanus occidentalis', 'tree'],
+  ['juglans nigra', 'tree'], ['carya ovata', 'tree'], ['carya illinoinensis', 'tree'],
+  ['carya cordiformis', 'tree'], ['carya laciniosa', 'tree'], ['carya tomentosa', 'tree'],
+  ['fagus grandifolia', 'tree'], ['betula nigra', 'tree'], ['betula papyrifera', 'tree'],
+  ['betula occidentalis', 'tree'], ['betula lenta', 'tree'],
+  ['fraxinus americana', 'tree'], ['fraxinus pennsylvanica', 'tree'],
+  ['ulmus americana', 'tree'], ['ulmus rubra', 'tree'],
+  ['nyssa sylvatica', 'tree'], ['liquidambar styraciflua', 'tree'],
+  ['prunus serotina', 'tree'], ['prunus americana', 'tree'],
+  ['sassafras albidum', 'tree'], ['oxydendrum arboreum', 'tree'],
+  ['magnolia virginiana', 'tree'], ['magnolia acuminata', 'tree'],
+  ['tilia americana', 'tree'], ['celtis occidentalis', 'tree'],
+  ['gleditsia triacanthos', 'tree'], ['gymnocladus dioicus', 'tree'],
+  ['pinus strobus', 'tree'], ['pinus resinosa', 'tree'], ['pinus ponderosa', 'tree'],
+  ['pinus contorta', 'tree'], ['pinus echinata', 'tree'], ['pinus virginiana', 'tree'],
+  ['pseudotsuga menziesii', 'tree'], ['abies balsamea', 'tree'], ['abies lasiocarpa', 'tree'],
+  ['picea glauca', 'tree'], ['picea engelmannii', 'tree'], ['picea rubens', 'tree'],
+  ['tsuga canadensis', 'tree'], ['thuja occidentalis', 'tree'],
+  ['populus tremuloides', 'tree'], ['populus deltoides', 'tree'], ['populus grandidentata', 'tree'],
+  ['larix laricina', 'tree'], ['larix occidentalis', 'tree'],
+  // Trees — understory
+  ['cercis canadensis', 'tree'], ['cornus florida', 'tree'], ['cornus alternifolia', 'tree'],
+  ['amelanchier arborea', 'tree'], ['amelanchier laevis', 'tree'], ['amelanchier alnifolia', 'tree'],
+  ['hamamelis virginiana', 'tree'], ['chionanthus virginicus', 'tree'],
+  ['halesia carolina', 'tree'], ['asimina triloba', 'tree'],
+  ['carpinus caroliniana', 'tree'], ['ostrya virginiana', 'tree'],
+  ['crataegus mollis', 'tree'], ['crataegus crus-galli', 'tree'],
+  ['acer glabrum', 'tree'], ['acer circinatum', 'tree'],
+  ['diospyros virginiana', 'tree'],
+  // Shrubs
+  ['lindera benzoin', 'shrub'], ['cephalanthus occidentalis', 'shrub'],
+  ['sambucus canadensis', 'shrub'], ['sambucus racemosa', 'shrub'],
+  ['physocarpus opulifolius', 'shrub'], ['callicarpa americana', 'shrub'],
+  ['symphoricarpos orbiculatus', 'shrub'], ['symphoricarpos albus', 'shrub'],
+  ['rhododendron maximum', 'shrub'], ['rhododendron catawbiense', 'shrub'],
+  ['rhododendron periclymenoides', 'shrub'], ['rhododendron viscosum', 'shrub'],
+  ['kalmia latifolia', 'shrub'], ['kalmia angustifolia', 'shrub'],
+  ['ilex verticillata', 'shrub'], ['ilex glabra', 'shrub'], ['ilex opaca', 'shrub'],
+  ['vaccinium corymbosum', 'shrub'], ['vaccinium angustifolium', 'shrub'],
+  ['vaccinium membranaceum', 'shrub'],
+  ['viburnum lentago', 'shrub'], ['viburnum prunifolium', 'shrub'],
+  ['viburnum dentatum', 'shrub'], ['viburnum trilobum', 'shrub'], ['viburnum acerifolium', 'shrub'],
+  ['prunus virginiana', 'shrub'], ['prunus pumila', 'shrub'],
+  ['ribes americanum', 'shrub'], ['ribes cereum', 'shrub'], ['ribes odoratum', 'shrub'],
+  ['rosa carolina', 'shrub'], ['rosa palustris', 'shrub'], ['rosa woodsii', 'shrub'],
+  ['spiraea alba', 'shrub'], ['spiraea tomentosa', 'shrub'],
+  ['alnus serrulata', 'shrub'], ['alnus incana', 'shrub'],
+  ['salix exigua', 'shrub'], ['salix humilis', 'shrub'],
+  ['corylus americana', 'shrub'], ['corylus cornuta', 'shrub'],
+  ['myrica pensylvanica', 'shrub'], ['comptonia peregrina', 'shrub'],
+  ['dirca palustris', 'shrub'], ['fothergilla gardenii', 'shrub'],
+  ['artemisia tridentata', 'shrub'], ['purshia tridentata', 'shrub'],
+  ['chrysothamnus nauseosus', 'shrub'],
+  // Perennials / herbaceous
+  ['echinacea purpurea', 'perennial'], ['echinacea pallida', 'perennial'],
+  ['rudbeckia hirta', 'perennial'], ['rudbeckia laciniata', 'perennial'],
+  ['monarda fistulosa', 'perennial'], ['monarda didyma', 'perennial'],
+  ['solidago canadensis', 'perennial'], ['solidago rugosa', 'perennial'],
+  ['solidago speciosa', 'perennial'], ['solidago odora', 'perennial'],
+  ['symphyotrichum novae-angliae', 'perennial'], ['symphyotrichum oblongifolium', 'perennial'],
+  ['symphyotrichum cordifolium', 'perennial'], ['symphyotrichum laeve', 'perennial'],
+  ['phlox divaricata', 'perennial'], ['phlox stolonifera', 'perennial'], ['phlox paniculata', 'perennial'],
+  ['aquilegia canadensis', 'perennial'], ['aquilegia flavescens', 'perennial'],
+  ['geranium maculatum', 'perennial'], ['lobelia cardinalis', 'perennial'],
+  ['lobelia siphilitica', 'perennial'], ['mertensia virginica', 'perennial'],
+  ['sanguinaria canadensis', 'perennial'], ['podophyllum peltatum', 'perennial'],
+  ['coreopsis lanceolata', 'perennial'], ['coreopsis tripteris', 'perennial'],
+  ['heliopsis helianthoides', 'perennial'], ['helianthus mollis', 'perennial'],
+  ['baptisia australis', 'perennial'], ['liatris spicata', 'perennial'],
+  ['liatris pycnostachya', 'perennial'], ['penstemon digitalis', 'perennial'],
+  ['penstemon hirsutus', 'perennial'], ['penstemon strictus', 'perennial'],
+  ['allium cernuum', 'perennial'], ['allium canadense', 'perennial'],
+  ['eryngium yuccifolium', 'perennial'], ['asclepias tuberosa', 'perennial'],
+  ['asclepias syriaca', 'perennial'], ['asclepias incarnata', 'perennial'],
+  ['amsonia tabernaemontana', 'perennial'], ['ruellia caroliniensis', 'perennial'],
+  ['silphium perfoliatum', 'perennial'], ['silphium laciniatum', 'perennial'],
+  ['ratibida pinnata', 'perennial'], ['agastache foeniculum', 'perennial'],
+  ['verbena hastata', 'perennial'], ['vernonia noveboracensis', 'perennial'],
+  ['eupatorium maculatum', 'perennial'], ['eutrochium purpureum', 'perennial'],
+  ['trillium grandiflorum', 'perennial'], ['trillium erectum', 'perennial'],
+  ['balsamorhiza sagittata', 'perennial'], ['castilleja miniata', 'perennial'],
+  ['eriogonum umbellatum', 'perennial'], ['lupinus argenteus', 'perennial'],
+  ['gaillardia aristata', 'perennial'], ['arnica cordifolia', 'perennial'],
+  // Grasses / sedges
+  ['schizachyrium scoparium', 'grass'], ['andropogon gerardii', 'grass'],
+  ['sorghastrum nutans', 'grass'], ['panicum virgatum', 'grass'],
+  ['bouteloua curtipendula', 'grass'], ['bouteloua gracilis', 'grass'],
+  ['carex pensylvanica', 'grass'], ['carex stricta', 'grass'],
+  ['festuca idahoensis', 'grass'], ['nassella viridula', 'grass'],
+  // Vines
+  ['parthenocissus quinquefolia', 'vine'], ['lonicera sempervirens', 'vine'],
+  ['clematis virginiana', 'vine'], ['campsis radicans', 'vine'],
+  ['wisteria frutescens', 'vine'],
+]);
+
+// ── Garden: Monarch migration corridor states ─────────────────────────────────
+const MONARCH_CORRIDOR_STATES = new Set([
+  'TX', 'OK', 'KS', 'NE', 'IA', 'MO', 'IL', 'IN', 'KY', 'TN', 'OH', 'MI',
+  'MN', 'WI', 'AR', 'MS', 'AL', 'GA', 'FL', 'SC', 'NC', 'VA', 'WV', 'PA',
+  'NY', 'NJ', 'MD', 'DE', 'CT', 'MA', 'RI', 'NH', 'VT', 'ME', 'LA', 'SD',
+  'ND',
+]);
+
+// Native milkweed species by state — for monarch waystation recommendations
+const MILKWEED_BY_STATE = {
+  KY: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Purple Milkweed (Asclepias purpurascens)', 'Swamp Milkweed (Asclepias incarnata)'],
+  IN: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Swamp Milkweed (Asclepias incarnata)', 'Poke Milkweed (Asclepias exaltata)'],
+  OH: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Swamp Milkweed (Asclepias incarnata)'],
+  IL: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Whorled Milkweed (Asclepias verticillata)'],
+  MO: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Green-flowered Milkweed (Asclepias viridiflora)'],
+  TX: ['Antelope Horn Milkweed (Asclepias asperula)', 'Green-flowered Milkweed (Asclepias viridiflora)', 'Zizotes Milkweed (Asclepias oenotheroides)'],
+  FL: ['Sandhill Milkweed (Asclepias humistrata)', 'Butterfly Weed (Asclepias tuberosa)', 'White Milkweed (Asclepias variegata)'],
+  GA: ['Butterfly Weed (Asclepias tuberosa)', 'Swamp Milkweed (Asclepias incarnata)', 'White Milkweed (Asclepias variegata)'],
+  MN: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Whorled Milkweed (Asclepias verticillata)'],
+  WI: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Swamp Milkweed (Asclepias incarnata)'],
+  MI: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Swamp Milkweed (Asclepias incarnata)'],
+  _default: ['Common Milkweed (Asclepias syriaca)', 'Butterfly Weed (Asclepias tuberosa)', 'Swamp Milkweed (Asclepias incarnata)'],
+};
+
+// ── Garden: Firefly habitat — eastern US states where fireflies are common ────
+const FIREFLY_STATES = new Set([
+  'AL', 'AR', 'CT', 'DE', 'FL', 'GA', 'IL', 'IN', 'KY', 'LA', 'MA', 'MD',
+  'ME', 'MI', 'MN', 'MO', 'MS', 'NC', 'NH', 'NJ', 'NY', 'OH', 'PA', 'RI',
+  'SC', 'TN', 'TX', 'VA', 'VT', 'WI', 'WV',
 ]);
 
 // ── State Financial Tables ────────────────────────────────────────────────────
@@ -462,6 +604,12 @@ module.exports = {
   INAT_INVASIVE_PLANTS_PER_PAGE,
   INAT_WILDLIFE_PER_PAGE,
   INAT_BIRDS_PER_PAGE,
+  INAT_REPTILES_RADIUS_KM,
+  INAT_REPTILES_PER_PAGE,
+  INAT_INSECTS_RADIUS_KM,
+  INAT_INSECTS_PER_PAGE,
+  INAT_BUTTERFLIES_RADIUS_KM,
+  INAT_BUTTERFLIES_PER_PAGE,
   // Highway
   HIGHWAY_MAX_DRIVE_MINUTES,
   HIGHWAY_INTERCHANGE_MAX_MINUTES,
@@ -499,6 +647,10 @@ module.exports = {
   NATIVE_PLANT_EXCLUDE_NAMES,
   BENIGN_INTRODUCED,
   DOMESTIC_MAMMALS,
+  PLANT_GROWTH_FORMS,
+  MONARCH_CORRIDOR_STATES,
+  MILKWEED_BY_STATE,
+  FIREFLY_STATES,
   // State data
   STATE_TAX_RATES,
   STATE_INSURANCE_ANNUAL,
