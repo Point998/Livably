@@ -26,7 +26,7 @@ const gardenData = {
   insects: [{ name: 'Monarch Butterfly', sci: 'Danaus plexippus', count: 20 }],
   butterflies: [
     { name: 'Eastern Tiger Swallowtail', sci: 'Papilio glaucus', count: 35 },
-    { name: 'Eastern Bluebird', sci: 'Sialia sialis', count: 18 },
+    { name: 'Cabbage White', sci: 'Pieris rapae', count: 12 },
   ],
   birdsBySeason: {
     yearRound: [{ name: 'Northern Cardinal', sci: 'Cardinalis cardinalis', count: 80 }],
@@ -124,5 +124,21 @@ describe('buildWhatWillGrowHTML', () => {
     // CSS custom properties (style="--token:value") are allowed; direct style attributes are not
     const violations = html.match(/style="(?!--)[^"]+"/g);
     expect(violations).toBeNull();
+  });
+
+  test('renders invasives empty-state text when no invasives', () => {
+    const noInvasives = { ...gardenData, invasivePlants: [] };
+    const html = buildWhatWillGrowHTML(noInvasives, soil, locationInfo);
+    expect(html).toMatch(/No invasive plant observations/i);
+  });
+
+  test('renders birds fallback when no seasonal data', () => {
+    const noSeasonal = {
+      ...gardenData,
+      birdsBySeason: { yearRound: [], spring: [], summer: [], fall: [], winter: [] },
+    };
+    const html = buildWhatWillGrowHTML(noSeasonal, soil, locationInfo);
+    // Should still render without crash and show general birds
+    expect(html).toMatch(/Northern Cardinal/);
   });
 });

@@ -196,16 +196,13 @@ function buildGardenDeepDiveHTML(gardenData, soil, locationInfo) {
   if (!gardenData) return '';
   const { hardinessZone, nativePlantsByForm, invasivePlants, reptiles,
           butterflies, birdsBySeason, monarchCorridor, fireflyHabitat } = gardenData;
-  const state  = locationInfo?.state  || '';
-  const county = locationInfo?.county || '';
-
   const tabs = [
     { id: 'trees',       label: 'Trees',            content: buildTreesTab(nativePlantsByForm, hardinessZone)                                   },
     { id: 'shrubs',      label: 'Shrubs & Flowers', content: buildShrubsTab(nativePlantsByForm, hardinessZone)                                   },
     { id: 'food',        label: 'Food Garden',      content: buildFoodGardenTab(hardinessZone, soil)                                             },
     { id: 'birds',       label: 'Birds',            content: buildBirdsTab(birdsBySeason, gardenData.birds)                                      },
     { id: 'pollinators', label: 'Pollinators',      content: buildPollinatorsTab(butterflies, monarchCorridor, fireflyHabitat)                    },
-    { id: 'wildlife',    label: 'Wildlife',         content: buildWildlifeTab(gardenData.wildlife, reptiles, gardenData.insects)                  },
+    { id: 'wildlife',    label: 'Wildlife',         content: buildWildlifeTab(gardenData.wildlife, reptiles)                                    },
     { id: 'calendar',   label: 'Month by Month',   content: buildSeasonalCalendarTab(hardinessZone, birdsBySeason, monarchCorridor)              },
     { id: 'remove',      label: 'What to Remove',  content: buildInvasivesTab(invasivePlants)                                                    },
   ];
@@ -215,7 +212,7 @@ function buildGardenDeepDiveHTML(gardenData, soil, locationInfo) {
   ).join('');
 
   const tabPanels = tabs.map((t, i) =>
-    `<div class="garden-tab-panel${i === 0 ? ' garden-tab-panel--active' : ''}" id="gtab-${t.id}" role="tabpanel" aria-labelledby="gbtn-${t.id}">${t.content}</div>`
+    `<div class="garden-tab-panel${i === 0 ? ' garden-tab-panel--active' : ''}" id="gtab-${t.id}" role="tabpanel" aria-labelledby="gbtn-${t.id}"${i === 0 ? '' : ' hidden'}>${t.content}</div>`
   ).join('');
 
   return `
@@ -237,7 +234,7 @@ function buildTreesTab(byForm, hardinessZone) {
   const trees = (byForm?.trees || []).slice(0, 8);
   const shrubsAsUnderstory = (byForm?.shrubs || []).slice(0, 4);
 
-  const intro = `<p class="prem-narrative-body">These are the tree species your iNaturalist neighbors are actually observing within 10 miles — native, adapted to your zone, and worth considering for your yard.</p>`;
+  const intro = `<p class="prem-narrative-body">These are the tree species your iNaturalist neighbors are actually observing within 10 miles — native, adapted to Zone ${escapeHtml(zone) || 'your hardiness zone'}, and worth considering for your yard.</p>`;
 
   if (!trees.length && !shrubsAsUnderstory.length) {
     return `${intro}<p class="prem-narrative-body">Native tree observation data is limited for this area. Contact your local Cooperative Extension office for county-specific native tree recommendations.</p>`;
@@ -345,11 +342,14 @@ function buildPollinatorsTab(butterflies, monarchCorridor, fireflyHabitat) {
     `<div class="garden-species-item"><span class="garden-species-name">${escapeHtml(b.name)}</span> <em class="garden-species-sci">(${escapeHtml(b.sci)})</em></div>`
   ).join('');
 
+  const milkweeds = monarchCorridor?.milkweedSpecies || [];
   const monarchSection = monarchCorridor?.inCorridor ? `
     <div class="garden-species-group">
       <div class="garden-species-group-label">Monarch Butterfly Corridor</div>
       <p class="prem-narrative-body">This address is in the monarch migration corridor. Monarchs pass through in late summer and early fall on their way to Mexico. To support them: plant native milkweed (the only host plant for caterpillars) and avoid pesticides from July through October.</p>
-      <p class="prem-narrative-body">Native milkweed species for this area: ${monarchCorridor.milkweedSpecies.map(escapeHtml).join(', ')}.</p>
+      ${milkweeds.length
+        ? `<p class="prem-narrative-body">Native milkweed species for this area: ${milkweeds.map(escapeHtml).join(', ')}.</p>`
+        : `<p class="prem-narrative-body">Contact your local Cooperative Extension office for native milkweed recommendations for your region.</p>`}
       <p class="prem-narrative-body">Register as a Monarch Waystation at monarchwatch.org — requires at least 10 milkweed plants and nectar sources.</p>
     </div>` : '';
 
@@ -371,7 +371,7 @@ function buildPollinatorsTab(butterflies, monarchCorridor, fireflyHabitat) {
     <p class="prem-disclaimer">Butterfly species from iNaturalist research-grade observations (taxon 47224) within 10 miles.</p>`;
 }
 
-function buildWildlifeTab(wildlife, reptiles, insects) {
+function buildWildlifeTab(wildlife, reptiles) {
   const mammalItems = (wildlife || []).slice(0, 8).map((w) =>
     `<div class="garden-species-item"><span class="garden-species-name">${escapeHtml(w.name)}</span> <em class="garden-species-sci">(${escapeHtml(w.sci)})</em></div>`
   ).join('');
@@ -428,7 +428,7 @@ function buildSeasonalCalendarTab(hardinessZone, birdsBySeason, monarchCorridor)
   ];
 
   const monthRows = months.map((m) =>
-    `<div class="garden-cal-month"><div class="garden-cal-month-name">${m.name}</div><div class="garden-cal-month-body">${escapeHtml(m.body)}</div></div>`
+    `<div class="garden-cal-month"><div class="garden-cal-month-name">${m.name}</div><div class="garden-cal-month-body">${m.body}</div></div>`
   ).join('');
 
   return `
