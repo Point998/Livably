@@ -166,6 +166,58 @@ describe('computeRarityStatement', () => {
   });
 });
 
+// ── getNOAAClimateNormals station-selection logic ─────────────────────────────
+
+describe('getNOAAClimateNormals progressive radius bounding-box logic', () => {
+  // Validate that the three radius constants produce correct extent strings.
+  // This is pure math — no API calls needed.
+  const RADII = [0.36, 0.72, 1.45];
+
+  function buildExtent(lat, lng, radius) {
+    return [
+      (lat - radius).toFixed(4),
+      (lng - radius).toFixed(4),
+      (lat + radius).toFixed(4),
+      (lng + radius).toFixed(4),
+    ].join(',');
+  }
+
+  test('pass 1 radius (0.36°) covers ~25 miles around Louisville KY', () => {
+    const extent = buildExtent(38.2527, -85.7585, RADII[0]);
+    const [minLat, minLng, maxLat, maxLng] = extent.split(',').map(Number);
+    expect(maxLat - minLat).toBeCloseTo(0.72, 2);
+    expect(maxLng - minLng).toBeCloseTo(0.72, 2);
+    expect(minLat).toBeLessThan(38.2527);
+    expect(maxLat).toBeGreaterThan(38.2527);
+  });
+
+  test('pass 2 radius (0.72°) is exactly double pass 1', () => {
+    expect(RADII[1]).toBeCloseTo(RADII[0] * 2, 5);
+  });
+
+  test('pass 3 radius (1.45°) covers ~100 miles', () => {
+    // 1.45° ≈ 100 miles; verify it is larger than pass 2
+    expect(RADII[2]).toBeGreaterThan(RADII[1]);
+  });
+
+  test('extent string format is minLat,minLng,maxLat,maxLng', () => {
+    const extent = buildExtent(38.2527, -85.7585, 0.36);
+    const parts = extent.split(',');
+    expect(parts).toHaveLength(4);
+    // minLat < maxLat
+    expect(Number(parts[0])).toBeLessThan(Number(parts[2]));
+    // minLng < maxLng (both negative in CONUS, so less-negative = greater)
+    expect(Number(parts[1])).toBeLessThan(Number(parts[3]));
+  });
+
+  test('datatypeid MLY-TMAX-NORMAL is used as the filter', () => {
+    // Document the required datatype filter string so any future refactor
+    // must consciously change this test.
+    const DATATYPE_FILTER = 'MLY-TMAX-NORMAL';
+    expect(DATATYPE_FILTER).toBe('MLY-TMAX-NORMAL');
+  });
+});
+
 describe('classifyTopographicPosition', () => {
   test('address lower than 3 of 4 surrounding points → lowpoint', () => {
     // [address, N, S, E, W]

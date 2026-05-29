@@ -1153,20 +1153,29 @@ async function getNOAAClimateNormals(lat, lng) {
   if (!key) return null;
 
   try {
-    // Find nearest NORMAL_MLY station within bounding box
-    const stationParams = new URLSearchParams({
-      datasetid: NOAA_CDO_NORMALS_DATASET,
-      extent: `${(lat - 1).toFixed(4)},${(lng - 1).toFixed(4)},${(lat + 1).toFixed(4)},${(lng + 1).toFixed(4)}`,
-      limit: 5,
-    });
-    const stResp = await fetch(`${NOAA_CDO_BASE_URL}/stations?${stationParams}`, {
-      headers: { token: key },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!stResp.ok) return null;
-    const stData = await stResp.json();
-    if (!stData.results?.length) return null;
-    const station = stData.results[0];
+    // Find nearest NORMAL_MLY station that has temperature data.
+    // Progressive radius expansion: ~25 mi, ~50 mi, ~100 mi.
+    const RADII = [0.36, 0.72, 1.45];
+    let station = null;
+    for (const radius of RADII) {
+      const stationParams = new URLSearchParams({
+        datasetid: NOAA_CDO_NORMALS_DATASET,
+        datatypeid: 'MLY-TMAX-NORMAL',
+        extent: `${(lat - radius).toFixed(4)},${(lng - radius).toFixed(4)},${(lat + radius).toFixed(4)},${(lng + radius).toFixed(4)}`,
+        limit: 5,
+      });
+      const stResp = await fetch(`${NOAA_CDO_BASE_URL}/stations?${stationParams}`, {
+        headers: { token: key },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!stResp.ok) return null;
+      const stData = await stResp.json();
+      if (stData.results?.length) {
+        station = stData.results[0];
+        break;
+      }
+    }
+    if (!station) return null;
 
     // Fetch monthly normals
     const normParams = new URLSearchParams({
