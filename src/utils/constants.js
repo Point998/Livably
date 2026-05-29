@@ -581,7 +581,7 @@ const DEV_STATUS_MAP = [
 const NOAA_CDO_BASE_URL              = 'https://www.ncdc.noaa.gov/cdo-web/api/v2';
 const NOAA_CDO_NORMALS_DATASET       = 'NORMAL_MLY';
 const NOAA_CDO_NORMALS_ANN           = 'NORMAL_ANN';
-const NOAA_CDO_STATION_RADIUS_KM     = 80;
+const NOAA_STATION_SEARCH_RADII      = [0.36, 0.72, 1.45];
 const FEMA_DECLARATIONS_URL          = 'https://www.fema.gov/api/open/v2/disasterDeclarations';
 const USGS_ELEVATION_URL             = 'https://epqs.nationalmap.gov/v1/json';
 const CLIMATE_STORM_LOOKBACK_YEARS   = 30;
@@ -745,7 +745,7 @@ module.exports = {
   NOAA_CDO_BASE_URL,
   NOAA_CDO_NORMALS_DATASET,
   NOAA_CDO_NORMALS_ANN,
-  NOAA_CDO_STATION_RADIUS_KM,
+  NOAA_STATION_SEARCH_RADII,
   FEMA_DECLARATIONS_URL,
   USGS_ELEVATION_URL,
   CLIMATE_STORM_LOOKBACK_YEARS,

@@ -36,6 +36,7 @@ const {
   PLANT_GROWTH_FORMS, MONARCH_CORRIDOR_STATES, MILKWEED_BY_STATE, FIREFLY_STATES,
   GROCERY_SEARCH_RADIUS_M, STATE_ALERT_SYSTEMS, CLIMATE_SIGNIFICANT_DAMAGE_USD,
   NOAA_CDO_BASE_URL, NOAA_CDO_NORMALS_DATASET, NOAA_CDO_NORMALS_ANN,
+  NOAA_STATION_SEARCH_RADII,
   FEMA_DECLARATIONS_URL, USGS_ELEVATION_URL,
   CLIMATE_STORM_LOOKBACK_YEARS, CLIMATE_FEMA_LOOKBACK_YEARS,
 } = require('./utils/constants');
@@ -1155,7 +1156,7 @@ async function getNOAAClimateNormals(lat, lng) {
   try {
     // Find nearest NORMAL_MLY station that has temperature data.
     // Progressive radius expansion: ~25 mi, ~50 mi, ~100 mi.
-    const RADII = [0.36, 0.72, 1.45];
+    const RADII = NOAA_STATION_SEARCH_RADII;
     let station = null;
     for (const radius of RADII) {
       const stationParams = new URLSearchParams({
@@ -1168,7 +1169,7 @@ async function getNOAAClimateNormals(lat, lng) {
         headers: { token: key },
         signal: AbortSignal.timeout(8000),
       });
-      if (!stResp.ok) return null;
+      if (!stResp.ok) continue;
       const stData = await stResp.json();
       if (stData.results?.length) {
         station = stData.results[0];
