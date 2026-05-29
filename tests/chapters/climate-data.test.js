@@ -46,3 +46,52 @@ test('every STATE_ALERT_SYSTEMS entry has name and url', () => {
     expect(sys.url).toMatch(/^https:\/\//);
   }
 });
+
+// ── getEmergencySystem ────────────────────────────────────────────────────────
+
+const { getEmergencySystem } = require('../../src/chapters');
+
+describe('getEmergencySystem', () => {
+  test('KY → Tier 1 with KYEM Alert', () => {
+    const result = getEmergencySystem('KY', 'Scott County');
+    expect(result.tier).toBe(1);
+    expect(result.name).toBe('KYEM Alert');
+    expect(result.url).toMatch(/kyem\.ky\.gov/);
+    expect(result.searchUrl).toMatch(/google\.com/);
+    expect(result.note).toBeNull();
+  });
+
+  test('MT → Tier 1 with MT Alert', () => {
+    const result = getEmergencySystem('MT', 'Gallatin County');
+    expect(result.tier).toBe(1);
+    expect(result.name).toBe('MT Alert');
+  });
+
+  test('IN → Tier 1 with IN-Alert', () => {
+    const result = getEmergencySystem('IN', 'Clark County');
+    expect(result.tier).toBe(1);
+    expect(result.name).toBe('IN-Alert');
+  });
+
+  test('unknown state → Tier 2 with dynamic URL and search', () => {
+    const result = getEmergencySystem('XX', 'Test County');
+    expect(result.tier).toBe(2);
+    expect(result.name).toBeNull();
+    expect(result.url).toBeTruthy();
+    expect(result.searchUrl).toMatch(/google\.com/);
+    expect(result.searchUrl).toMatch(/Test/);
+    expect(typeof result.note).toBe('string');
+  });
+
+  test('both tiers always populate searchUrl', () => {
+    const tier1 = getEmergencySystem('KY', 'Jefferson County');
+    const tier2 = getEmergencySystem('XX', 'Nowhere County');
+    expect(tier1.searchUrl).toMatch(/google\.com/);
+    expect(tier2.searchUrl).toMatch(/google\.com/);
+  });
+
+  test('null state → Tier 2', () => {
+    const result = getEmergencySystem(null, 'Scott County');
+    expect(result.tier).toBe(2);
+  });
+});

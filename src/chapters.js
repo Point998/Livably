@@ -31,7 +31,7 @@ const {
   INAT_INSECTS_RADIUS_KM, INAT_INSECTS_PER_PAGE,
   INAT_BUTTERFLIES_RADIUS_KM, INAT_BUTTERFLIES_PER_PAGE,
   PLANT_GROWTH_FORMS, MONARCH_CORRIDOR_STATES, MILKWEED_BY_STATE, FIREFLY_STATES,
-  GROCERY_SEARCH_RADIUS_M,
+  GROCERY_SEARCH_RADIUS_M, STATE_ALERT_SYSTEMS,
 } = require('./utils/constants');
 
 const { getCensusFIPS, fetchCensusACS } = require('./shared/census');
@@ -1046,6 +1046,27 @@ function getFireflyHabitat(state) {
   return !!state && FIREFLY_STATES.has(state);
 }
 
+// ── FR-043: Climate — emergency system lookup ─────────────────────────────────
+function getEmergencySystem(state, county) {
+  const tier1 = state ? STATE_ALERT_SYSTEMS.get(state) : undefined;
+  const countyName = county || 'this county';
+  const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${countyName} ${state || ''} emergency alert registration`.trim())}`;
+
+  if (tier1) {
+    return { tier: 1, name: tier1.name, url: tier1.url, searchUrl, note: null };
+  }
+
+  const slug = countyName.toLowerCase().replace(/\s+county$/i, '').replace(/[^a-z0-9]/g, '');
+  const stSlug = (state || '').toLowerCase();
+  return {
+    tier: 2,
+    name: null,
+    url: `https://${slug}${stSlug}.gov/emergency`,
+    searchUrl,
+    note: `Emergency alerts for ${countyName} are managed locally. The URL above may not be correct — use the search link to find the official registration page.`,
+  };
+}
+
 async function iNatSeasonalBirds(lat, lng, months) {
   try {
     const params = new URLSearchParams({
@@ -1348,5 +1369,5 @@ module.exports = {
   getChapterData, buildChaptersHTML,
   filterReptiles, filterInsects, filterButterflies,
   categorizeSeasonalBirds, categorizePlantsByForm,
-  getMonarchCorridorInfo, getFireflyHabitat,
+  getMonarchCorridorInfo, getFireflyHabitat, getEmergencySystem,
 };
