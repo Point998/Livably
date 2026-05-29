@@ -1,0 +1,53 @@
+{
+  "county": "Scott County",
+  "state": "KY",
+  "fips": "21209",
+  "fetchedAt": "2026-05-28",
+  "source": "NOAA Storm Events Database — manually extracted",
+  "events": [
+    {
+      "begin_date": "2021-02-11",
+      "event_type": "Ice Storm",
+      "magnitude": null,
+      "magnitude_type": null,
+      "deaths_direct": 0,
+      "injuries_direct": 0,
+      "damage_property": 500000,
+      "begin_lat": 38.2,
+      "begin_lon": -84.5
+    },
+    {
+      "begin_date": "2012-03-02",
+      "event_type": "Tornado",
+      "magnitude": 1,
+      "magnitude_type": "EF",
+      "deaths_direct": 0,
+      "injuries_direct": 2,
+      "damage_property": 250000,
+      "begin_lat": 38.25,
+      "begin_lon": -84.55
+    },
+    {
+      "begin_date": "2010-05-01",
+      "event_type": "Flash Flood",
+      "magnitude": null,
+      "magnitude_type": null,
+      "deaths_direct": 0,
+      "injuries_direct": 0,
+      "damage_property": 2300000,
+      "begin_lat": 38.2,
+      "begin_lon": -84.5
+    },
+    {
+      "begin_date": "2003-02-16",
+      "event_type": "Ice Storm",
+      "magnitude": null,
+      "magnitude_type": null,
+      "deaths_direct": 0,
+      "injuries_direct": 0,
+      "damage_property": 350000,
+      "begin_lat": 38.2,
+      "begin_lon": -84.5
+    }
+  ]
+}

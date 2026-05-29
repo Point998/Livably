@@ -183,3 +183,91 @@ describe('checkDriveTimeCoherence', () => {
     expect(result.reason).toBe('');
   });
 });
+
+// ── getBasementContext ────────────────────────────────────────────────────────
+
+const { getBasementContext, getRoadPriority } = require('../../src/shared/validate');
+
+describe('getBasementContext', () => {
+  test('rural Appalachian KY: hillside variant regardless of era', () => {
+    const result = getBasementContext('2005', 'KY', 'rural');
+    expect(result).toMatch(/hillside/i);
+    expect(result).toMatch(/Appalachian/i);
+  });
+
+  test('rural Great Plains KS: storm shelter culture variant', () => {
+    const result = getBasementContext('1990', 'KS', 'rural');
+    expect(result).toMatch(/storm shelter/i);
+  });
+
+  test('rural western MT: topography variant', () => {
+    const result = getBasementContext('1985', 'MT', 'rural');
+    expect(result).toMatch(/topography/i);
+  });
+
+  test('remote mode: same rural logic as rural for Appalachian', () => {
+    const result = getBasementContext('1975', 'KY', 'remote');
+    expect(result).toMatch(/Appalachian/i);
+  });
+
+  test('suburban KY pre-1980: frequently has basement', () => {
+    const result = getBasementContext('1972', 'KY', 'suburban');
+    expect(result).toMatch(/frequently have full basements/i);
+  });
+
+  test('suburban KY 1980-1999: varies', () => {
+    const result = getBasementContext('1988', 'KY', 'suburban');
+    expect(result).toMatch(/vary significantly/i);
+  });
+
+  test('suburban KY post-2000: likely slab', () => {
+    const result = getBasementContext('2008', 'KY', 'suburban');
+    expect(result).toMatch(/slab/i);
+  });
+
+  test('suburban western MT: topography note', () => {
+    const result = getBasementContext('1990', 'MT', 'suburban');
+    expect(result).toMatch(/topography/i);
+  });
+
+  test('null constructionEra returns null', () => {
+    expect(getBasementContext(null, 'KY', 'suburban')).toBeNull();
+  });
+
+  test('non-numeric constructionEra returns null', () => {
+    expect(getBasementContext('unknown', 'KY', 'suburban')).toBeNull();
+  });
+});
+
+describe('getRoadPriority', () => {
+  test('US highway → primary', () => {
+    const components = [{ types: ['route'], short_name: 'US-62' }];
+    expect(getRoadPriority(components)).toBe('primary');
+  });
+
+  test('state route → primary', () => {
+    const components = [{ types: ['route'], short_name: 'KY-32' }];
+    expect(getRoadPriority(components)).toBe('primary');
+  });
+
+  test('county road → secondary', () => {
+    const components = [{ types: ['route'], short_name: 'CR-405' }];
+    expect(getRoadPriority(components)).toBe('secondary');
+  });
+
+  test('residential street address → residential', () => {
+    const components = [
+      { types: ['street_address'] },
+      { types: ['route'], short_name: 'Wishing Well Path' },
+    ];
+    expect(getRoadPriority(components)).toBe('residential');
+  });
+
+  test('empty array → null', () => {
+    expect(getRoadPriority([])).toBeNull();
+  });
+
+  test('null → null', () => {
+    expect(getRoadPriority(null)).toBeNull();
+  });
+});

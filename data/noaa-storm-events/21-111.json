@@ -1,0 +1,42 @@
+{
+  "county": "Jefferson County",
+  "state": "KY",
+  "fips": "21111",
+  "fetchedAt": "2026-05-28",
+  "source": "NOAA Storm Events Database — manually extracted",
+  "events": [
+    {
+      "begin_date": "2021-02-11",
+      "event_type": "Ice Storm",
+      "magnitude": null,
+      "magnitude_type": null,
+      "deaths_direct": 1,
+      "injuries_direct": 0,
+      "damage_property": 1500000,
+      "begin_lat": 38.25,
+      "begin_lon": -85.76
+    },
+    {
+      "begin_date": "2016-02-24",
+      "event_type": "Tornado",
+      "magnitude": 2,
+      "magnitude_type": "EF",
+      "deaths_direct": 0,
+      "injuries_direct": 0,
+      "damage_property": 800000,
+      "begin_lat": 38.25,
+      "begin_lon": -85.76
+    },
+    {
+      "begin_date": "2009-08-04",
+      "event_type": "Flash Flood",
+      "magnitude": null,
+      "magnitude_type": null,
+      "deaths_direct": 0,
+      "injuries_direct": 3,
+      "damage_property": 3200000,
+      "begin_lat": 38.25,
+      "begin_lon": -85.76
+    }
+  ]
+}

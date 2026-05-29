@@ -341,6 +341,60 @@
     });
   }
 
+  // ── 13. Climate deep dive — toggle + tab switching + research toggle ─
+
+  function initClimateDeepDive() {
+    // Deep dive toggle
+    document.querySelectorAll('.climate-deep-toggle').forEach(function (toggle) {
+      var dive = toggle.nextElementSibling;
+      if (!dive) return;
+      toggle.setAttribute('aria-expanded', dive.hidden ? 'false' : 'true');
+      toggle.addEventListener('click', function () {
+        var expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        dive.hidden = expanded;
+      });
+    });
+
+    // Tab switching (event delegation on nav)
+    document.querySelectorAll('.climate-tab-nav').forEach(function (nav) {
+      var deepDive = nav.closest('.climate-deep-dive');
+      var panels = deepDive ? deepDive.querySelectorAll('.climate-tab-panel') : [];
+      nav.addEventListener('click', function (e) {
+        var btn = e.target.closest('[role="tab"]');
+        if (!btn) return;
+        var tabId = btn.getAttribute('aria-controls');
+        nav.querySelectorAll('[role="tab"]').forEach(function (t) {
+          t.setAttribute('aria-selected', 'false');
+          t.classList.remove('climate-tab--active');
+        });
+        btn.setAttribute('aria-selected', 'true');
+        btn.classList.add('climate-tab--active');
+        panels.forEach(function (panel) {
+          panel.classList.remove('climate-tab-panel--active');
+          panel.hidden = true;
+        });
+        var activePanel = deepDive ? deepDive.querySelector('[id="' + tabId + '"]') : null;
+        if (activePanel) {
+          activePanel.classList.add('climate-tab-panel--active');
+          activePanel.hidden = false;
+        }
+      });
+    });
+
+    // Research section toggle
+    document.querySelectorAll('.climate-research-toggle').forEach(function (toggle) {
+      var data = toggle.nextElementSibling;
+      if (!data) return;
+      toggle.setAttribute('aria-expanded', data.hidden ? 'false' : 'true');
+      toggle.addEventListener('click', function () {
+        var expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        data.hidden = expanded;
+      });
+    });
+  }
+
   // ── Init ───────────────────────────────────────────────
 
   function run() {
@@ -356,6 +410,7 @@
     initDestItems();
     initFocusRing();
     initGardenDeepDive();
+    initClimateDeepDive();
 
     // Initialize Lucide icons if available
     if (window.lucide) window.lucide.createIcons();

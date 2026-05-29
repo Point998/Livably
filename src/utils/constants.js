@@ -577,6 +577,74 @@ const DEV_STATUS_MAP = [
   },
 ];
 
+// ── Climate chapter — API endpoints and thresholds ────────────────────────────────
+const NOAA_CDO_BASE_URL              = 'https://www.ncdc.noaa.gov/cdo-web/api/v2';
+const NOAA_CDO_NORMALS_DATASET       = 'NORMAL_MLY';
+const NOAA_CDO_NORMALS_ANN           = 'NORMAL_ANN';
+const NOAA_STATION_SEARCH_RADII      = [0.36, 0.72, 1.45];
+const FEMA_DECLARATIONS_URL          = 'https://www.fema.gov/api/open/v2/disasterDeclarations';
+const USGS_ELEVATION_URL             = 'https://epqs.nationalmap.gov/v1/json';
+const CLIMATE_STORM_LOOKBACK_YEARS   = 30;
+const CLIMATE_FEMA_LOOKBACK_YEARS    = 20;
+const CLIMATE_SIGNIFICANT_DAMAGE_USD = 100_000;
+
+// ── Emergency alert systems — Tier 1 state-level unified systems ──────────────
+// Two-tier approach: Tier 1 = statewide unified system (this map).
+// Tier 2 = dynamic county URL + Google search (generated at runtime for missing states).
+// URLs are best-effort starting points — verify accuracy before production use.
+const STATE_ALERT_SYSTEMS = new Map([
+  ['AL', { name: 'Alabama EMA Alerts',              url: 'https://ema.alabama.gov/alert' }],
+  ['AK', { name: 'AK Alerts',                       url: 'https://ready.alaska.gov/Alerts' }],
+  ['AZ', { name: 'AZ Ready',                        url: 'https://azready.gov' }],
+  ['AR', { name: 'AR Alert',                        url: 'https://adem.arkansas.gov/alert' }],
+  ['CA', { name: 'Alert California',                url: 'https://www.caloes.ca.gov/alerts' }],
+  ['CO', { name: 'CO Alert',                        url: 'https://coem.colorado.gov/alert' }],
+  ['CT', { name: 'CT Alert',                        url: 'https://portal.ct.gov/DESPP/CT-Alert' }],
+  ['DE', { name: 'DE Alert',                        url: 'https://dema.delaware.gov/alert' }],
+  ['FL', { name: 'FL Emergency Alerts',             url: 'https://www.floridadisaster.org/alerts' }],
+  ['GA', { name: 'GA Emergency Management',         url: 'https://gema.georgia.gov/alerts' }],
+  ['HI', { name: 'HI Emergency Management',         url: 'https://dod.hawaii.gov/hiema/alerts' }],
+  ['ID', { name: 'ID Bureau of Homeland Security',  url: 'https://idalert.idaho.gov' }],
+  ['IL', { name: 'IL Emergency Management',         url: 'https://iema.illinois.gov/alerting' }],
+  ['IN', { name: 'IN-Alert',                        url: 'https://www.in.gov/dhs/emergency-preparedness/in-alert' }],
+  ['IA', { name: 'Iowa Homeland Security',          url: 'https://homelandsecurity.iowa.gov/alerts' }],
+  ['KS', { name: 'KS Emergency Management',         url: 'https://www.kdem.ks.gov/alerts' }],
+  ['KY', { name: 'KYEM Alert',                      url: 'https://kyem.ky.gov/alert' }],
+  ['LA', { name: 'LA GOHSEP Alerts',                url: 'https://gohsep.la.gov/alerts' }],
+  ['ME', { name: 'Maine Emergency Management',      url: 'https://www.maine.gov/mema/alerts' }],
+  ['MD', { name: 'MD Alert',                        url: 'https://mema.maryland.gov/alerts' }],
+  ['MA', { name: 'MA Emergency Management',         url: 'https://www.mass.gov/mema/alerts' }],
+  ['MI', { name: 'MI Alerts',                       url: 'https://www.michigan.gov/msp/divisions/emhsd/alerts' }],
+  ['MN', { name: 'MN Homeland Security',            url: 'https://hsem.dps.mn.gov/alerts' }],
+  ['MS', { name: 'MS Emergency Management',         url: 'https://www.msema.org/alerts' }],
+  ['MO', { name: 'MO Alert',                        url: 'https://sema.dps.mo.gov/alert' }],
+  ['MT', { name: 'MT Alert',                        url: 'https://mtalert.mt.gov' }],
+  ['NE', { name: 'NE Emergency Management',         url: 'https://nema.nebraska.gov/alerts' }],
+  ['NV', { name: 'Nevada Alert',                    url: 'https://dem.nv.gov/alerts' }],
+  ['NH', { name: 'NH Alerts Ready',                 url: 'https://www.nh.gov/safety/divisions/bem/alerts' }],
+  ['NJ', { name: 'NJ Emergency Notification',       url: 'https://www.ready.nj.gov/alert' }],
+  ['NM', { name: 'NM Emergency Management',         url: 'https://www.nmdhsem.org/alerts' }],
+  ['NY', { name: 'NY Alert',                        url: 'https://www.ny.gov/programs/ny-alert' }],
+  ['NC', { name: 'NC Emergency Management',         url: 'https://www.ncdps.gov/emergency/alerts' }],
+  ['ND', { name: 'ND Emergency Services',           url: 'https://des.nd.gov/alerts' }],
+  ['OH', { name: 'Ohio Emergency Management',       url: 'https://ema.ohio.gov/alerts' }],
+  ['OK', { name: 'OK Emergency Management',         url: 'https://www.ok.gov/oem/alerts' }],
+  ['OR', { name: 'OR Emergency Management',         url: 'https://www.oregon.gov/oem/alerts' }],
+  ['PA', { name: 'PA Emergency Management',         url: 'https://www.pema.pa.gov/alerts' }],
+  ['RI', { name: 'RI Emergency Management',         url: 'https://www.riema.ri.gov/alerts' }],
+  ['SC', { name: 'SC Emergency Management',         url: 'https://www.scemd.org/alerts' }],
+  ['SD', { name: 'SD Emergency Management',         url: 'https://dps.sd.gov/emergency-services/alerts' }],
+  ['TN', { name: 'TN Emergency Management',         url: 'https://tnema.org/alerts' }],
+  ['TX', { name: 'TxAlert',                         url: 'https://tdem.texas.gov/txalert' }],
+  ['UT', { name: 'UT Alert',                        url: 'https://dem.utah.gov/alerts' }],
+  ['VT', { name: 'VT Emergency Management',         url: 'https://vem.vermont.gov/alerts' }],
+  ['VA', { name: 'VA Emergency Management',         url: 'https://www.vaemergency.gov/alerts' }],
+  ['WA', { name: 'WA Emergency Management',         url: 'https://mil.wa.gov/emergency-management-division/alerts' }],
+  ['WV', { name: 'WV Emergency Management',         url: 'https://emd.wv.gov/alerts' }],
+  ['WI', { name: 'Wisconsin Emergency Management',  url: 'https://wem.wi.gov/alerts' }],
+  ['WY', { name: 'WY Homeland Security',            url: 'https://hls.wyo.gov/alerts' }],
+]);
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -673,4 +741,15 @@ module.exports = {
   RURAL_MODE_REMOTE_POP_MAX,
   RURAL_MODE_SUBURBAN_MAX_DRIVE_MINUTES,
   DRIVE_TIME_COHERENCE_THRESHOLD_MINUTES,
+  // Climate chapter
+  NOAA_CDO_BASE_URL,
+  NOAA_CDO_NORMALS_DATASET,
+  NOAA_CDO_NORMALS_ANN,
+  NOAA_STATION_SEARCH_RADII,
+  FEMA_DECLARATIONS_URL,
+  USGS_ELEVATION_URL,
+  CLIMATE_STORM_LOOKBACK_YEARS,
+  CLIMATE_FEMA_LOOKBACK_YEARS,
+  CLIMATE_SIGNIFICANT_DAMAGE_USD,
+  STATE_ALERT_SYSTEMS,
 };
