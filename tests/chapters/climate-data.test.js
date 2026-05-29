@@ -95,3 +95,100 @@ describe('getEmergencySystem', () => {
     expect(result.tier).toBe(2);
   });
 });
+
+// ── getLastSignificantEvent ───────────────────────────────────────────────────
+
+const {
+  getLastSignificantEvent,
+  computeRarityStatement,
+  classifyTopographicPosition,
+} = require('../../src/chapters');
+
+describe('getLastSignificantEvent', () => {
+  test('returns most recent when FEMA is newer', () => {
+    const fema = [{ declarationDate: '2021-02-15', declarationTitle: 'Severe Ice Storm', incidentType: 'Ice Storm' }];
+    const noaa = [{ begin_date: '2019-05-01', event_type: 'Tornado', damage_property: 500000 }];
+    const result = getLastSignificantEvent(fema, noaa);
+    expect(result.year).toBe(2021);
+    expect(result.type).toMatch(/ice storm/i);
+  });
+
+  test('returns most recent when NOAA is newer', () => {
+    const fema = [{ declarationDate: '2018-03-01', declarationTitle: 'Flooding', incidentType: 'Flood' }];
+    const noaa = [{ begin_date: '2022-06-10', event_type: 'Flash Flood', damage_property: 250000 }];
+    const result = getLastSignificantEvent(fema, noaa);
+    expect(result.year).toBe(2022);
+  });
+
+  test('returns null when both arrays empty', () => {
+    expect(getLastSignificantEvent([], [])).toBeNull();
+  });
+
+  test('ignores NOAA events below damage threshold', () => {
+    const noaa = [{ begin_date: '2023-01-01', event_type: 'Tornado', damage_property: 5000 }];
+    expect(getLastSignificantEvent([], noaa)).toBeNull();
+  });
+
+  test('handles null gracefully', () => {
+    expect(getLastSignificantEvent(null, null)).toBeNull();
+  });
+
+  test('uses incidentType from FEMA when declarationTitle absent', () => {
+    const fema = [{ declarationDate: '2020-04-01', incidentType: 'Tornado' }];
+    const result = getLastSignificantEvent(fema, []);
+    expect(result.type).toBe('Tornado');
+  });
+});
+
+describe('computeRarityStatement', () => {
+  test('3 events in 30 years → roughly 1 per decade', () => {
+    const result = computeRarityStatement(3, 30, 'tornado');
+    expect(result).toMatch(/3/);
+    expect(result).toMatch(/30 years/);
+    expect(result).toMatch(/1 per decade/);
+  });
+
+  test('0 events → no recorded events message', () => {
+    const result = computeRarityStatement(0, 30, 'tornado');
+    expect(result).toMatch(/no recorded/i);
+    expect(result).toMatch(/30 years/);
+  });
+
+  test('12 events in 30 years → roughly 4 per decade', () => {
+    const result = computeRarityStatement(12, 30, 'flood');
+    expect(result).toMatch(/12/);
+    expect(result).toMatch(/4 per decade/);
+  });
+
+  test('1 event uses singular form', () => {
+    const result = computeRarityStatement(1, 30, 'tornado');
+    expect(result).toMatch(/1 tornado event in/);
+  });
+});
+
+describe('classifyTopographicPosition', () => {
+  test('address lower than 3 of 4 surrounding points → lowpoint', () => {
+    // [address, N, S, E, W]
+    expect(classifyTopographicPosition([850, 920, 910, 900, 890])).toBe('lowpoint');
+  });
+
+  test('address higher than 3 of 4 surrounding points → uphill', () => {
+    expect(classifyTopographicPosition([950, 880, 870, 900, 890])).toBe('uphill');
+  });
+
+  test('mixed elevations → midslope', () => {
+    expect(classifyTopographicPosition([900, 920, 880, 910, 890])).toBe('midslope');
+  });
+
+  test('null → null', () => {
+    expect(classifyTopographicPosition(null)).toBeNull();
+  });
+
+  test('fewer than 5 elements → null', () => {
+    expect(classifyTopographicPosition([900, 920])).toBeNull();
+  });
+
+  test('address equal to surrounding → midslope', () => {
+    expect(classifyTopographicPosition([900, 900, 900, 900, 900])).toBe('midslope');
+  });
+});

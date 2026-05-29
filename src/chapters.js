@@ -31,7 +31,7 @@ const {
   INAT_INSECTS_RADIUS_KM, INAT_INSECTS_PER_PAGE,
   INAT_BUTTERFLIES_RADIUS_KM, INAT_BUTTERFLIES_PER_PAGE,
   PLANT_GROWTH_FORMS, MONARCH_CORRIDOR_STATES, MILKWEED_BY_STATE, FIREFLY_STATES,
-  GROCERY_SEARCH_RADIUS_M, STATE_ALERT_SYSTEMS,
+  GROCERY_SEARCH_RADIUS_M, STATE_ALERT_SYSTEMS, CLIMATE_SIGNIFICANT_DAMAGE_USD,
 } = require('./utils/constants');
 
 const { getCensusFIPS, fetchCensusACS } = require('./shared/census');
@@ -1067,6 +1067,58 @@ function getEmergencySystem(state, county) {
   };
 }
 
+// Returns { type, year } for the most recent qualifying climate event, or null.
+// FEMA declarations always qualify; NOAA events only qualify if damage >= CLIMATE_SIGNIFICANT_DAMAGE_USD.
+function getLastSignificantEvent(femaDeclarations, noaaEvents) {
+  let latestDate = null;
+  let latest = null;
+
+  for (const d of (femaDeclarations || [])) {
+    const date = new Date(d.declarationDate);
+    if (isNaN(date.getTime())) continue;
+    if (!latestDate || date > latestDate) {
+      latestDate = date;
+      latest = { type: d.incidentType || d.declarationTitle || 'Disaster', year: date.getFullYear() };
+    }
+  }
+
+  for (const e of (noaaEvents || [])) {
+    const damage = typeof e.damage_property === 'number'
+      ? e.damage_property
+      : parseFloat(String(e.damage_property || '0').replace(/[^0-9.]/g, '')) || 0;
+    if (damage < CLIMATE_SIGNIFICANT_DAMAGE_USD) continue;
+    const date = new Date(e.begin_date);
+    if (isNaN(date.getTime())) continue;
+    if (!latestDate || date > latestDate) {
+      latestDate = date;
+      latest = { type: e.event_type || 'Weather Event', year: date.getFullYear() };
+    }
+  }
+
+  return latest;
+}
+
+// Returns a human-readable rarity framing string.
+function computeRarityStatement(count, years, eventType) {
+  if (count === 0) {
+    return `No recorded ${eventType} events in this county in ${years} years.`;
+  }
+  const perDecade = Math.round((count / years) * 10);
+  return `${count} ${eventType} event${count === 1 ? '' : 's'} in ${years} years — roughly ${perDecade} per decade.`;
+}
+
+// Returns 'uphill' | 'midslope' | 'lowpoint' | null
+// elevations: [address, north, south, east, west] in feet
+function classifyTopographicPosition(elevations) {
+  if (!Array.isArray(elevations) || elevations.length < 5) return null;
+  const [addr, ...surrounding] = elevations;
+  const lower  = surrounding.filter((e) => addr < e).length;
+  const higher = surrounding.filter((e) => addr > e).length;
+  if (lower  >= 3) return 'lowpoint';
+  if (higher >= 3) return 'uphill';
+  return 'midslope';
+}
+
 async function iNatSeasonalBirds(lat, lng, months) {
   try {
     const params = new URLSearchParams({
@@ -1370,4 +1422,5 @@ module.exports = {
   filterReptiles, filterInsects, filterButterflies,
   categorizeSeasonalBirds, categorizePlantsByForm,
   getMonarchCorridorInfo, getFireflyHabitat, getEmergencySystem,
+  getLastSignificantEvent, computeRarityStatement, classifyTopographicPosition,
 };
