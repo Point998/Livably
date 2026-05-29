@@ -1288,11 +1288,11 @@ async function getFEMADeclarations(state, county) {
   }
 }
 
-async function getClimateHistoryData(lat, lng, locationInfo) {
-  const state      = locationInfo?.state      || null;
-  const county     = locationInfo?.county     || '';
-  const stateFips  = locationInfo?.stateFips  || '';
-  const countyFips = locationInfo?.countyFips || '';
+async function getClimateHistoryData(lat, lng, locationInfo, fips) {
+  const state      = locationInfo?.state  || null;
+  const county     = locationInfo?.county || '';
+  const stateFips  = fips?.state          || '';
+  const countyFips = fips?.county         || '';
 
   const [stormResult, femaResult, normalsResult, watershedResult] =
     await Promise.allSettled([
@@ -1584,19 +1584,23 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
       getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey),
       getPropertyIntelligence(lat, lng, fips, locationInfo),
       getGardenData(lat, lng, locationInfo),
-      getClimateHistoryData(lat, lng, locationInfo),
+      getClimateHistoryData(lat, lng, locationInfo, fips),
     ]);
 
   const val = (r) => (r.status === 'fulfilled' ? r.value : null);
 
-  // Post-resolve basementContext using propIntel.constructionEra (not available during parallel fetch)
-  const { getBasementContext: gbc } = require('./shared/validate');
+  // Post-resolve basementContext: needs constructionEra + ruralMode, both only available after parallel fetch
+  const { getBasementContext: gbc, detectRuralMode: drm } = require('./shared/validate');
   let climateHistoryVal = val(climateHistory);
   if (climateHistoryVal) {
-    const era = val(propIntel)?.era?.medianYearBuilt || null;
+    const era        = val(propIntel)?.era?.medianYearBuilt ? String(val(propIntel).era.medianYearBuilt) : null;
+    const demog      = val(demographics);
+    const tractPop   = demog?.totalPop ?? null;
+    const avgDrive   = val(propertyData)?.avgDriveMinutes ?? null;
+    const ruralMode  = (tractPop !== null ? drm(tractPop, avgDrive) : { mode: 'suburban' }).mode;
     climateHistoryVal = {
       ...climateHistoryVal,
-      basementContext: gbc(era, locationInfo?.state, locationInfo?.ruralMode?.mode || locationInfo?.ruralMode || 'suburban'),
+      basementContext: gbc(era, locationInfo?.state, ruralMode),
     };
   }
 
