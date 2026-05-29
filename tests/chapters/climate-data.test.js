@@ -244,3 +244,100 @@ describe('classifyTopographicPosition', () => {
     expect(classifyTopographicPosition([900, 900, 900, 900, 900])).toBe('midslope');
   });
 });
+
+// ── fetchElevationWithRetry ───────────────────────────────────────────────────
+
+const { fetchElevationWithRetry, getWatershedContext } = require('../../src/chapters');
+
+describe('fetchElevationWithRetry', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('returns value on first attempt when fetch succeeds', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: 850 }),
+    });
+    const result = await fetchElevationWithRetry('https://example.com/elev');
+    expect(result).toBe(850);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('retries once after a network error and returns value on second attempt', async () => {
+    global.fetch = jest.fn()
+      .mockRejectedValueOnce(new Error('network error'))
+      .mockResolvedValue({ ok: true, json: async () => ({ value: 900 }) });
+    const result = await fetchElevationWithRetry('https://example.com/elev');
+    expect(result).toBe(900);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  }, 10000);
+
+  test('retries twice after non-ok HTTP responses and returns null after exhausting retries', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503 });
+    const result = await fetchElevationWithRetry('https://example.com/elev', 2);
+    expect(result).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(3); // 1 initial + 2 retries
+  }, 15000);
+
+  test('retries when value is null in response body', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ value: null }) })
+      .mockResolvedValue({ ok: true, json: async () => ({ value: 750 }) });
+    const result = await fetchElevationWithRetry('https://example.com/elev');
+    expect(result).toBe(750);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  }, 10000);
+
+  test('returns null after all retries exhausted', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('timeout'));
+    const result = await fetchElevationWithRetry('https://example.com/elev', 2);
+    expect(result).toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(3);
+  }, 15000);
+});
+
+// ── getWatershedContext ───────────────────────────────────────────────────────
+
+describe('getWatershedContext', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('returns elevations and position when all 5 points succeed', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: 850 }),
+    });
+    const result = await getWatershedContext(38.25, -85.75);
+    expect(result).not.toBeNull();
+    expect(result.elevations).toHaveLength(5);
+    expect(result.elevations.every(e => e === 850)).toBe(true);
+    expect(result.position).toBe('midslope'); // all equal → midslope
+  });
+
+  test('fills failed surrounding points with center elevation', async () => {
+    // Center succeeds, surrounding points fail
+    let callCount = 0;
+    global.fetch = jest.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({ ok: true, json: async () => ({ value: 900 }) });
+      }
+      return Promise.reject(new Error('timeout'));
+    });
+    const result = await getWatershedContext(38.25, -85.75);
+    // Should not be null — center succeeded, surrounding filled with 900
+    expect(result).not.toBeNull();
+    expect(result.elevations[0]).toBe(900);
+    // Surrounding points should be filled with center value
+    expect(result.elevations.slice(1).every(e => e === 900)).toBe(true);
+    expect(result.position).toBe('midslope');
+  }, 30000);
+
+  test('returns null when center point fails after all retries', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('network failure'));
+    const result = await getWatershedContext(38.25, -85.75);
+    expect(result).toBeNull();
+  }, 30000);
+});

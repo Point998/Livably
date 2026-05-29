@@ -44,6 +44,7 @@ const {
 const { getCensusFIPS, fetchCensusACS } = require('./shared/census');
 const { renderChapterCard } = require('./templates/components/chapterCard');
 const { badgeClass } = require('./templates/components/badge');
+const { logError } = require('./logger');
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
@@ -1244,25 +1245,51 @@ async function getNOAAClimateNormals(lat, lng) {
   }
 }
 
-async function getWatershedContext(lat, lng) {
-  try {
-    const offsets = [[0, 0], [0.0036, 0], [-0.0036, 0], [0, 0.0045], [0, -0.0045]];
-    const elevations = await Promise.all(
-      offsets.map(async ([dlat, dlng]) => {
-        const resp = await fetch(
-          `${USGS_ELEVATION_URL}?x=${(lng + dlng).toFixed(6)}&y=${(lat + dlat).toFixed(6)}&units=Feet&wkid=4326&includeDate=false`,
-          { signal: AbortSignal.timeout(5000) }
-        );
-        if (!resp.ok) return null;
-        const data = await resp.json();
-        return data?.value ?? null;
-      })
-    );
-    if (elevations.some((e) => e === null)) return null;
-    return { elevations, position: classifyTopographicPosition(elevations) };
-  } catch {
-    return null;
+async function fetchElevationWithRetry(url, maxRetries = 2) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const value = data?.value ?? null;
+      if (value === null) throw new Error('null value in response');
+      return value;
+    } catch (err) {
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        return null;
+      }
+    }
   }
+}
+
+async function getWatershedContext(lat, lng) {
+  const offsets = [[0, 0], [0.0036, 0], [-0.0036, 0], [0, 0.0045], [0, -0.0045]];
+  const urls = offsets.map(([dlat, dlng]) =>
+    `${USGS_ELEVATION_URL}?x=${(lng + dlng).toFixed(6)}&y=${(lat + dlat).toFixed(6)}&units=Feet&wkid=4326&includeDate=false`
+  );
+
+  const results = await Promise.all(urls.map(url => fetchElevationWithRetry(url)));
+
+  // Log any point that exhausted all retries
+  results.forEach((val, i) => {
+    if (val === null) {
+      logError(
+        'getWatershedContext',
+        `${lat},${lng}`,
+        new Error(`elevation point ${i} (offset ${JSON.stringify(offsets[i])}) exhausted all retries`)
+      );
+    }
+  });
+
+  const centerElevation = results[0];
+  if (centerElevation === null) return null;
+
+  // Fill failed surrounding points with center elevation (flat-terrain approximation)
+  const elevations = results.map((val, i) => (i === 0 ? centerElevation : (val ?? centerElevation)));
+
+  return { elevations, position: classifyTopographicPosition(elevations) };
 }
 
 async function getFEMADeclarations(state, county) {
@@ -1674,4 +1701,5 @@ module.exports = {
   categorizeSeasonalBirds, categorizePlantsByForm,
   getMonarchCorridorInfo, getFireflyHabitat, getEmergencySystem,
   getLastSignificantEvent, computeRarityStatement, classifyTopographicPosition,
+  getWatershedContext, fetchElevationWithRetry,
 };
