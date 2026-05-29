@@ -1155,10 +1155,10 @@ async function getNOAAClimateNormals(lat, lng) {
   if (!key) return null;
 
   try {
-    // Find nearest NORMAL_MLY station that has temperature data.
     // Progressive radius expansion: ~25 mi, ~50 mi, ~100 mi.
+    // For each radius, try up to 5 candidate stations until one has real TMAX records.
+    // NOAA station metadata can claim MLY-TMAX-NORMAL support but actual data may be absent.
     const RADII = NOAA_STATION_SEARCH_RADII;
-    let station = null;
     for (const radius of RADII) {
       const stationParams = new URLSearchParams({
         datasetid: NOAA_CDO_NORMALS_DATASET,
@@ -1172,74 +1172,76 @@ async function getNOAAClimateNormals(lat, lng) {
       });
       if (!stResp.ok) continue;
       const stData = await stResp.json();
-      if (stData.results?.length) {
-        station = stData.results[0];
-        break;
-      }
-    }
-    if (!station) return null;
+      if (!stData.results?.length) continue;
 
-    // Fetch monthly normals
-    const normParams = new URLSearchParams({
-      datasetid: NOAA_CDO_NORMALS_DATASET,
-      stationid: station.id,
-      datatypeid: 'MLY-TMAX-NORMAL,MLY-TMIN-NORMAL,MLY-PRCP-NORMAL,MLY-SNOW-NORMAL',
-      startdate: '2010-01-01',
-      enddate: '2010-12-31',
-      limit: 100,
-    });
-    const normResp = await fetch(`${NOAA_CDO_BASE_URL}/data?${normParams}`, {
-      headers: { token: key },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!normResp.ok) return null;
-    const normData = await normResp.json();
-    if (!normData.results?.length) return null;
+      for (const candidate of stData.results) {
+        // Fetch monthly normals for this candidate
+        const normParams = new URLSearchParams({
+          datasetid: NOAA_CDO_NORMALS_DATASET,
+          stationid: candidate.id,
+          datatypeid: 'MLY-TMAX-NORMAL,MLY-TMIN-NORMAL,MLY-PRCP-NORMAL,MLY-SNOW-NORMAL',
+          startdate: '2010-01-01',
+          enddate: '2010-12-31',
+          limit: 100,
+        });
+        const normResp = await fetch(`${NOAA_CDO_BASE_URL}/data?${normParams}`, {
+          headers: { token: key },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!normResp.ok) continue;
+        const normData = await normResp.json();
+        if (!normData.results?.length) continue;
+        // Skip stations whose records lack actual temperature data
+        if (!normData.results.some((r) => r.datatype === 'MLY-TMAX-NORMAL')) continue;
 
-    // Pivot into monthly rows
-    const byMonth = {};
-    for (const r of normData.results) {
-      const month = parseInt(r.date.slice(5, 7), 10);
-      if (!byMonth[month]) byMonth[month] = {};
-      byMonth[month][r.datatype] = r.value;
-    }
-    const monthly = Array.from({ length: 12 }, (_, i) => {
-      const m = byMonth[i + 1] || {};
-      return {
-        month: i + 1,
-        tMaxF: m['MLY-TMAX-NORMAL'] ?? null,
-        tMinF: m['MLY-TMIN-NORMAL'] ?? null,
-        precipIn: m['MLY-PRCP-NORMAL'] ?? null,
-        snowIn: m['MLY-SNOW-NORMAL'] ?? null,
-      };
-    });
-
-    // Annual normals
-    const annParams = new URLSearchParams({
-      datasetid: NOAA_CDO_NORMALS_ANN,
-      stationid: station.id,
-      datatypeid: 'ANN-TMAX-AVGNDS-GRTH090,ANN-TMAX-AVGNDS-GRTH095,ANN-TMIN-AVGNDS-LSTH032',
-      startdate: '2010-01-01',
-      enddate: '2010-12-31',
-      limit: 10,
-    });
-    let annual = { daysAbove90: null, daysAbove95: null, daysBelow32: null };
-    try {
-      const annResp = await fetch(`${NOAA_CDO_BASE_URL}/data?${annParams}`, {
-        headers: { token: key },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (annResp.ok) {
-        const annData = await annResp.json();
-        for (const r of (annData.results || [])) {
-          if (r.datatype === 'ANN-TMAX-AVGNDS-GRTH090') annual.daysAbove90 = r.value;
-          if (r.datatype === 'ANN-TMAX-AVGNDS-GRTH095') annual.daysAbove95 = r.value;
-          if (r.datatype === 'ANN-TMIN-AVGNDS-LSTH032') annual.daysBelow32 = r.value;
+        // Pivot into monthly rows
+        const byMonth = {};
+        for (const r of normData.results) {
+          const month = parseInt(r.date.slice(5, 7), 10);
+          if (!byMonth[month]) byMonth[month] = {};
+          byMonth[month][r.datatype] = r.value;
         }
-      }
-    } catch { /* annual normals are optional */ }
+        const monthly = Array.from({ length: 12 }, (_, i) => {
+          const m = byMonth[i + 1] || {};
+          return {
+            month: i + 1,
+            tMaxF: m['MLY-TMAX-NORMAL'] ?? null,
+            tMinF: m['MLY-TMIN-NORMAL'] ?? null,
+            precipIn: m['MLY-PRCP-NORMAL'] ?? null,
+            snowIn: m['MLY-SNOW-NORMAL'] ?? null,
+          };
+        });
 
-    return { monthly, annual, stationId: station.id, stationName: station.name };
+        // Annual normals (optional — best-effort)
+        const annParams = new URLSearchParams({
+          datasetid: NOAA_CDO_NORMALS_ANN,
+          stationid: candidate.id,
+          datatypeid: 'ANN-TMAX-AVGNDS-GRTH090,ANN-TMAX-AVGNDS-GRTH095,ANN-TMIN-AVGNDS-LSTH032',
+          startdate: '2010-01-01',
+          enddate: '2010-12-31',
+          limit: 10,
+        });
+        let annual = { daysAbove90: null, daysAbove95: null, daysBelow32: null };
+        try {
+          const annResp = await fetch(`${NOAA_CDO_BASE_URL}/data?${annParams}`, {
+            headers: { token: key },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (annResp.ok) {
+            const annData = await annResp.json();
+            for (const r of (annData.results || [])) {
+              if (r.datatype === 'ANN-TMAX-AVGNDS-GRTH090') annual.daysAbove90 = r.value;
+              if (r.datatype === 'ANN-TMAX-AVGNDS-GRTH095') annual.daysAbove95 = r.value;
+              if (r.datatype === 'ANN-TMIN-AVGNDS-LSTH032') annual.daysBelow32 = r.value;
+            }
+          }
+        } catch { /* annual normals are optional */ }
+
+        return { monthly, annual, stationId: candidate.id, stationName: candidate.name };
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }
