@@ -1,0 +1,31 @@
+{
+  "county": "Gallatin County",
+  "state": "MT",
+  "fips": "30031",
+  "fetchedAt": "2026-05-28",
+  "source": "NOAA Storm Events Database — manually extracted",
+  "events": [
+    {
+      "begin_date": "2019-02-03",
+      "event_type": "Winter Storm",
+      "magnitude": null,
+      "magnitude_type": null,
+      "deaths_direct": 0,
+      "injuries_direct": 0,
+      "damage_property": 150000,
+      "begin_lat": 45.68,
+      "begin_lon": -111.05
+    },
+    {
+      "begin_date": "2014-11-20",
+      "event_type": "Winter Storm",
+      "magnitude": null,
+      "magnitude_type": null,
+      "deaths_direct": 0,
+      "injuries_direct": 0,
+      "damage_property": 250000,
+      "begin_lat": 45.68,
+      "begin_lon": -111.05
+    }
+  ]
+}

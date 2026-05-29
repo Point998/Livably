@@ -2,6 +2,9 @@
 
 // Chapter data module — FR-017 through FR-024
 
+const path = require('path');
+const fs   = require('fs');
+
 const { discoverDevelopments } = require('./development-discovery');
 const { haversineDistance } = require('./utils/geo');
 const { escapeHtml, formatMoney } = require('./utils/text');
@@ -32,6 +35,9 @@ const {
   INAT_BUTTERFLIES_RADIUS_KM, INAT_BUTTERFLIES_PER_PAGE,
   PLANT_GROWTH_FORMS, MONARCH_CORRIDOR_STATES, MILKWEED_BY_STATE, FIREFLY_STATES,
   GROCERY_SEARCH_RADIUS_M, STATE_ALERT_SYSTEMS, CLIMATE_SIGNIFICANT_DAMAGE_USD,
+  NOAA_CDO_BASE_URL, NOAA_CDO_NORMALS_DATASET, NOAA_CDO_NORMALS_ANN,
+  FEMA_DECLARATIONS_URL, USGS_ELEVATION_URL,
+  CLIMATE_STORM_LOOKBACK_YEARS, CLIMATE_FEMA_LOOKBACK_YEARS,
 } = require('./utils/constants');
 
 const { getCensusFIPS, fetchCensusACS } = require('./shared/census');
@@ -1119,6 +1125,223 @@ function classifyTopographicPosition(elevations) {
   return 'midslope';
 }
 
+// ── FR-043: API helpers ───────────────────────────────────────────────────────
+
+// getNOAAStormEvents — 3-tier strategy
+// Tier 1: NOAA CDO API (does not have storm event narratives — returns [] immediately)
+// Tier 2: Pre-cached JSON for known counties
+// Tier 3: Returns [] — template renders graceful fallback link
+async function getNOAAStormEvents(stateFips, countyFips) {
+  // Tier 2: Pre-cached JSON
+  if (stateFips && countyFips) {
+    try {
+      const file = path.join(__dirname, '..', 'data', 'noaa-storm-events', `${stateFips}-${countyFips}.json`);
+      if (fs.existsSync(file)) {
+        const cached = JSON.parse(fs.readFileSync(file, 'utf8'));
+        return cached.events || [];
+      }
+    } catch {
+      // fall through to Tier 3
+    }
+  }
+  // Tier 3: empty — template renders graceful degradation link
+  return [];
+}
+
+async function getNOAAClimateNormals(lat, lng) {
+  const key = process.env.NOAA_CDO_API_KEY;
+  if (!key) return null;
+
+  try {
+    // Find nearest NORMAL_MLY station within bounding box
+    const stationParams = new URLSearchParams({
+      datasetid: NOAA_CDO_NORMALS_DATASET,
+      extent: `${(lat - 1).toFixed(4)},${(lng - 1).toFixed(4)},${(lat + 1).toFixed(4)},${(lng + 1).toFixed(4)}`,
+      limit: 5,
+    });
+    const stResp = await fetch(`${NOAA_CDO_BASE_URL}/stations?${stationParams}`, {
+      headers: { token: key },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!stResp.ok) return null;
+    const stData = await stResp.json();
+    if (!stData.results?.length) return null;
+    const station = stData.results[0];
+
+    // Fetch monthly normals
+    const normParams = new URLSearchParams({
+      datasetid: NOAA_CDO_NORMALS_DATASET,
+      stationid: station.id,
+      datatypeid: 'MLY-TMAX-NORMAL,MLY-TMIN-NORMAL,MLY-PRCP-NORMAL,MLY-SNOW-NORMAL',
+      startdate: '2010-01-01',
+      enddate: '2010-12-31',
+      limit: 100,
+    });
+    const normResp = await fetch(`${NOAA_CDO_BASE_URL}/data?${normParams}`, {
+      headers: { token: key },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!normResp.ok) return null;
+    const normData = await normResp.json();
+    if (!normData.results?.length) return null;
+
+    // Pivot into monthly rows
+    const byMonth = {};
+    for (const r of normData.results) {
+      const month = parseInt(r.date.slice(5, 7), 10);
+      if (!byMonth[month]) byMonth[month] = {};
+      byMonth[month][r.datatype] = r.value;
+    }
+    const monthly = Array.from({ length: 12 }, (_, i) => {
+      const m = byMonth[i + 1] || {};
+      return {
+        month: i + 1,
+        tMaxF: m['MLY-TMAX-NORMAL'] ?? null,
+        tMinF: m['MLY-TMIN-NORMAL'] ?? null,
+        precipIn: m['MLY-PRCP-NORMAL'] ?? null,
+        snowIn: m['MLY-SNOW-NORMAL'] ?? null,
+      };
+    });
+
+    // Annual normals
+    const annParams = new URLSearchParams({
+      datasetid: NOAA_CDO_NORMALS_ANN,
+      stationid: station.id,
+      datatypeid: 'ANN-TMAX-AVGNDS-GRTH090,ANN-TMAX-AVGNDS-GRTH095,ANN-TMIN-AVGNDS-LSTH032',
+      startdate: '2010-01-01',
+      enddate: '2010-12-31',
+      limit: 10,
+    });
+    let annual = { daysAbove90: null, daysAbove95: null, daysBelow32: null };
+    try {
+      const annResp = await fetch(`${NOAA_CDO_BASE_URL}/data?${annParams}`, {
+        headers: { token: key },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (annResp.ok) {
+        const annData = await annResp.json();
+        for (const r of (annData.results || [])) {
+          if (r.datatype === 'ANN-TMAX-AVGNDS-GRTH090') annual.daysAbove90 = r.value;
+          if (r.datatype === 'ANN-TMAX-AVGNDS-GRTH095') annual.daysAbove95 = r.value;
+          if (r.datatype === 'ANN-TMIN-AVGNDS-LSTH032') annual.daysBelow32 = r.value;
+        }
+      }
+    } catch { /* annual normals are optional */ }
+
+    return { monthly, annual, stationId: station.id, stationName: station.name };
+  } catch {
+    return null;
+  }
+}
+
+async function getWatershedContext(lat, lng) {
+  try {
+    const offsets = [[0, 0], [0.0036, 0], [-0.0036, 0], [0, 0.0045], [0, -0.0045]];
+    const elevations = await Promise.all(
+      offsets.map(async ([dlat, dlng]) => {
+        const resp = await fetch(
+          `${USGS_ELEVATION_URL}?x=${(lng + dlng).toFixed(6)}&y=${(lat + dlat).toFixed(6)}&units=Feet&wkid=4326&includeDate=false`,
+          { signal: AbortSignal.timeout(5000) }
+        );
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        return data?.value ?? null;
+      })
+    );
+    if (elevations.some((e) => e === null)) return null;
+    return { elevations, position: classifyTopographicPosition(elevations) };
+  } catch {
+    return null;
+  }
+}
+
+async function getFEMADeclarations(state, county) {
+  if (!state || !county) return [];
+  try {
+    // FEMA county filter uses uppercase county name without "County" suffix
+    const countyFilter = county.toUpperCase().replace(/\s*COUNTY\s*$/i, '').trim();
+    const params = new URLSearchParams({
+      '$filter': `stateCode eq '${state}' and designatedArea eq '${countyFilter} (C)'`,
+      '$orderby': 'declarationDate desc',
+      '$top': 50,
+      '$format': 'json',
+      '$select': 'declarationDate,declarationTitle,incidentType,disasterNumber',
+    });
+    const resp = await fetch(`${FEMA_DECLARATIONS_URL}?${params}`, {
+      signal: AbortSignal.timeout(10000),
+      headers: { Accept: 'application/json' },
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - CLIMATE_FEMA_LOOKBACK_YEARS);
+    return (data.DisasterDeclarationsSummaries || [])
+      .filter((d) => new Date(d.declarationDate) >= cutoff)
+      .map((d) => ({
+        declarationDate: d.declarationDate,
+        declarationTitle: d.declarationTitle,
+        incidentType: d.incidentType,
+        disasterNumber: d.disasterNumber,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+async function getClimateHistoryData(lat, lng, locationInfo) {
+  const state      = locationInfo?.state      || null;
+  const county     = locationInfo?.county     || '';
+  const stateFips  = locationInfo?.stateFips  || '';
+  const countyFips = locationInfo?.countyFips || '';
+
+  const [stormResult, femaResult, normalsResult, watershedResult] =
+    await Promise.allSettled([
+      getNOAAStormEvents(stateFips, countyFips),
+      getFEMADeclarations(state, county),
+      getNOAAClimateNormals(lat, lng),
+      getWatershedContext(lat, lng),
+    ]);
+
+  const val = (r, fallback) => r.status === 'fulfilled' ? r.value : fallback;
+  const allEvents  = val(stormResult, []);
+  const femaAll    = val(femaResult, []);
+  const normals    = val(normalsResult, null);
+  const watershed  = val(watershedResult, null);
+
+  const tornadoes    = allEvents.filter((e) => /tornado/i.test(e.event_type || ''));
+  const floods       = allEvents.filter((e) => /flood/i.test(e.event_type || ''));
+  const winterStorms = allEvents.filter((e) => /winter|ice|blizzard|snow/i.test(e.event_type || ''));
+  const heatEvents   = allEvents.filter((e) => /heat|drought/i.test(e.event_type || ''));
+
+  const weatherTypes = new Set([
+    'Tornado', 'Flood', 'Flash Flood', 'Severe Storm', 'Hurricane',
+    'Ice Storm', 'Winter Storm', 'Blizzard', 'Excessive Heat', 'Drought',
+    'Wildfire', 'Severe Ice Storm', 'Heavy Snow',
+  ]);
+  const femaWeather = femaAll.filter((d) => weatherTypes.has(d.incidentType));
+
+  return {
+    stormEvents: { tornadoes, floods, winterStorms, heatEvents, allEvents },
+    femaDeclarations: {
+      weatherRelated: femaWeather,
+      all: femaAll,
+      count: femaWeather.length,
+    },
+    climateNormals: normals,
+    glance: {
+      lastSignificantEvent: getLastSignificantEvent(femaWeather, allEvents),
+    },
+    preparedness: {
+      emergencySystem: getEmergencySystem(state, county),
+      roadPriority: null,
+    },
+    watershed: watershed
+      ? { topographicPosition: watershed.position, elevations: watershed.elevations }
+      : null,
+    basementContext: null, // populated post-resolution in getChapterData using propIntel.constructionEra
+  };
+}
+
 async function iNatSeasonalBirds(lat, lng, months) {
   try {
     const params = new URLSearchParams({
@@ -1349,7 +1572,7 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
 async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
   const fips = await getCensusFIPS(lat, lng);
 
-  const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel, gardenData] =
+  const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel, gardenData, climateHistory] =
     await Promise.allSettled([
       getDemographics(lat, lng, fips),
       getPropertyData(fips, locationInfo),
@@ -1361,9 +1584,22 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
       getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey),
       getPropertyIntelligence(lat, lng, fips, locationInfo),
       getGardenData(lat, lng, locationInfo),
+      getClimateHistoryData(lat, lng, locationInfo),
     ]);
 
   const val = (r) => (r.status === 'fulfilled' ? r.value : null);
+
+  // Post-resolve basementContext using propIntel.constructionEra (not available during parallel fetch)
+  const { getBasementContext: gbc } = require('./shared/validate');
+  let climateHistoryVal = val(climateHistory);
+  if (climateHistoryVal) {
+    const era = val(propIntel)?.era?.medianYearBuilt || null;
+    climateHistoryVal = {
+      ...climateHistoryVal,
+      basementContext: gbc(era, locationInfo?.state, locationInfo?.ruralMode?.mode || locationInfo?.ruralMode || 'suburban'),
+    };
+  }
+
   return {
     demographics: val(demographics),
     propertyData: val(propertyData),
@@ -1375,6 +1611,7 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
     growth:       val(growth),
     propIntel:    val(propIntel),
     gardenData:   val(gardenData),
+    climateHistory: climateHistoryVal,
     locationInfo,
   };
 }
@@ -1408,7 +1645,7 @@ function buildChaptersHTML(chapters) {
     buildCrimeHTML(chapters.safetyLocation, chapters.emergency),
     buildDemographicsHTML(chapters.demographics),
     buildGrowthAndDevelopmentHTML(chapters.growth),
-    buildClimateChapterHTML(chapters.environment, chapters.locationInfo),
+    buildClimateChapterHTML(chapters.environment, chapters.climateHistory, chapters.locationInfo),
     buildWhatWillGrowHTML(chapters.gardenData, chapters.propIntel?.soil, chapters.locationInfo),
     buildPropertyIntelligenceHTML(chapters.propIntel),
     buildSensoryEnvironmentalHTML(chapters.environment),
