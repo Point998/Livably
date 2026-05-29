@@ -1203,12 +1203,13 @@ async function getNOAAClimateNormals(lat, lng) {
         }
         const monthly = Array.from({ length: 12 }, (_, i) => {
           const m = byMonth[i + 1] || {};
+          // NOAA CDO units: temps in tenths of °F, precip in hundredths of inches, snow in tenths of inches
           return {
             month: i + 1,
-            tMaxF: m['MLY-TMAX-NORMAL'] ?? null,
-            tMinF: m['MLY-TMIN-NORMAL'] ?? null,
-            precipIn: m['MLY-PRCP-NORMAL'] ?? null,
-            snowIn: m['MLY-SNOW-NORMAL'] ?? null,
+            tMaxF: m['MLY-TMAX-NORMAL'] != null ? m['MLY-TMAX-NORMAL'] / 10 : null,
+            tMinF: m['MLY-TMIN-NORMAL'] != null ? m['MLY-TMIN-NORMAL'] / 10 : null,
+            precipIn: m['MLY-PRCP-NORMAL'] != null ? m['MLY-PRCP-NORMAL'] / 100 : null,
+            snowIn: m['MLY-SNOW-NORMAL'] != null ? m['MLY-SNOW-NORMAL'] / 10 : null,
           };
         });
 
