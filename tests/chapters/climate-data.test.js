@@ -1,4 +1,13 @@
 'use strict';
+
+jest.mock('../../src/logger', () => ({
+  logError: jest.fn(),
+  logRequest: jest.fn(),
+  logAnalysis: jest.fn(),
+  readRecentLogs: jest.fn(() => []),
+}));
+const { logError } = require('../../src/logger');
+
 const {
   NOAA_CDO_BASE_URL, FEMA_DECLARATIONS_URL, USGS_ELEVATION_URL,
   CLIMATE_STORM_LOOKBACK_YEARS, CLIMATE_FEMA_LOOKBACK_YEARS,
@@ -300,6 +309,10 @@ describe('fetchElevationWithRetry', () => {
 // ── getWatershedContext ───────────────────────────────────────────────────────
 
 describe('getWatershedContext', () => {
+  beforeEach(() => {
+    logError.mockClear();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -333,11 +346,17 @@ describe('getWatershedContext', () => {
     // Surrounding points should be filled with center value
     expect(result.elevations.slice(1).every(e => e === 900)).toBe(true);
     expect(result.position).toBe('midslope');
+    // logError must be called once per exhausted surrounding point (4 points failed)
+    expect(logError).toHaveBeenCalledWith('getWatershedContext', expect.stringContaining(','), expect.any(Error));
+    expect(logError).toHaveBeenCalledTimes(4);
   }, 30000);
 
   test('returns null when center point fails after all retries', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('network failure'));
     const result = await getWatershedContext(38.25, -85.75);
     expect(result).toBeNull();
+    // All 5 points failed — logError called for each null result
+    expect(logError).toHaveBeenCalledWith('getWatershedContext', expect.stringContaining(','), expect.any(Error));
+    expect(logError).toHaveBeenCalledTimes(5);
   }, 30000);
 });
