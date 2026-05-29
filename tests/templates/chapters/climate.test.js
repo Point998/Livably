@@ -96,3 +96,61 @@ describe('buildClimateChapterHTML', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildClimateChapterHTML — Level 3 Deep Read', () => {
+  test('Deep Read toggle button renders when climateHistory present', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/climate-deep-toggle/);
+    expect(html).toMatch(/weather history/i);
+  });
+
+  test('Deep Read has exactly 6 tab buttons', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    const tabs = (html.match(/role="tab"/g) || []).length;
+    expect(tabs).toBe(6);
+  });
+
+  test('Flood History tab panel exists', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/ctab-flood/);
+  });
+
+  test('Tornado tab contains EF rating from pre-cached event', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/ctab-tornado/);
+    expect(html).toMatch(/EF1/i);
+  });
+
+  test('Community Preparedness tab shows KYEM Alert', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/KYEM Alert/);
+    expect(html).toMatch(/kyem\.ky\.gov/);
+  });
+
+  test('Seasonal calendar renders all 12 months', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/JANUARY/);
+    expect(html).toMatch(/DECEMBER/);
+  });
+
+  test('No Deep Read toggle when climateHistory is null', () => {
+    const html = buildClimateChapterHTML(baseEnv, null, locationInfo);
+    expect(html).not.toMatch(/climate-deep-toggle/);
+  });
+});
+
+describe('buildClimateChapterHTML — Level 4 Research', () => {
+  test('Research toggle present when allEvents is non-empty', () => {
+    const h = {
+      ...baseHistory,
+      stormEvents: { ...baseHistory.stormEvents, allEvents: [{ begin_date: '2021-02-11', event_type: 'Ice Storm', damage_property: 500000 }] },
+    };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
+    expect(html).toMatch(/climate-research-toggle/);
+  });
+
+  test('Research toggle absent when allEvents is empty', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).not.toMatch(/climate-research-toggle/);
+  });
+});
