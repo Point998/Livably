@@ -2,13 +2,62 @@
 const { escapeHtml } = require('../../utils/text');
 const { badgeClass } = require('../components/badge');
 const { renderChapterCard } = require('../components/chapterCard');
+const {
+  CLIMATE_FEMA_LOOKBACK_YEARS,
+  CLIMATE_STORM_LOOKBACK_YEARS,
+} = require('../../utils/constants');
 
-function buildClimateChapterHTML(environment, locationInfo) {
-  if (!environment) return '';
-  const flood  = environment.floodRisk;
+// Private helper — inline copy to avoid circular require with chapters.js
+function _computeRarityStatement(count, years, eventType) {
+  if (count === 0) return `No recorded ${eventType} events in this county in ${years} years.`;
+  const perDecade = Math.round((count / years) * 10);
+  return `${count} ${eventType} event${count === 1 ? '' : 's'} in ${years} years — roughly ${perDecade} per decade.`;
+}
+
+function buildClimateGlanceHTML(environment, climateHistory) {
+  const flood = environment?.floodRisk;
+  const zoneText = flood ? `Zone ${escapeHtml(flood.zone)}` : 'Zone Unknown';
+  const zoneColor = (!flood || flood.zone === 'X') ? 'green'
+    : (flood.risk === 'High' || flood.risk === 'Very High') ? 'red' : 'gold';
+
+  const lastEvt = climateHistory?.glance?.lastSignificantEvent;
+  const lastEvtText = lastEvt
+    ? `Last significant event: ${escapeHtml(lastEvt.type)}, ${lastEvt.year}`
+    : 'No federally declared disasters in 20 years';
+
+  return `<div class="climate-glance">
+    <span class="climate-glance-badge climate-glance-badge--${zoneColor}">${zoneText}</span>
+    <span class="climate-glance-sep">·</span>
+    <span class="climate-glance-event">${escapeHtml(lastEvtText)}</span>
+  </div>`;
+}
+
+function buildWatershedHTML(watershed) {
+  if (!watershed) return '';
+  if (watershed.topographicPosition === 'lowpoint') {
+    return `<p class="prem-narrative-body things-to-check">This address sits at a low point in the surrounding terrain — stormwater from uphill areas drains toward this elevation. Ask the seller specifically whether the yard or basement has experienced water intrusion during heavy rain events.</p>`;
+  }
+  if (watershed.topographicPosition === 'uphill') {
+    return `<p class="prem-narrative-body">This address sits above the surrounding terrain — stormwater drains away from rather than toward this parcel, which is a modest advantage during heavy rain events.</p>`;
+  }
+  return '';
+}
+
+function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
+  if (!environment && !climateHistory) return '';
+  const flood  = environment?.floodRisk;
   const state  = locationInfo?.state || null;
   const county = locationInfo?.county || 'this county';
   const tornado = state ? getTornadoTier(state) : null;
+
+  const glanceHTML = buildClimateGlanceHTML(environment, climateHistory);
+
+  // Overview additions
+  const femaCount = climateHistory?.femaDeclarations?.count || 0;
+  const femaCountHTML = femaCount > 0
+    ? `<p class="prem-narrative-body">${escapeHtml(county)} has received ${femaCount} federal weather-related disaster declaration${femaCount === 1 ? '' : 's'} in the last ${CLIMATE_FEMA_LOOKBACK_YEARS} years.</p>`
+    : '';
+  const watershedHTML = buildWatershedHTML(climateHistory?.watershed);
 
   // ── Flood section ─────────────────────────────────────────────────────────
   let floodPara = '';
@@ -112,9 +161,12 @@ function buildClimateChapterHTML(environment, locationInfo) {
   </div>`;
 
   const leftHTML = `
+    ${glanceHTML}
     ${tornadoHTML}
     <div class="prem-narrative">
       <p class="prem-narrative-lead">${floodPara}</p>
+      ${femaCountHTML}
+      ${watershedHTML}
     </div>
     <div class="prem-safety-actions">
       <div class="prem-safety-actions-label">4 Things to Verify Before You Close</div>

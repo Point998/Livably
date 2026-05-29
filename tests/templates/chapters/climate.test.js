@@ -1,0 +1,98 @@
+'use strict';
+const { buildClimateChapterHTML } = require('../../../src/templates/chapters/climate');
+
+const baseEnv = {
+  floodRisk: { zone: 'X', risk: 'Minimal', insuranceRequired: false },
+};
+const locationInfo = { state: 'KY', county: 'Scott County', zip: '40324' };
+
+const baseHistory = {
+  stormEvents: {
+    tornadoes: [{ begin_date: '2012-03-02', event_type: 'Tornado', magnitude: 1, magnitude_type: 'EF', deaths_direct: 0, injuries_direct: 2, damage_property: 250000, begin_lat: 38.25, begin_lon: -84.55 }],
+    floods: [],
+    winterStorms: [{ begin_date: '2021-02-11', event_type: 'Ice Storm', magnitude: null, damage_property: 500000 }],
+    heatEvents: [],
+    allEvents: [],
+  },
+  femaDeclarations: {
+    weatherRelated: [{ declarationDate: '2021-02-15', declarationTitle: 'Severe Ice Storm', incidentType: 'Ice Storm' }],
+    all: [],
+    count: 1,
+  },
+  climateNormals: {
+    monthly: Array.from({ length: 12 }, (_, i) => ({ month: i + 1, tMaxF: 50 + i * 3, tMinF: 30 + i * 2, precipIn: 3.5, snowIn: i < 3 || i > 9 ? 2 : 0 })),
+    annual: { daysAbove90: 26, daysAbove95: 8, daysBelow32: 74 },
+    stationId: 'GHCND:USW00093820',
+    stationName: 'Georgetown KY',
+  },
+  glance: { lastSignificantEvent: { type: 'Ice Storm', year: 2021 } },
+  preparedness: {
+    emergencySystem: { tier: 1, name: 'KYEM Alert', url: 'https://kyem.ky.gov/alert', searchUrl: 'https://google.com/search?q=Scott+County+emergency+alerts', note: null },
+    roadPriority: 'residential',
+  },
+  watershed: { topographicPosition: 'midslope', elevations: [900, 920, 880, 910, 890] },
+  basementContext: 'Homes of this era vary significantly — some have basements, many are slab.',
+};
+
+describe('buildClimateChapterHTML', () => {
+  test('renders without climateHistory (backward compatible)', () => {
+    const html = buildClimateChapterHTML(baseEnv, null, locationInfo);
+    expect(html).toBeTruthy();
+    expect(html).toMatch(/Zone X/);
+  });
+
+  test('renders with no arguments without crashing', () => {
+    expect(() => buildClimateChapterHTML(null, null, null)).not.toThrow();
+  });
+
+  test('Glance bar renders when climateHistory present', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/climate-glance/);
+  });
+
+  test('Glance bar shows last significant event year and type', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/Ice Storm/);
+    expect(html).toMatch(/2021/);
+  });
+
+  test('Glance bar shows "no disasters" text when lastSignificantEvent is null', () => {
+    const h = { ...baseHistory, glance: { lastSignificantEvent: null } };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
+    expect(html).toMatch(/No federally declared/i);
+  });
+
+  test('Overview shows FEMA declaration count when count > 0', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/1 federal.*disaster declaration/i);
+  });
+
+  test('Overview omits FEMA sentence when count is 0', () => {
+    const h = { ...baseHistory, femaDeclarations: { ...baseHistory.femaDeclarations, count: 0, weatherRelated: [] } };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
+    expect(html).not.toMatch(/federal.*disaster declaration/i);
+  });
+
+  test('watershed lowpoint shows Things to Check note', () => {
+    const h = { ...baseHistory, watershed: { topographicPosition: 'lowpoint', elevations: [850, 920, 910, 900, 890] } };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
+    expect(html).toMatch(/low point/i);
+  });
+
+  test('watershed uphill shows reassuring note', () => {
+    const h = { ...baseHistory, watershed: { topographicPosition: 'uphill', elevations: [950, 880, 870, 900, 890] } };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
+    expect(html).toMatch(/above.*terrain|drains away/i);
+  });
+
+  test('no scoring CSS classes (CONSTRAINT-001)', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).not.toMatch(/class="[^"]*\bscore\b/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
