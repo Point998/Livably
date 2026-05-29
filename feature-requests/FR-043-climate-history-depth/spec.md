@@ -103,17 +103,28 @@ Triggered by: `[+ Full climate data tables]` toggle button.
 
 ### New
 
-**NOAA Storm Events**
-- Source: NCEI Storm Events Database — `https://www.ncdc.noaa.gov/stormevents/`
-- Programmatic access: NCEI CSV bulk download endpoint — `https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/`
-- **Data acquisition risk:** No clean REST API exists for Storm Events. Options in priority order:
-  1. NCEI CSV download per year per state, cached at report time (preferred — deterministic, no rate limits)
-  2. NOAA CDO API with `dataset=GHCND` — returns some storm data but incomplete for narrative events
-  3. Manual data enrichment for the 5 test counties as a fallback
-- Auth for CDO: `NOAA_CDO_API_KEY` header — see `.env.example` requirement below
-- Event types to fetch: tornado, flash flood, flood, winter storm, ice storm, blizzard, excessive heat, drought
+**NOAA Storm Events — three-tier strategy**
+
+Tier 1 (primary): NOAA CDO API
+- Endpoint: `https://www.ncdc.noaa.gov/cdo-web/api/v2/data`
+- Auth: `NOAA_CDO_API_KEY` header — see `.env.example` requirement below
+- Dataset: `GHCND` for climate normals; storm event data via the same CDO token
+- Parameters: county FIPS, date range 30 years, event type filters
+- Event types: tornado, flash flood, flood, winter storm, ice storm, blizzard, excessive heat, drought
 - Fields needed: begin_date, event_type, magnitude, magnitude_type, deaths_direct, injuries_direct, damage_property, begin_lat, begin_lon, end_lat, end_lon
-- **Implementation decision:** The exact API strategy (CSV vs CDO) must be validated during Phase 1 Discovery of the implementation plan before committing to an approach.
+- Rate limit: 5 requests/second, 10,000 requests/day — well within per-report budget
+
+Tier 2 (fallback): Pre-cached CSV for 5 test counties
+- Location: `data/noaa-storm-events/[state-fips]-[county-fips].json`
+- Content: pre-processed storm events for the 5 test addresses (Scott KY, Harlan KY, Jefferson KY, Gallatin MT, Clark IN)
+- Format: same shape as CDO API response so the same processing functions handle both
+- Updated: manually refreshed as needed — not auto-updated at runtime
+- Used when: CDO API key missing, CDO API rate-limited, or CDO API returns error
+
+Tier 3 (graceful degradation): Direct NOAA link
+- When both Tier 1 and Tier 2 unavailable, render a "Things to Check" action item:
+  "Review historic storm events for this county at ncdc.noaa.gov/stormevents — filter by county and last 30 years."
+- Chapter still renders Level 2 content. No error state shown to buyer.
 
 **FEMA OpenFEMA Disaster Declarations**
 - Endpoint: `https://www.fema.gov/api/open/v2/disasterDeclarations`
@@ -134,7 +145,8 @@ Triggered by: `[+ Full climate data tables]` toggle button.
 - Endpoint: `https://epqs.nationalmap.gov/v1/json?x=[lng]&y=[lat]&units=Feet&wkid=4326`
 - No key required
 - Used for: Level 2 watershed context — elevation at address + 4 cardinal-direction points (0.25 miles N/S/E/W) to determine topographic position
-- **Approximation note:** This is a simplified topographic position heuristic, not a true watershed delineation. Full watershed analysis (USGS StreamStats) requires a separate API and is out of scope for this FR. The 5-point elevation sampling is sufficient for the "is this address at a low point?" determination we need.
+- **Approximation note:** This is a simplified topographic position heuristic, not a true watershed delineation. The 5-point elevation sampling is sufficient for the "is this address at a low point?" determination we need.
+- **Future enhancement:** Full watershed delineation via USGS StreamStats API (`https://streamstats.usgs.gov/streamstatsservices/`) would provide drainage area boundaries and upstream land use. Out of scope for this FR — document as a named future enhancement in the summary when this FR ships.
 
 ---
 
@@ -176,7 +188,7 @@ Runs in parallel with existing data fetching. Returns:
     lastSignificantEvent: null, // { type, year, county } or null
   },
   preparedness: {
-    emergencySystem: null,  // from EMERGENCY_NOTIFICATION_SYSTEMS table
+    emergencySystem: null,  // { tier, name, url, searchUrl, note } — always non-null if state available
     roadPriority: null,     // 'primary' | 'secondary' | 'residential' | null
   },
   watershed: {
@@ -200,7 +212,8 @@ Runs in parallel with existing data fetching. Returns:
 |---|---|
 | `src/chapters.js` | Add `getClimateHistoryData()` + helper functions |
 | `src/templates/chapters/climate.js` | Add Glance bar, Overview additions, Level 3 toggle + tabs, Level 4 toggle + tables |
-| `src/utils/constants.js` | NOAA API constants, EMERGENCY_NOTIFICATION_SYSTEMS table, ROAD_PRIORITY_TYPES |
+| `src/utils/constants.js` | NOAA API constants, STATE_ALERT_SYSTEMS (~50 entries), ROAD_PRIORITY_TYPES |
+| `data/noaa-storm-events/` | New directory — pre-cached JSON for 5 test counties (Tier 2 fallback) |
 | `public/report.css` | Climate tab styles (scoped `.climate-` prefix), research table styles |
 | `public/ui.js` | `initClimateDeepDive()` — toggle + tab switching, identical pattern to `initGardenDeepDive()` |
 | `.env.example` | `NOAA_CDO_API_KEY` entry with comment |
@@ -227,40 +240,72 @@ If `NOAA_CDO_API_KEY` is not set, `getClimateHistoryData()` returns null and the
 
 ---
 
-### Emergency Notification System Lookup Table
+### Emergency Notification System — Two-Tier Dynamic Approach
 
-**Initial scope: Kentucky counties only.**
+No per-county hardcoding. Works for any US address without maintenance. Never a dead end.
+
+**Tier 1: State-level unified systems (~50 entries)**
+
+Most states operate a unified statewide emergency alert system. A single static lookup keyed by state abbreviation covers the majority of US addresses with a registration URL that never needs county-level maintenance.
 
 Structure in `src/utils/constants.js`:
 
 ```js
-// Key format: '[STATE]-[COUNTY_FIPS_3]'
-// State coverage: KY complete. Expand one full state at a time — no partial coverage.
-const EMERGENCY_NOTIFICATION_SYSTEMS = new Map([
-  ['KY-017', { name: 'AlertScott', url: 'https://www.scottcounty.org/emergency', vendor: 'CodeRED' }],
-  ['KY-067', { name: 'Fayette County Emergency Management', url: 'https://www.lexingtonky.gov/emergency', vendor: 'Everbridge' }],
-  ['KY-111', { name: 'Jefferson County Emergency Management', url: 'https://www.louisvilleky.gov/government/emergency-management', vendor: 'CodeRED' }],
-  // ... all 120 KY counties
+// ~50 entries — one per state that has a unified statewide system.
+// States without a unified system are absent from this map (handled by Tier 2).
+const STATE_ALERT_SYSTEMS = new Map([
+  ['KY', { name: 'KYEM Alert', url: 'https://kyem.ky.gov/alert', vendor: 'Rave' }],
+  ['MT', { name: 'MT Alert', url: 'https://mtalert.mt.gov', vendor: 'Rave' }],
+  ['TX', { name: 'TxAlert', url: 'https://txalert.gov', vendor: 'Rave' }],
+  ['IN', { name: 'IN-Alert', url: 'https://in.gov/dhs/in-alert', vendor: 'Rave' }],
+  // ... remaining states with unified systems
 ]);
 ```
 
-**Fallback for non-KY addresses:**
+Lookup: `STATE_ALERT_SYSTEMS.get(state)` → returns system or undefined.
+
+**Tier 2: Dynamic county fallback (for states without a unified system)**
+
+When a state is not in `STATE_ALERT_SYSTEMS`, generate two things dynamically — no hardcoded data required:
+
+1. **County emergency management URL** — constructed from standard URL patterns:
 ```js
-{
-  name: 'Wireless Emergency Alerts',
-  url: 'https://www.fema.gov/emergency-managers/practitioners/wireless-emergency-alerts',
-  vendor: 'Federal',
-  note: 'County-specific alert system data not yet available for this state. WEA alerts are automatic — no registration needed. Check your county emergency management website for local systems.'
+function buildCountyEmergencyUrl(county, state) {
+  const slug = county.toLowerCase().replace(/\s+county$/i, '').replace(/\s+/g, '');
+  // Patterns tried in order, first successful one returned
+  // Pattern A: [county][state].gov (e.g., scottky.gov)
+  // Pattern B: [county]county[state].gov
+  // Pattern C: [state].[county]county.gov
+  // These are candidate URLs generated for display, not verified at runtime.
+  // The template renders the most likely pattern with a note to verify.
 }
 ```
 
-**Expansion plan:** Add states as complete batches in this priority order:
-1. Indiana — covers Jeffersonville IN test address (PM-001 regression case, CONSTRAINT-006)
-2. Montana — covers Bozeman MT test address
-3. Tennessee, Ohio, Virginia — adjacent to existing KY coverage
-4. All remaining states by population
+2. **Pre-built Google search URL:**
+```js
+`https://www.google.com/search?q=${encodeURIComponent(`${county} ${state} emergency alert registration`)}`
+```
 
-No partial state coverage. When a state is added, all counties in that state must be in the table.
+Rendered output (Tier 2):
+```
+Emergency alerts for [County] are managed locally.
+→ Try: [county][state].gov/emergency  (verify this URL)
+→ Or search: "[County] [State] emergency alert registration"
+```
+
+**Result object shape** (same for both tiers, template handles both):
+
+```js
+{
+  tier: 1,               // or 2
+  name: 'KYEM Alert',    // null for tier 2
+  url: 'https://...',    // registration URL (tier 1) or candidate URL (tier 2)
+  searchUrl: '...',      // always populated — Google search fallback
+  note: null,            // populated for tier 2 with verification guidance
+}
+```
+
+**Why this works:** Tier 1 covers ~35–40 states that operate unified systems (the majority of US homebuyers). Tier 2 covers the remaining states with a self-serve path that doesn't require Livably to maintain county-level data. The buyer always has a next step.
 
 ---
 
@@ -275,14 +320,18 @@ No partial state coverage. When a state is added, all counties in that state mus
 - Western states (MT, CO, WY, ID): "Basement prevalence in this region varies by lot topography and builder practice — verify directly."
 
 **CONSTRAINT-007 override — Rural and Remote mode:**
-When `validate.js` classifies the address as `rural` or `remote`, the era-based inference does NOT apply. Rural Appalachian Kentucky (e.g., Harlan KY) has high basement prevalence across all eras due to hillside construction. Rural western US (Bozeman MT area) has different patterns entirely.
+When `validate.js` classifies the address as `rural` or `remote`, era-based inference is replaced with a region-aware rural assessment. The key insight: rural construction patterns can run opposite to suburban patterns.
 
-Rural mode output:
-```
-"Construction patterns in rural areas vary significantly based on topography and local building practice — era-based generalizations are less reliable here. Ask the seller directly and have your inspector specifically assess foundation type and basement availability as a tornado shelter."
-```
+Region-aware rural logic (checked before era-based rules):
 
-The rural mode flag is already available from `validate.js`. Basement detection reads it before applying era-based inference.
+- **Rural Appalachian KY/WV/TN/VA** (e.g., Harlan KY): Hillside construction means high basement prevalence across ALL eras, including post-2000. Output: "Hillside construction in this region makes basements common regardless of build year — verify with the seller. Appalachian homes often have full walk-out basements that double as effective storm shelters."
+- **Rural Great Plains / Tornado Alley** (KS, NE, OK, northern TX): Storm shelter culture means basement or dedicated underground shelter is common even in newer construction. Output: "Storm shelter culture in this region means most rural homes have a basement or dedicated underground shelter regardless of build year — verify with the seller."
+- **Rural Western US** (MT, CO, WY, ID, NM): Variable based on elevation and lot topography — no reliable era-based or region-based inference. Output: "Foundation types in rural western properties vary significantly with lot topography and local practice — verify foundation type and any shelter options directly with the seller."
+- **Rural Midwest / Upper South** (general): Higher basement prevalence than urban/suburban equivalents in the same era, particularly pre-2000. Output: "Rural homes in this region often have full basements regardless of era — more common than suburban construction of the same period. Verify with seller."
+
+The region classification uses the address state and rural mode flag — both already available in `validate.js`. No new data required.
+
+The rural mode flag is already available from `validate.js`. Basement detection reads it before applying era-based inference, then selects the appropriate regional variant.
 
 ---
 
@@ -341,7 +390,7 @@ All coherence checks live in `src/shared/validate.js`:
 - `classifyTopographicPosition(elevations)` — lowpoint/midslope/uphill from 5-point array
 - `getBasementContext(constructionEra, state, ruralMode)` — rural mode suppresses era inference
 - `getRoadPriority(addressComponents)` — correct classification for primary/secondary/residential
-- `getEmergencySystem(stateFips, countyFips)` — KY returns named system, non-KY returns fallback
+- `getEmergencySystem(state, county)` — KY returns Tier 1 with KYEM Alert, state without unified system returns Tier 2 with dynamic URL + search URL, both tiers always populate searchUrl
 
 `tests/templates/chapters/climate.test.js`:
 - Glance bar renders for all 3 flood risk levels (green/gold/red)
@@ -365,9 +414,13 @@ All coherence checks live in `src/shared/validate.js`:
 - [ ] Research toggle shows complete storm event table and monthly normals table
 - [ ] `NOAA_CDO_API_KEY` documented in `.env.example` with registration URL
 - [ ] If `NOAA_CDO_API_KEY` missing: chapter renders Level 2 only, no errors thrown
-- [ ] `EMERGENCY_NOTIFICATION_SYSTEMS` table covers all 120 KY counties (researched and populated during implementation)
-- [ ] Non-KY addresses render fallback emergency system note
-- [ ] Basement detection: rural mode (Harlan KY) uses rural variant copy, not era-based inference
+- [ ] `STATE_ALERT_SYSTEMS` covers KY, MT, IN, TX and at least 30 additional states
+- [ ] Tier 1 path: KY address shows "KYEM Alert" with kyem.ky.gov/alert registration URL
+- [ ] Tier 2 path: address in state without unified system shows dynamic county URL candidate + Google search link
+- [ ] Both tiers always render a search URL — no dead ends
+- [ ] Basement detection: Harlan KY (rural Appalachian) uses hillside/Appalachian variant, not era-based inference
+- [ ] Basement detection: Georgetown KY (suburban) uses standard era-based inference
+- [ ] Basement detection: Bozeman MT (rural western) uses western rural variant
 - [ ] Rarity framing present in both Flood and Tornado tabs, computed from actual event counts
 - [ ] Seasonal calendar uses actual NOAA event data for this county, not generic copy
 - [ ] Georgetown KY: Scott County declarations, era-based basement note (suburban, post-2000 likely slab), KY alert system
