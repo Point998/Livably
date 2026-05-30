@@ -98,9 +98,9 @@ describe('buildClimateChapterHTML', () => {
 });
 
 describe('buildClimateChapterHTML — Level 3 Deep Read', () => {
-  test('Deep Read toggle button renders when climateHistory present', () => {
+  test('Deep Read section renders when climateHistory present', () => {
     const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
-    expect(html).toMatch(/climate-deep-toggle/);
+    expect(html).toMatch(/climate-deep-dive/);
     expect(html).toMatch(/weather history/i);
   });
 
@@ -133,24 +133,71 @@ describe('buildClimateChapterHTML — Level 3 Deep Read', () => {
     expect(html).toMatch(/DECEMBER/);
   });
 
-  test('No Deep Read toggle when climateHistory is null', () => {
+  test('No Deep Read section when climateHistory is null', () => {
     const html = buildClimateChapterHTML(baseEnv, null, locationInfo);
-    expect(html).not.toMatch(/climate-deep-toggle/);
+    expect(html).not.toMatch(/climate-deep-dive/);
   });
 });
 
 describe('buildClimateChapterHTML — Level 4 Research', () => {
-  test('Research toggle present when allEvents is non-empty', () => {
+  test('Research tables present when allEvents is non-empty', () => {
     const h = {
       ...baseHistory,
       stormEvents: { ...baseHistory.stormEvents, allEvents: [{ begin_date: '2021-02-11', event_type: 'Ice Storm', damage_property: 500000 }] },
     };
     const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
-    expect(html).toMatch(/climate-research-toggle/);
+    expect(html).toMatch(/climate-research-section/);
   });
 
-  test('Research toggle absent when allEvents is empty', () => {
+  test('Research section absent when allEvents is empty', () => {
     const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).not.toMatch(/climate-research-section/);
+  });
+});
+
+describe('buildClimateChapterHTML — FR-045 depth system', () => {
+  test('renders depth-l1 glance bar', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/depth-l1/);
+    expect(html).toMatch(/climate-glance/);
+  });
+
+  test('chapter-body has depth-l2 class (via renderChapterCard)', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/chapter-body depth-l2/);
+  });
+
+  test('L3 deep dive content is wrapped in depth-l3', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/depth-l3/);
+    expect(html).toMatch(/climate-deep-dive/);
+  });
+
+  test('no climate-deep-toggle button (replaced by depth selector)', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).not.toMatch(/climate-deep-toggle/);
+  });
+
+  test('no climate-research-toggle button (replaced by depth selector)', () => {
+    const h = {
+      ...baseHistory,
+      stormEvents: { ...baseHistory.stormEvents, allEvents: [{ begin_date: '2021-02-11', event_type: 'Ice Storm', damage_property: 500000 }] },
+    };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
     expect(html).not.toMatch(/climate-research-toggle/);
+  });
+
+  test('L4 research tables wrapped in depth-l4 when events present', () => {
+    const h = {
+      ...baseHistory,
+      stormEvents: { ...baseHistory.stormEvents, allEvents: [{ begin_date: '2021-02-11', event_type: 'Ice Storm', damage_property: 500000 }] },
+    };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('depth selector rendered (chapter-depth-control)', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/chapter-depth-control/);
   });
 });
