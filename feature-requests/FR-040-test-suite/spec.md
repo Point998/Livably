@@ -83,9 +83,11 @@ tests/
 
 ## Acceptance Criteria
 
-- [ ] Every numbered constraint in CLAUDE.md (001–015) has at least one test
-- [ ] Jeffersonville IN regression suite covers schools, health, reachability
-- [ ] All tests are pure unit tests (no API calls, all dependencies mocked)
-- [ ] `npm test` runs the full suite in under 30 seconds
-- [ ] No test skips (`test.skip`) committed to main
-- [ ] CI-ready: tests can run in GitHub Actions without env vars (all mocked)
+- [x] Every numbered constraint in CLAUDE.md (001–016) has at least one test
+- [x] Jeffersonville IN regression suite covers schools, health, reachability
+- [x] All tests are pure unit tests (no API calls, all dependencies mocked)
+- [x] `npm test` runs the full suite in under 30 seconds
+- [x] No test skips (`test.skip`) committed to main
+- [x] CI-ready: tests can run in GitHub Actions without env vars (all mocked)
+
+**Note:** CONSTRAINT-016 was added after original spec was written (PM-004, NOAA metadata reliability).

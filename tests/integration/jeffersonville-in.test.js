@@ -12,6 +12,7 @@ const mockTextSearch = jest.fn();
 const mockPlacesNearby = jest.fn();
 const mockGetDriveTime = jest.fn();
 const mockCheckCrossState = jest.fn();
+const mockCheckDriveTimeCoherence = jest.fn();
 
 const makeMockCache = () => {
   const store = new Map();
@@ -24,7 +25,11 @@ jest.mock('../../src/shared/google/client', () => ({
   googleMapsApiKey: 'test-key',
 }));
 jest.mock('../../src/shared/google/distanceMatrix', () => ({ getDriveTime: mockGetDriveTime }));
-jest.mock('../../src/shared/validate', () => ({ checkCrossState: mockCheckCrossState }));
+jest.mock('../../src/shared/validate', () => ({
+  checkCrossState: mockCheckCrossState,
+  checkDriveTimeCoherence: mockCheckDriveTimeCoherence,
+}));
+jest.mock('../../src/errorMemory', () => ({ getMitigation: jest.fn().mockReturnValue(8000) }));
 jest.mock('../../src/cache', () => ({ placesCache: mockPlacesCache }));
 jest.mock('../../src/logger', () => ({ logError: jest.fn() }));
 jest.mock('../../src/utils/constants', () => ({
@@ -34,10 +39,14 @@ jest.mock('../../src/utils/constants', () => ({
   ELEMENTARY_SCHOOL_EXCLUSIONS: ['online', 'virtual'],
   HOSPITAL_SEARCH_RADIUS_M: 50000,
   HOSPITAL_CANDIDATE_COUNT: 5,
+  GROCERY_SEARCH_RADIUS_M: 8000,
+  GROCERY_CANDIDATE_COUNT: 5,
+  GROCERY_EXCLUDED_TYPES: ['gas_station', 'convenience_store'],
 }));
 
 const { findNearestSchool, findNearestElementarySchool } = require('../../src/modules/schools/data');
 const { findNearestHospital } = require('../../src/modules/health/data');
+const { findNearestGrocery } = require('../../src/modules/reachability/data');
 
 const JEFFERSONVILLE_LATLNG = '38.2766,-85.7372';
 const ORIGIN_STATE = 'IN';
@@ -54,6 +63,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockPlacesCache.clear();
   mockCheckCrossState.mockResolvedValue({ valid: true, resultState: 'IN' });
+  mockCheckDriveTimeCoherence.mockReturnValue({ ok: true });
 });
 
 // ── PM-001 regression: School cross-state check ───────────────────────────────
@@ -120,5 +130,48 @@ describe('Jeffersonville IN — hospital search (CONSTRAINT-006)', () => {
     expect(result).not.toBeNull();
     expect(result.crossStateWarning).toBeFalsy();
     expect(result.name).toBe('Clark Memorial Hospital');
+  });
+});
+
+// ── CONSTRAINT-010: Grocery coherence check ───────────────────────────────────
+
+describe('Jeffersonville IN — grocery coherence check (CONSTRAINT-010)', () => {
+  const makeGroceryPlace = (name, lat, lng) => ({
+    name,
+    formatted_address: `${name} Address`,
+    types: ['supermarket', 'grocery_or_supermarket'],
+    geometry: { location: { lat, lng } },
+  });
+
+  test('coherence check is called with drive time and suburban ruralMode', async () => {
+    const store = makeGroceryPlace('Kroger', 38.28, -85.73);
+    mockPlacesNearby.mockResolvedValue({ data: { results: [store] } });
+    mockTextSearch.mockResolvedValue({ data: { results: [store] } });
+    mockGetDriveTime.mockResolvedValue(12);
+
+    await findNearestGrocery(JEFFERSONVILLE_LATLNG, 'suburban');
+
+    expect(mockCheckDriveTimeCoherence).toHaveBeenCalledWith(12, 'grocery store', 'suburban');
+  });
+
+  test('flags coherenceWarning when grocery is > 45 min for suburban address', async () => {
+    const farStore = makeGroceryPlace('Distant Kroger', 38.0, -85.0);
+    mockTextSearch.mockResolvedValue({ data: { results: [farStore] } });
+    mockGetDriveTime.mockResolvedValue(52);
+    mockCheckDriveTimeCoherence.mockReturnValue({ ok: false, reason: 'Drive time 52 min exceeds suburban threshold of 45 min' });
+
+    const result = await findNearestGrocery(JEFFERSONVILLE_LATLNG, 'suburban');
+    expect(result[0].coherenceWarning).toBe(true);
+    expect(result[0].coherenceReason).toMatch(/45 min/);
+  });
+
+  test('no coherenceWarning for nearby grocery', async () => {
+    const nearStore = makeGroceryPlace('Nearby Kroger', 38.27, -85.73);
+    mockTextSearch.mockResolvedValue({ data: { results: [nearStore] } });
+    mockGetDriveTime.mockResolvedValue(8);
+    // Default mock returns { ok: true }
+
+    const result = await findNearestGrocery(JEFFERSONVILLE_LATLNG, 'suburban');
+    expect(result[0].coherenceWarning).toBeUndefined();
   });
 });
