@@ -3310,7 +3310,7 @@ body.report-page {
 .chapter-depth-control {
   position: absolute;
   top: 1.5rem;
-  right: var(--sp-4, 1.5rem);
+  right: var(--space-4, 4px);
   z-index: 10;
 }
 
@@ -3339,8 +3339,8 @@ body.report-page {
   margin: 0;
   padding: 0.25rem 0;
   list-style: none;
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #e0e0e0);
+  background: var(--white);
+  border: 1px solid var(--ink-10);
   border-radius: 0.5rem;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   min-width: 8rem;
@@ -3351,7 +3351,7 @@ body.report-page {
   font-size: 0.8125rem;
   cursor: pointer;
 }
-.chapter-depth-option:hover { background: var(--color-surface-2, #f5f5f5); }
+.chapter-depth-option:hover { background: var(--ink-04); }
 .chapter-depth-option--selected { font-weight: 600; }
 
 /* ── Depth Level Visibility ────────────────────────────────────────── */
@@ -3376,7 +3376,7 @@ body.report-page {
   gap: 0.5rem 1rem;
   padding: 0.65rem 0;
   margin-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  border-bottom: 1px solid var(--ink-10);
   font-size: 0.8125rem;
 }
 .chapter-glance-item {
@@ -3385,7 +3385,7 @@ body.report-page {
   gap: 0.4rem;
 }
 .chapter-glance-sep {
-  color: var(--color-border, #ccc);
+  color: var(--ink-10);
   font-size: 0.75rem;
 }
 
