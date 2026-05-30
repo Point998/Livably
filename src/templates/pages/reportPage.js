@@ -270,7 +270,11 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
       </div>
     </section>
     <div class="chapter-rule"></div>
-    ${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}${chapterSectionsHTML}
+    ${additionalServicesCardHTML}${customDestinationsCardHTML}${trafficCardHTML}
+    <div class="report-expand-all-wrap">
+      <button id="expandAllResearch" class="report-expand-all-btn">Set all chapters to Research</button>
+    </div>
+    ${chapterSectionsHTML}
     <footer class="footer">
       <div class="footer-brand">Liv<span class="logo-gold">ably</span></div>
       <div class="footer-meta">${researchDate} · ${escapeHtml(address)}</div>

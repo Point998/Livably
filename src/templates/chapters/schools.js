@@ -121,7 +121,18 @@ function buildSchoolRatingsHTML(schools) {
     ${takeawayHTML}`;
 
   const bookSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:90" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`;
-  return renderChapterCard('school', '05', bookSvg, 'Schools & Education', 'What you need to know before their first day.', null, body, null, null, null);
+  const glanceHTML = buildSchoolGlanceHTML(schools);
+  return renderChapterCard('school', '05', bookSvg, 'Schools & Education', 'What you need to know before their first day.', null, body, null, null, null, glanceHTML || null);
+}
+
+function buildSchoolGlanceHTML(schools) {
+  if (!schools) return '';
+  const first = (schools.public || []).find(Boolean);
+  const driveMins = first?.driveTimeMinutes != null ? `${first.driveTimeMinutes} min` : null;
+  return `<div class="chapter-glance">
+    <span class="chapter-glance-item">⚠ Assigned school requires district verification</span>
+    ${driveMins ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">Nearest: ${escapeHtml(first.name)} — ${escapeHtml(driveMins)}</span>` : ''}
+  </div>`;
 }
 
 module.exports = { buildSchoolRatingsHTML };

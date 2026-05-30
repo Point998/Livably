@@ -3,6 +3,21 @@ const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../components/chapterCard');
 const { STATE_EXTENSION } = require('../../utils/constants');
 
+function buildGardenGlanceHTML(gardenData) {
+  if (!gardenData) return '';
+  const zone = gardenData.hardinessZone?.zone;
+  const days = gardenData.hardinessZone?.frost?.days;
+  const nativeCount = gardenData.nativePlants?.length || 0;
+
+  const items = [
+    zone ? `<span class="chapter-glance-item">Zone ${escapeHtml(zone)}</span>` : '',
+    days != null ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">${days}-day growing season</span>` : '',
+    nativeCount > 0 ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">${nativeCount} native species documented nearby</span>` : '',
+  ].filter(Boolean).join('');
+
+  return items ? `<div class="chapter-glance">${items}</div>` : '';
+}
+
 function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   if (!gardenData) return '';
 
@@ -183,23 +198,24 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
       </div>`;
   }
 
-  const deepDiveHTML = buildGardenDeepDiveHTML(gardenData, soil, locationInfo);
-  const combinedFullHTML = [frostFullHTML, deepDiveHTML].filter(Boolean).join('');
+  const deepDiveContent = buildGardenDeepDiveHTML(gardenData, locationInfo);
+  const combinedFullHTML = [frostFullHTML, deepDiveContent ? `<div class="depth-l3">${deepDiveContent}</div>` : null].filter(Boolean).join('');
+  const glanceHTML = buildGardenGlanceHTML(gardenData);
 
   const leafSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>`;
-  return renderChapterCard('garden', '10', leafSvg, 'What Will Grow Here', 'Your yard\'s potential — soil, season, and native species.', null, gardenBody, null, combinedFullHTML, null);
+  return renderChapterCard('garden', '10', leafSvg, 'What Will Grow Here', 'Your yard\'s potential — soil, season, and native species.', null, gardenBody, null, combinedFullHTML || null, null, glanceHTML || null);
 }
 
 // ── FR-042: Level 3 — Garden Deep Dive ───────────────────────────────────────
 
-function buildGardenDeepDiveHTML(gardenData, soil, locationInfo) {
+function buildGardenDeepDiveHTML(gardenData, locationInfo) {
   if (!gardenData) return '';
   const { hardinessZone, nativePlantsByForm, invasivePlants, reptiles,
           butterflies, birdsBySeason, monarchCorridor, fireflyHabitat } = gardenData;
   const tabs = [
     { id: 'trees',       label: 'Trees',            content: buildTreesTab(nativePlantsByForm, hardinessZone)                                   },
     { id: 'shrubs',      label: 'Shrubs & Flowers', content: buildShrubsTab(nativePlantsByForm, hardinessZone)                                   },
-    { id: 'food',        label: 'Food Garden',      content: buildFoodGardenTab(hardinessZone, soil)                                             },
+    { id: 'food',        label: 'Food Garden',      content: buildFoodGardenTab(hardinessZone, null)                                             },
     { id: 'birds',       label: 'Birds',            content: buildBirdsTab(birdsBySeason, gardenData.birds)                                      },
     { id: 'pollinators', label: 'Pollinators',      content: buildPollinatorsTab(butterflies, monarchCorridor, fireflyHabitat)                    },
     { id: 'wildlife',    label: 'Wildlife',         content: buildWildlifeTab(gardenData.wildlife, reptiles)                                    },
@@ -216,15 +232,12 @@ function buildGardenDeepDiveHTML(gardenData, soil, locationInfo) {
   ).join('');
 
   return `
-    <div class="garden-deep-dive-wrap">
-      <button class="garden-deep-toggle" aria-expanded="false">+ Explore your yard in depth</button>
-      <div class="garden-deep-dive" hidden>
-        <nav class="garden-tab-nav" role="tablist" aria-label="Garden deep dive">
-          ${tabButtons}
-        </nav>
-        <div class="garden-tab-panels">
-          ${tabPanels}
-        </div>
+    <div class="garden-deep-dive">
+      <nav class="garden-tab-nav" role="tablist" aria-label="Garden deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="garden-tab-panels">
+        ${tabPanels}
       </div>
     </div>`;
 }
@@ -482,4 +495,4 @@ function getInvasiveGuidance(sci, name) {
   return `Frequently observed introduced species in this area. Remove before it produces seeds to limit spread. Check with your local Cooperative Extension service for species-specific removal guidance.`;
 }
 
-module.exports = { buildWhatWillGrowHTML, buildGardenDeepDiveHTML };
+module.exports = { buildWhatWillGrowHTML, buildGardenDeepDiveHTML, buildGardenGlanceHTML };

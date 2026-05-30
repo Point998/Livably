@@ -50,8 +50,6 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
   const county = locationInfo?.county || 'this county';
   const tornado = state ? getTornadoTier(state) : null;
 
-  const glanceHTML = buildClimateGlanceHTML(environment, climateHistory);
-
   // Overview additions
   const femaCount = climateHistory?.femaDeclarations?.count || 0;
   const femaCountHTML = femaCount > 0
@@ -161,7 +159,6 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
   </div>`;
 
   const leftHTML = `
-    ${glanceHTML}
     ${tornadoHTML}
     <div class="prem-narrative">
       <p class="prem-narrative-lead">${floodPara}</p>
@@ -179,11 +176,17 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
     <p class="prem-disclaimer">Flood zone: FEMA National Flood Hazard Layer, parcel-level. Tornado frequency: NOAA Storm Events Database historical averages by state. Insurance cost estimates: NFIP rate ranges, 2024. Research date: ${today}. Verify all data directly with FEMA and your insurance agent before closing.</p>`;
 
   const cloudSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" style="--path-len:80"/></svg>`;
-  const deepDiveHTML  = buildClimateDeepDiveHTML(climateHistory, locationInfo);
-  const researchHTML  = buildClimateResearchHTML(climateHistory);
-  const combinedFullHTML = [floodBannerHTML, deepDiveHTML, researchHTML].filter(Boolean).join('');
+  const glanceHTML = buildClimateGlanceHTML(environment, climateHistory);
 
-  return renderChapterCard('climate', '09', cloudSvg, 'Climate & Weather Risks', 'The risks that come with the address, not just the house.', null, leftHTML, null, combinedFullHTML, null);
+  const deepDiveHTML = buildClimateDeepDiveHTML(climateHistory, locationInfo);
+  const researchDataHTML = buildClimateResearchHTML(climateHistory);
+
+  const fullHTML = [
+    deepDiveHTML    ? `<div class="depth-l3">${floodBannerHTML}${deepDiveHTML}</div>` : (floodBannerHTML ? `<div class="depth-l3">${floodBannerHTML}</div>` : ''),
+    researchDataHTML ? `<div class="depth-l4">${researchDataHTML}</div>` : '',
+  ].filter(Boolean).join('');
+
+  return renderChapterCard('climate', '09', cloudSvg, 'Climate & Weather Risks', 'The risks that come with the address, not just the house.', null, leftHTML, null, fullHTML || null, null, glanceHTML || null);
 }
 
 // ── Level 3: Deep Read — 6 tabs ───────────────────────────────────────────────
@@ -211,15 +214,13 @@ function buildClimateDeepDiveHTML(climateHistory, locationInfo) {
   ).join('');
 
   return `
-    <div class="climate-deep-wrap">
-      <button class="climate-deep-toggle" aria-expanded="false">+ See weather history &amp; preparedness</button>
-      <div class="climate-deep-dive" hidden>
-        <nav class="climate-tab-nav" role="tablist" aria-label="Climate deep dive">
-          ${tabButtons}
-        </nav>
-        <div class="climate-tab-panels">
-          ${tabPanels}
-        </div>
+    <div class="climate-deep-dive">
+      <div class="climate-deep-dive-label">Weather History &amp; Preparedness</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Climate deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
       </div>
     </div>`;
 }
@@ -417,32 +418,27 @@ function buildClimateResearchHTML(climateHistory) {
   ).join('');
 
   return `
-    <div class="climate-research-wrap">
-      <button class="climate-research-toggle" aria-expanded="false">+ Full climate data tables</button>
-      <div class="climate-research-data" hidden>
-        ${eventRows ? `
-        <div class="climate-research-section">
-          <div class="climate-research-section-label">Complete Storm Event Log (${CLIMATE_STORM_LOOKBACK_YEARS} years)</div>
-          <div class="climate-table-scroll">
-            <table class="climate-data-table">
-              <thead><tr><th>Date</th><th>Event</th><th>Magnitude</th><th>Deaths</th><th>Injuries</th><th>Property Damage</th></tr></thead>
-              <tbody>${eventRows}</tbody>
-            </table>
-          </div>
-        </div>` : ''}
-        ${normalRows ? `
-        <div class="climate-research-section">
-          <div class="climate-research-section-label">30-Year Monthly Climate Normals${climateNormals?.stationName ? ' — ' + escapeHtml(climateNormals.stationName) : ''}</div>
-          <div class="climate-table-scroll">
-            <table class="climate-data-table">
-              <thead><tr><th>Month</th><th>Avg High</th><th>Avg Low</th><th>Precip</th><th>Snowfall</th></tr></thead>
-              <tbody>${normalRows}</tbody>
-            </table>
-          </div>
-        </div>` : ''}
-        <p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>
+    ${eventRows ? `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Complete Storm Event Log (${CLIMATE_STORM_LOOKBACK_YEARS} years)</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Date</th><th>Event</th><th>Magnitude</th><th>Deaths</th><th>Injuries</th><th>Property Damage</th></tr></thead>
+          <tbody>${eventRows}</tbody>
+        </table>
       </div>
-    </div>`;
+    </div>` : ''}
+    ${normalRows ? `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">30-Year Monthly Climate Normals${climateNormals?.stationName ? ' — ' + escapeHtml(climateNormals.stationName) : ''}</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Month</th><th>Avg High</th><th>Avg Low</th><th>Precip</th><th>Snowfall</th></tr></thead>
+          <tbody>${normalRows}</tbody>
+        </table>
+      </div>
+    </div>` : ''}
+    <p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>`;
 }
 
 // getTornadoTier is needed here — imported from chapters.js indirectly via the caller.

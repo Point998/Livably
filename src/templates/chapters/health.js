@@ -1,5 +1,17 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
+const { renderDepthSelector } = require('../components/depthSelector');
+
+function buildHealthGlanceHTML(hospital, emergency) {
+  const fire = emergency?.fire;
+  const erItem = hospital
+    ? `<span class="chapter-glance-item">ER: ${escapeHtml(hospital.name)} — ${hospital.driveTimeMinutes} min</span>`
+    : '';
+  const fireItem = fire
+    ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">Fire: ~${fire.response.estimate} min <span class="prem-badge badge-${escapeHtml(fire.response.category.color)}">${escapeHtml(fire.response.category.label)}</span></span>`
+    : '';
+  return `<div class="chapter-glance">${erItem}${fireItem}</div>`;
+}
 
 function buildHealthSafetyChapterHTML(hospital, emergency) {
   if (!hospital && !emergency) return '';
@@ -75,7 +87,7 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
   const erSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:96" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" style="--path-len:96"/></svg>`;
 
   return `
-  <section class="chapter" data-ch="health">
+  <section class="chapter" data-ch="health" data-depth="overview">
     <div class="chapter-inner">
       <div class="chapter-num" aria-hidden="true">01</div>
       <header class="chapter-hd">
@@ -86,7 +98,8 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
         <h2 class="chapter-title">When it matters most, proximity is everything.</h2>
       </header>
       <p class="chapter-intro">Emergency access shapes real outcomes. These are the numbers that matter most if something goes wrong.</p>
-      <div class="chapter-body">
+      <div class="depth-l1">${buildHealthGlanceHTML(hospital, emergency)}</div>
+      <div class="chapter-body depth-l2">
         <div class="chapter-left">
           ${erHTML}
           ${checksHTML ? `<div class="ch01-checks"><div class="ch01-checks-label">Things to Check Before You Close</div>${checksHTML}</div>` : ''}
@@ -100,6 +113,7 @@ function buildHealthSafetyChapterHTML(hospital, emergency) {
           ${stationsHTML ? `<div class="snapshot-card"><div class="snapshot-card-label">Emergency Response</div><div class="ch01-stations">${stationsHTML}</div></div>` : ''}
         </div>
       </div>
+      ${renderDepthSelector('health')}
     </div>
   </section>
   <div class="chapter-rule"></div>`;

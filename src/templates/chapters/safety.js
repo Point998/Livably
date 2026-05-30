@@ -105,7 +105,8 @@ function buildCrimeHTML(crime, emergency) {
     </div>
     <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}. For current safety data, contact ${city ? escapeHtml(city) + ' Police or' : ''} ${escapeHtml(county)} Emergency Management.</p>`;
   const shieldSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
-  return renderChapterCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, null, null);
+  const glanceHTML = buildSafetyGlanceHTML(null, emergency);
+  return renderChapterCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, null, null, glanceHTML || null);
 }
 
 function buildEmergencyServicesHTML(emergency) {
@@ -155,4 +156,22 @@ function buildEmergencyServicesHTML(emergency) {
   return renderChapterCard('safety', '06', emergShieldSvg, 'Emergency Response', 'Your nearest responders and what their arrival time means.', null, body, null, null, null);
 }
 
-module.exports = { buildCrimeHTML, buildEmergencyServicesHTML };
+function buildSafetyGlanceHTML(safetyLocation, emergency) {
+  const fire   = emergency?.fire;
+  const police = emergency?.police;
+  if (!fire && !police) return '';
+
+  const item = (label, station) => {
+    if (!station) return '';
+    const { estimate, category } = station.response;
+    return `<span class="chapter-glance-item">${label}: ~${estimate} min <span class="prem-badge badge-${escapeHtml(category.color)}">${escapeHtml(category.label)}</span></span>`;
+  };
+
+  const fireItem   = item('Fire', fire);
+  const policeItem = item('Police', police);
+  const sep = fireItem && policeItem ? '<span class="chapter-glance-sep">·</span>' : '';
+
+  return `<div class="chapter-glance">${fireItem}${sep}${policeItem}</div>`;
+}
+
+module.exports = { buildCrimeHTML, buildEmergencyServicesHTML, buildSafetyGlanceHTML };

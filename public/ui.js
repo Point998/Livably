@@ -295,27 +295,10 @@
     });
   }
 
-  // ── 12. Garden deep dive — toggle + tab switching ─────
+  // ── 12. Garden tab switching (deep-dive toggle removed — depth selector handles visibility) ──
 
   function initGardenDeepDive() {
-    var toggles = document.querySelectorAll('.garden-deep-toggle');
-    toggles.forEach(function (toggle) {
-      var dive = toggle.parentElement ? toggle.parentElement.querySelector('.garden-deep-dive') : null;
-      if (!dive) return;
-      toggle.setAttribute('aria-expanded', dive.hidden ? 'false' : 'true');
-      toggle.addEventListener('click', function () {
-        var expanded = toggle.getAttribute('aria-expanded') === 'true';
-        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-        if (expanded) {
-          dive.hidden = true;
-        } else {
-          dive.hidden = false;
-        }
-      });
-    });
-
-    var navs = document.querySelectorAll('.garden-tab-nav');
-    navs.forEach(function (nav) {
+    document.querySelectorAll('.garden-tab-nav').forEach(function (nav) {
       var deepDive = nav.closest('.garden-deep-dive');
       var panels = deepDive ? deepDive.querySelectorAll('.garden-tab-panel') : [];
       nav.addEventListener('click', function (e) {
@@ -341,22 +324,114 @@
     });
   }
 
-  // ── 13. Climate deep dive — toggle + tab switching + research toggle ─
+  // ── 13. Depth selector dropdowns ──────────────────────
+  // One handler manages all chapter depth selectors.
+  // Updates data-depth on the chapter <section>, saves to sessionStorage.
 
-  function initClimateDeepDive() {
-    // Deep dive toggle
-    document.querySelectorAll('.climate-deep-toggle').forEach(function (toggle) {
-      var dive = toggle.nextElementSibling;
-      if (!dive) return;
-      toggle.setAttribute('aria-expanded', dive.hidden ? 'false' : 'true');
-      toggle.addEventListener('click', function () {
-        var expanded = toggle.getAttribute('aria-expanded') === 'true';
-        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-        dive.hidden = expanded;
+  function initDepthSelectors() {
+    var LABELS = { glance: 'Glance', overview: 'Overview', deepread: 'Deep Read', research: 'Research' };
+
+    function restoreFromSession() {
+      try {
+        var saved = sessionStorage.getItem('livably-chapter-depths');
+        if (!saved) return;
+        var depths = JSON.parse(saved);
+        Object.keys(depths).forEach(function (chKey) {
+          var section = document.querySelector('[data-ch="' + chKey + '"]');
+          if (section) applyDepth(section, depths[chKey]);
+        });
+      } catch (e) {}
+    }
+
+    function saveToSession(chKey, depth) {
+      try {
+        var saved = sessionStorage.getItem('livably-chapter-depths');
+        var depths = saved ? JSON.parse(saved) : {};
+        depths[chKey] = depth;
+        sessionStorage.setItem('livably-chapter-depths', JSON.stringify(depths));
+      } catch (e) {}
+    }
+
+    function applyDepth(section, depth) {
+      section.setAttribute('data-depth', depth);
+      var control = section.querySelector('.chapter-depth-control');
+      if (!control) return;
+      var label = control.querySelector('.chapter-depth-label');
+      if (label) label.textContent = LABELS[depth] || depth;
+      control.querySelectorAll('.chapter-depth-option').forEach(function (opt) {
+        var isSelected = opt.dataset.depth === depth;
+        opt.classList.toggle('chapter-depth-option--selected', isSelected);
+        opt.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+      });
+    }
+
+    document.querySelectorAll('.chapter-depth-control').forEach(function (control) {
+      var btn = control.querySelector('.chapter-depth-btn');
+      var menu = control.querySelector('.chapter-depth-menu');
+      if (!btn || !menu) return;
+
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        menu.hidden = expanded;
+      });
+
+      menu.addEventListener('click', function (e) {
+        var opt = e.target.closest('.chapter-depth-option');
+        if (!opt) return;
+        var depth = opt.dataset.depth;
+        var section = control.closest('.chapter');
+        if (!section || !depth) return;
+        applyDepth(section, depth);
+        var chKey = control.dataset.chKey;
+        if (chKey) saveToSession(chKey, depth);
+        btn.setAttribute('aria-expanded', 'false');
+        menu.hidden = true;
       });
     });
 
-    // Tab switching (event delegation on nav)
+    document.addEventListener('click', function () {
+      document.querySelectorAll('.chapter-depth-btn[aria-expanded="true"]').forEach(function (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        var menu = btn.parentElement ? btn.parentElement.querySelector('.chapter-depth-menu') : null;
+        if (menu) menu.hidden = true;
+      });
+    });
+
+    restoreFromSession();
+  }
+
+  // ── 14. "Expand All to Research" global button ────────
+  function initExpandAll() {
+    var btn = document.getElementById('expandAllResearch');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.chapter[data-depth]').forEach(function (section) {
+        section.setAttribute('data-depth', 'research');
+        var control = section.querySelector('.chapter-depth-control');
+        if (!control) return;
+        var label = control.querySelector('.chapter-depth-label');
+        if (label) label.textContent = 'Research';
+        control.querySelectorAll('.chapter-depth-option').forEach(function (opt) {
+          var isSelected = opt.dataset.depth === 'research';
+          opt.classList.toggle('chapter-depth-option--selected', isSelected);
+          opt.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        });
+      });
+      try {
+        var allResearch = {};
+        document.querySelectorAll('.chapter[data-ch]').forEach(function (s) {
+          allResearch[s.dataset.ch] = 'research';
+        });
+        sessionStorage.setItem('livably-chapter-depths', JSON.stringify(allResearch));
+      } catch (e) {}
+    });
+  }
+
+  // ── 15. Climate tab switching (deep-dive/research toggles removed — depth selector handles visibility) ──
+
+  function initClimateDeepDive() {
     document.querySelectorAll('.climate-tab-nav').forEach(function (nav) {
       var deepDive = nav.closest('.climate-deep-dive');
       var panels = deepDive ? deepDive.querySelectorAll('.climate-tab-panel') : [];
@@ -381,18 +456,6 @@
         }
       });
     });
-
-    // Research section toggle
-    document.querySelectorAll('.climate-research-toggle').forEach(function (toggle) {
-      var data = toggle.nextElementSibling;
-      if (!data) return;
-      toggle.setAttribute('aria-expanded', data.hidden ? 'false' : 'true');
-      toggle.addEventListener('click', function () {
-        var expanded = toggle.getAttribute('aria-expanded') === 'true';
-        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-        data.hidden = expanded;
-      });
-    });
   }
 
   // ── Init ───────────────────────────────────────────────
@@ -411,8 +474,9 @@
     initFocusRing();
     initGardenDeepDive();
     initClimateDeepDive();
+    initDepthSelectors();
+    initExpandAll();
 
-    // Initialize Lucide icons if available
     if (window.lucide) window.lucide.createIcons();
   }
 

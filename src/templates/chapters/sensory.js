@@ -205,7 +205,23 @@ function buildSensoryEnvironmentalHTML(env) {
     </div>`;
 
   const eyeSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-  return renderChapterCard('sensory', '12', eyeSvg, 'Sensory &amp; Environmental', 'What you can\'t discover during a showing.', null, leftHTML, sectionB, bortleFullHTML, null);
+  const glanceHTML = buildSensoryGlanceHTML(env);
+  return renderChapterCard('sensory', '12', eyeSvg, 'Sensory &amp; Environmental', 'What you can\'t discover during a showing.', null, leftHTML, sectionB, bortleFullHTML, null, glanceHTML || null);
 }
 
-module.exports = { buildSensoryEnvironmentalHTML };
+function buildSensoryGlanceHTML(environment) {
+  if (!environment) return '';
+  const aqi   = environment.airQuality;
+  const radon = environment.radon;
+  const apt   = (environment.airports || [])[0];
+
+  const items = [
+    aqi?.category?.label ? `<span class="chapter-glance-item">AQI: <span class="prem-badge badge-${escapeHtml(aqi.category.color)}">${escapeHtml(aqi.category.label)}</span></span>` : '',
+    radon?.zone != null  ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">Radon Zone ${radon.zone}</span>` : '',
+    apt?.distanceMiles   ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">Nearest airport: ${Math.round(apt.distanceMiles)} mi</span>` : '',
+  ].filter(Boolean).join('');
+
+  return items ? `<div class="chapter-glance">${items}</div>` : '';
+}
+
+module.exports = { buildSensoryEnvironmentalHTML, buildSensoryGlanceHTML };

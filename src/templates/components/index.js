@@ -6,6 +6,7 @@ const { renderChecklist }               = require('./checklist');
 const { renderDestCard, renderDestSection } = require('./destCard');
 const { renderFooter }                  = require('./footer');
 const { renderChapterCard }             = require('./chapterCard');
+const { renderDepthSelector, DEPTH_LABELS } = require('./depthSelector');
 
 module.exports = {
   renderKeyTakeaway,
@@ -15,4 +16,5 @@ module.exports = {
   renderDestCard, renderDestSection,
   renderFooter,
   renderChapterCard,
+  renderDepthSelector, DEPTH_LABELS,
 };
