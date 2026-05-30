@@ -114,6 +114,15 @@ Tier 1 (primary): NOAA CDO API
 - Fields needed: begin_date, event_type, magnitude, magnitude_type, deaths_direct, injuries_direct, damage_property, begin_lat, begin_lon, end_lat, end_lon
 - Rate limit: 5 requests/second, 10,000 requests/day — well within per-report budget
 
+**Discovery findings (Task 1):**
+- **NOAA_CDO_API_KEY status**: Not present in local `.env`. Discovery conducted with public API documentation and web research.
+- **CDO datasets available**: GHCND (daily climate data), NORMAL_MLY (monthly climate normals), NORMAL_ANN (annual normals), GSOY, GSOM, and others. CDO API is primarily a climate/weather measurements API, not a storm events API.
+- **GHCND returns storm event data**: NO. GHCND dataset contains daily climatological measurements (temperature, precipitation, snowfall, wind speed) from ~90,000 global stations. It does not contain storm event narratives, tornado records, flood event data, or event_type fields.
+- **Separate NOAA Storm Events Database**: Storm event data (tornadoes, floods, winter storms, etc.) is maintained in a separate NOAA Storm Events Database (available at https://www.ncei.noaa.gov/stormevents/), not through the CDO API. This database contains records since 1950 for tornadoes and since 1996 for other severe weather types.
+- **Climate normals endpoint verification**: CDO API supports NORMAL_MLY dataset with data type IDs like MLY-TMAX-NORMAL (monthly max temp), MLY-TMIN-NORMAL (monthly min temp), MLY-PRCP-NORMAL (monthly precipitation), MLY-SNOW-NORMAL (monthly snowfall). Endpoint structure: `https://www.ncdc.noaa.gov/cdo-web/api/v2/data?datasetid=NORMAL_MLY&stationid=GHCND:[station_id]&startdate=[YYYY-01-01]&enddate=[YYYY-12-31]&datatypeid=MLY-TMAX-NORMAL,MLY-PRCP-NORMAL&limit=12`
+- **Nearest normals station for Georgetown KY (38.21°N, -84.56°W)**: No specific GHCND USW station in Scott County identified in public search results. Nearby options include Cincinnati Northern Kentucky International Airport (GHCND:USW00093814) and Louisville Weather Forecast Office stations. Exact station ID requires querying the CDO API `/stations` endpoint with geographic bounds once API key is available.
+- **Recommended approach**: Tier 1 should be revised — CDO API is suitable for climate normals (temperatures, precipitation, snowfall) but NOT for storm events. Storm events must come from the separate NOAA Storm Events Database (web scraping or pre-cached CSV). Tier 2 (pre-cached CSV for test counties) becomes the primary source for storm events. Tier 3 (graceful fallback link) is still valid when both fail.
+
 Tier 2 (fallback): Pre-cached CSV for 5 test counties
 - Location: `data/noaa-storm-events/[state-fips]-[county-fips].json`
 - Content: pre-processed storm events for the 5 test addresses (Scott KY, Harlan KY, Jefferson KY, Gallatin MT, Clark IN)

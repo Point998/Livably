@@ -51,7 +51,7 @@ const {
   categorizeSeasonalBirds, categorizePlantsByForm,
   getMonarchCorridorInfo, getFireflyHabitat,
 } = require('./modules/garden/data');
-const { getDemographics } = require('./modules/community/data');
+const { getDemographics, getDensityType } = require('./modules/community/data');
 
 // ── FR-023: Property Costs & Market ──────────────────────────────────────────
 
