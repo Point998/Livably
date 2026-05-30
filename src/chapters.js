@@ -7,7 +7,7 @@ const fs   = require('fs');
 
 const { discoverDevelopments } = require('./development-discovery');
 const { haversineDistance } = require('./utils/geo');
-const { escapeHtml, formatMoney } = require('./utils/text');
+const { escapeHtml, formatMoney, safeInt } = require('./utils/text');
 const {
   STATE_TAX_RATES, STATE_INSURANCE_ANNUAL, STATE_UTILITIES_MONTHLY,
   STATE_HOMESTEAD, STATE_EXTENSION,
@@ -45,13 +45,6 @@ const { getCensusFIPS, fetchCensusACS } = require('./shared/census');
 const { renderChapterCard } = require('./templates/components/chapterCard');
 const { badgeClass } = require('./templates/components/badge');
 const { logError } = require('./logger');
-
-// ── Shared utilities ──────────────────────────────────────────────────────────
-
-function safeInt(n) {
-  const v = parseInt(n, 10);
-  return isNaN(v) || v < 0 ? 0 : v;
-}
 
 // ── FR-024: Demographics ──────────────────────────────────────────────────────
 
