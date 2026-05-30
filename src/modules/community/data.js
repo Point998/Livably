@@ -1,6 +1,6 @@
 'use strict';
 
-const { getCensusFIPS, fetchCensusACS } = require('../../shared/census');
+const { fetchCensusACS } = require('../../shared/census');
 const { safeInt } = require('../../utils/text');
 
 async function getDemographics(lat, lng, fips) {
