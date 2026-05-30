@@ -79,11 +79,21 @@ describe('getBortleDescription', () => {
 });
 
 describe('getEnvironmentalData', () => {
-  beforeEach(() => jest.clearAllMocks());
+  let fetchSpy;
 
-  test('returns object with all expected keys', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
     googleMapsClient.placesNearby.mockResolvedValue({ data: { results: [] } });
     fetchCensusACS.mockResolvedValue(null);
+    // Mock global fetch so no real network calls are made
+    fetchSpy = jest.spyOn(global, 'fetch').mockRejectedValue(new Error('Network unavailable'));
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  test('returns object with all expected keys', async () => {
     const result = await getEnvironmentalData(38.2, -84.5, null, null);
     expect(result).toHaveProperty('airQuality');
     expect(result).toHaveProperty('floodRisk');
@@ -96,11 +106,8 @@ describe('getEnvironmentalData', () => {
     expect(result).toHaveProperty('ejscreen');
   });
 
-  test('returns null for airQuality when no API key', async () => {
-    googleMapsClient.placesNearby.mockResolvedValue({ data: { results: [] } });
-    fetchCensusACS.mockResolvedValue(null);
-    // AIRNOW_API_KEY is not set in test env
+  test('returns null for airQuality when no API key or network', async () => {
     const result = await getEnvironmentalData(38.2, -84.5, null, null);
     expect(result.airQuality).toBeNull();
   });
-});
+}, 10000);
