@@ -161,7 +161,7 @@ Cause: "highway on ramp" text search matched the word "ramp." Fixed by geocoding
 Cause: Little Clinic appears in urgent care searches. Fixed by name-based exclusion of retail clinics.
 
 ### BUG-005: Highway validation dropped valid interstates
-Cause: Address string validation didn't match all Google formats. Partially fixed.
+Cause: Address string validation didn't match all Google formats. Fixed — `src/modules/access/data.js` now validates against `I-N`, `I N`, `INTERSTATE N`, and the full highway name, plus an interchange junction fallback for borderline-distance highways.
 
 ### BUG-006: Claude Code changes not persisting to GitHub
 Cause: Claude Code reports success but doesn't always push. Always verify with git log and GitHub raw URL.

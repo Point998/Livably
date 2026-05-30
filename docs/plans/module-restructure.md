@@ -1,5 +1,42 @@
 # Module Restructure Plan
-*May 2026*
+*May 2026 — Last updated May 2026*
+
+## Current Status (May 2026)
+
+### Completed
+- `src/shared/google/` — geocoding, reverseGeocode, distanceMatrix, client ✅
+- `src/shared/validate.js` — Logic Layer, all coherence rules ✅
+- `src/shared/census.js` — Census FIPS + ACS fetching ✅
+- `src/utils/` — text, geo, time, state helpers ✅
+- `src/utils/constants.js` — all constants ✅
+- `src/modules/access/data.js` — highway access ✅
+- `src/modules/health/data.js` — hospital + urgent care ✅
+- `src/modules/reachability/data.js` — grocery, pharmacy, gas station ✅
+- `src/modules/recreation/data.js` — parks, coffee shops ✅
+- `src/modules/schools/data.js` — school searches ✅
+- `src/templates/chapters/*.js` — all 14 chapter templates extracted ✅
+- `src/templates/components/` — shared components extracted ✅
+
+### Three-Layer Pattern Note
+The full four-file pattern (`data.js` / `logic.js` / `template.js` / `index.js`) is the target, but **during this migration phase**, the layers are organized as follows:
+- **Data layer** (`data.js`): Per-module, extracted for 5 modules above
+- **Logic layer**: Centralized in `src/shared/validate.js` rather than per-module `logic.js` files — this is intentional for cross-module coherence (CONSTRAINT-014)
+- **Template layer**: Centralized in `src/templates/chapters/` rather than per-module `template.js` files
+- **`index.js`**: Not yet created for any module; imports happen directly from `data.js`
+
+The remaining data logic (demographics, climate, garden, growth, walkability, sensory, property, community) lives in `src/chapters.js` (~1,700 lines). This is the primary extraction target for the next phase.
+
+### Still in `src/chapters.js` (extraction targets)
+- getDemographics → `src/modules/community/data.js`
+- getClimateHistoryData, getNOAAClimateNormals → `src/modules/climate/data.js`
+- getGardenData → `src/modules/garden/data.js`
+- getGrowthAndDevelopment → `src/modules/growth/data.js`
+- getWalkabilityScore → `src/modules/walkability/data.js`
+- getEnvironmentalData → `src/modules/sensory/data.js`
+- getPropertyIntelligence → `src/modules/property/data.js`
+- getEmergencyServices → merge into `src/modules/health/data.js`
+
+---
 
 ## Goal
 Extract the monolith (app.js + premium.js) into a proper module architecture where each chapter owns its domain completely.
