@@ -1,5 +1,6 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
+const { renderDepthSelector } = require('../components/depthSelector');
 
 function buildTrafficItemHTML(name, traffic) {
   const { variations, stats } = traffic;
@@ -33,6 +34,17 @@ function buildTrafficItemHTML(name, traffic) {
   </div>`;
 }
 
+function buildTrafficGlanceHTML(trafficData) {
+  if (!trafficData || !trafficData.length) return '';
+  const t = trafficData[0];
+  const variations = t.traffic?.variations || [];
+  const maxPct = variations.length > 0 ? Math.max(...variations.map((v) => v.percentAboveBase || 0)) : 0;
+  const glanceText = maxPct < 15
+    ? 'No meaningful rush hour at this address'
+    : `Peak traffic adds ~${maxPct}% to drive times`;
+  return `<div class="chapter-glance"><span class="chapter-glance-item">${escapeHtml(glanceText)}</span></div>`;
+}
+
 function buildTrafficCardHTML(trafficData) {
   if (!trafficData || !trafficData.length) return '';
   const sectionsHTML = trafficData
@@ -41,7 +53,7 @@ function buildTrafficCardHTML(trafficData) {
   const waveSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><polyline points="2 12 6 4 10 20 14 8 18 16 22 12" style="--path-len:80"/></svg>`;
 
   return `
-  <section class="chapter" data-ch="traffic">
+  <section class="chapter" data-ch="traffic" data-depth="overview">
     <div class="chapter-inner">
       <div class="chapter-num" aria-hidden="true">04</div>
       <header class="chapter-hd">
@@ -52,8 +64,10 @@ function buildTrafficCardHTML(trafficData) {
         <h2 class="chapter-title">Drive times shift. Know the range before you commit.</h2>
       </header>
       <p class="chapter-intro">Drive times aren't fixed — they shift significantly based on when you leave. The "Worst" time is the one to internalize if you're planning a regular commute.</p>
+      <div class="depth-l1">${buildTrafficGlanceHTML(trafficData)}</div>
+      ${renderDepthSelector('traffic')}
     </div>
-    <div class="chapter-full">
+    <div class="chapter-full depth-l2">
       ${sectionsHTML}
     </div>
   </section>
