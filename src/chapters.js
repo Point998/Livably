@@ -3,33 +3,15 @@
 // Chapter data module — FR-017 through FR-024
 
 const { haversineDistance } = require('./utils/geo');
-const { escapeHtml, formatMoney, safeInt } = require('./utils/text');
-const {
-  TORNADO_TIER,
-  FROST_DATE_TABLE,
-  NATIVE_PLANT_EXCLUDE, NATIVE_PLANT_EXCLUDE_NAMES,
-  BENIGN_INTRODUCED, DOMESTIC_MAMMALS,
-  INAT_NATIVE_PLANTS_RADIUS_KM, INAT_INVASIVE_PLANTS_RADIUS_KM,
-  INAT_WILDLIFE_RADIUS_KM, INAT_BIRDS_RADIUS_KM,
-  INAT_NATIVE_PLANTS_PER_PAGE, INAT_INVASIVE_PLANTS_PER_PAGE,
-  INAT_WILDLIFE_PER_PAGE, INAT_BIRDS_PER_PAGE,
-  INAT_REPTILES_RADIUS_KM, INAT_REPTILES_PER_PAGE,
-  INAT_INSECTS_RADIUS_KM, INAT_INSECTS_PER_PAGE,
-  INAT_BUTTERFLIES_RADIUS_KM, INAT_BUTTERFLIES_PER_PAGE,
-  PLANT_GROWTH_FORMS, MONARCH_CORRIDOR_STATES, MILKWEED_BY_STATE, FIREFLY_STATES,
-} = require('./utils/constants');
 
-const { getCensusFIPS, fetchCensusACS } = require('./shared/census');
-const { renderChapterCard } = require('./templates/components/chapterCard');
-const { badgeClass } = require('./templates/components/badge');
-const { logError } = require('./logger');
+const { getCensusFIPS } = require('./shared/census');
 const {
   getGardenData,
   filterReptiles, filterInsects, filterButterflies,
   categorizeSeasonalBirds, categorizePlantsByForm,
   getMonarchCorridorInfo, getFireflyHabitat,
 } = require('./modules/garden/data');
-const { getDemographics, getDensityType } = require('./modules/community/data');
+const { getDemographics } = require('./modules/community/data');
 const { getWalkabilityScore } = require('./modules/walkability/data');
 const { getEmergencyServices, getSafetyLocationContext } = require('./modules/safety/data');
 const {
@@ -46,6 +28,15 @@ const { getGrowthAndDevelopment } = require('./modules/growth/data');
 const { getEnvironmentalData } = require('./modules/sensory/data');
 
 const { buildClimateChapterHTML } = require('./templates/chapters/climate');
+const { buildWhatWillGrowHTML } = require('./templates/chapters/garden');
+const { buildSchoolRatingsHTML } = require('./templates/chapters/schools');
+const { buildCrimeHTML } = require('./templates/chapters/safety');
+const { buildSensoryEnvironmentalHTML } = require('./templates/chapters/sensory');
+const { buildWalkabilityHTML } = require('./templates/chapters/walkability');
+const { buildPropertyDataHTML } = require('./templates/chapters/costs');
+const { buildDemographicsHTML } = require('./templates/chapters/community');
+const { buildGrowthAndDevelopmentHTML } = require('./templates/chapters/growth');
+const { buildPropertyIntelligenceHTML } = require('./templates/chapters/property');
 
 // ── FR-017: Schools & Education ──────────────────────────────────────────────
 
@@ -107,8 +98,6 @@ async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, google
   return { public: publicSchools, private: privateSchools };
 }
 
-const { buildWhatWillGrowHTML } = require('./templates/chapters/garden');
-
 // ── Master fetch ──────────────────────────────────────────────────────────────
 
 async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
@@ -162,27 +151,7 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
   };
 }
 
-// ── FR-021: Pedestrian environment by walkability score ───────────────────────
-
-
 // ── HTML builders ──────────────────────────────────────────────────────────────
-
-// badgeColor and chapterCard extracted to src/templates/components/
-const badgeColor = badgeClass;
-const chapterCard = renderChapterCard;
-
-// FR-017: Schools & Education
-const { buildSchoolRatingsHTML } = require('./templates/chapters/schools');
-
-const { buildCrimeHTML, buildEmergencyServicesHTML } = require('./templates/chapters/safety');
-const { buildSensoryEnvironmentalHTML } = require('./templates/chapters/sensory');
-
-const { buildWalkabilityHTML } = require('./templates/chapters/walkability');
-const { buildPropertyDataHTML } = require('./templates/chapters/costs');
-const { buildDemographicsHTML } = require('./templates/chapters/community');
-const { buildGrowthAndDevelopmentHTML } = require('./templates/chapters/growth');
-const { buildPropertyIntelligenceHTML } = require('./templates/chapters/property');
-
 
 function buildChaptersHTML(chapters) {
   if (!chapters) return '';
