@@ -2,7 +2,6 @@
 
 // Chapter data module — FR-017 through FR-024
 
-const { discoverDevelopments } = require('./development-discovery');
 const { haversineDistance } = require('./utils/geo');
 const { escapeHtml, formatMoney, safeInt } = require('./utils/text');
 const {
@@ -14,7 +13,6 @@ const {
   OVERPASS_ENDPOINTS,
   NON_AIRPORT_RE, AIRPORT_RE,
   AIRPORT_SEARCH_RADIUS_M, AIRPORT_MAX_DISTANCE_MILES,
-  DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M, COMMERCIAL_DEV_TYPES,
   FEMA_FLOOD_ZONES,
   OSM_ROAD_NOISE_RADIUS_M, OSM_RAIL_RADIUS_M, OSM_LANDUSE_RADIUS_M,
   WATER_QUALITY_SEARCH_RADIUS_MILES,
@@ -52,6 +50,7 @@ const {
   fetchElevationWithRetry,
 } = require('./modules/climate/data');
 const { getPropertyData, getPropertyIntelligence } = require('./modules/property/data');
+const { getGrowthAndDevelopment } = require('./modules/growth/data');
 
 // ── FR-027: Sensory & Environmental (supersedes FR-019) ──────────────────────
 
@@ -471,129 +470,6 @@ async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, google
   return { public: publicSchools, private: privateSchools };
 }
 
-// ── FR-025: Growth & Development ─────────────────────────────────────────────
-
-async function getBuildingPermitTrend(fips) {
-  if (!fips?.state || !fips?.county) return null;
-  try {
-    const censusKey = process.env.CENSUS_API_KEY;
-    const keyParam = censusKey ? `&key=${censusKey}` : '';
-    const currentYear = new Date().getFullYear() - 1;
-    const permitsByYear = [];
-
-    for (const year of [currentYear, currentYear - 1, currentYear - 2]) {
-      try {
-        const url =
-          `https://api.census.gov/data/timeseries/eits/bps` +
-          `?get=cell_value,data_type_code,category_code` +
-          `&for=county:${fips.county}&in=state:${fips.state}` +
-          `&time=${year}${keyParam}`;
-        const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        if (!resp.ok) continue;
-        const data = await resp.json();
-        if (!Array.isArray(data) || data.length < 2) continue;
-        const headers = data[0];
-        const rows = data.slice(1);
-        const cvIdx  = headers.indexOf('cell_value');
-        const dtIdx  = headers.indexOf('data_type_code');
-        const catIdx = headers.indexOf('category_code');
-        let row = rows.find((r) => {
-          const cat = catIdx >= 0 ? String(r[catIdx] || '').toLowerCase() : '';
-          const dt  = dtIdx  >= 0 ? String(r[dtIdx]  || '').toLowerCase() : '';
-          return (cat === 'total' || cat === '') && dt.includes('estimate');
-        });
-        if (!row) row = rows.find((r) => dtIdx >= 0 && String(r[dtIdx] || '').toLowerCase().includes('estimate'));
-        if (row && cvIdx >= 0) {
-          const val = parseInt(row[cvIdx], 10);
-          if (!isNaN(val) && val >= 0) permitsByYear.push({ year, permits: val });
-        }
-      } catch {}
-    }
-
-    if (!permitsByYear.length) return null;
-    permitsByYear.sort((a, b) => b.year - a.year);
-    const current = permitsByYear[0];
-    const prior   = permitsByYear[1] || null;
-    let percentChange = null;
-    if (current && prior && prior.permits > 0) {
-      percentChange = Math.round((current.permits - prior.permits) / prior.permits * 100);
-    }
-    const trend =
-      percentChange === null ? 'stable'
-      : percentChange >= 10  ? 'rising'
-      : percentChange <= -10 ? 'declining'
-      : 'stable';
-    return {
-      current:      current.permits,
-      currentYear:  current.year,
-      prior:        prior?.permits ?? null,
-      priorYear:    prior?.year    ?? null,
-      percentChange,
-      trend,
-    };
-  } catch (err) {
-    console.error('[BPS]', err.message);
-    return null;
-  }
-}
-
-async function getNewConstructionContext(fips) {
-  if (!fips) return null;
-  try {
-    const acs = await fetchCensusACS(fips, ['B25034_001E', 'B25034_002E', 'B25034_003E']);
-    if (!acs) return null;
-    const total    = safeInt(acs.get('B25034_001E')) || 1;
-    const post2014 = safeInt(acs.get('B25034_002E'));
-    const post2010 = post2014 + safeInt(acs.get('B25034_003E'));
-    return { newConstructionPct: Math.round(post2010 / total * 100) };
-  } catch { return null; }
-}
-
-async function getRecentDevelopmentActivity(lat, lng, googleMapsClient, googleMapsApiKey) {
-  const results = await Promise.allSettled(
-    COMMERCIAL_DEV_TYPES.map(({ type }) =>
-      googleMapsClient.placesNearby({
-        params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M, type },
-      })
-    )
-  );
-  const seen = new Set();
-  const establishments = [];
-  for (let i = 0; i < COMMERCIAL_DEV_TYPES.length; i++) {
-    const r = results[i];
-    if (r.status !== 'fulfilled') continue;
-    for (const place of (r.value.data.results || []).filter((p) => p.business_status === 'OPERATIONAL').slice(0, 2)) {
-      if (seen.has(place.place_id)) continue;
-      seen.add(place.place_id);
-      establishments.push({
-        name:          place.name,
-        label:         COMMERCIAL_DEV_TYPES[i].label,
-        icon:          COMMERCIAL_DEV_TYPES[i].icon,
-        distanceMiles: haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng),
-      });
-    }
-  }
-  return establishments.sort((a, b) => a.distanceMiles - b.distanceMiles).slice(0, 6);
-}
-
-async function getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey) {
-  const [permitRes, newConstRes, activityRes, discoveryRes] = await Promise.allSettled([
-    getBuildingPermitTrend(fips),
-    getNewConstructionContext(fips),
-    googleMapsClient
-      ? getRecentDevelopmentActivity(lat, lng, googleMapsClient, googleMapsApiKey)
-      : Promise.resolve([]),
-    discoverDevelopments(locationInfo?.city, locationInfo?.state),
-  ]);
-  return {
-    permits:         permitRes.status    === 'fulfilled' ? permitRes.value    : null,
-    newConstruction: newConstRes.status  === 'fulfilled' ? newConstRes.value  : null,
-    establishments:  activityRes.status  === 'fulfilled' ? activityRes.value  : [],
-    namedProjects:   discoveryRes.status === 'fulfilled' ? discoveryRes.value : [],
-    locationInfo,
-  };
-}
-
 const { buildWhatWillGrowHTML } = require('./templates/chapters/garden');
 
 // ── Master fetch ──────────────────────────────────────────────────────────────
@@ -610,7 +486,7 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
       getEnvironmentalData(lat, lng, highwayDriveMinutes, fips, googleMapsClient, googleMapsApiKey),
       getSafetyLocationContext(locationInfo),
       getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
-      getGrowthAndDevelopment(lat, lng, fips, locationInfo, googleMapsClient, googleMapsApiKey),
+      getGrowthAndDevelopment(lat, lng, fips, locationInfo),
       getPropertyIntelligence(lat, lng, fips, locationInfo),
       getGardenData(lat, lng, locationInfo),
       getClimateHistoryData(lat, lng, locationInfo, fips),
