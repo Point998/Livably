@@ -3305,3 +3305,104 @@ body.report-page {
 /* Replaces style="text-decoration:none" on logo anchor tags         */
 
 .logo-link { text-decoration: none; }
+
+/* ── Depth Selector Component ───────────────────────────────────────── */
+.chapter-depth-control {
+  position: absolute;
+  top: 1.5rem;
+  right: var(--sp-4, 1.5rem);
+  z-index: 10;
+}
+
+.chapter-depth-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.chapter-depth-btn:hover { opacity: 1; }
+
+.chapter-depth-menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 8rem;
+}
+
+.chapter-depth-option {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.chapter-depth-option:hover { background: var(--color-surface-2, #f5f5f5); }
+.chapter-depth-option--selected { font-weight: 600; }
+
+/* ── Depth Level Visibility ────────────────────────────────────────── */
+
+/* Default render: data-depth="overview" set in HTML */
+.chapter[data-depth="glance"]   .depth-l2,
+.chapter[data-depth="glance"]   .depth-l3,
+.chapter[data-depth="glance"]   .depth-l4 { display: none; }
+
+.chapter[data-depth="overview"] .depth-l3,
+.chapter[data-depth="overview"] .depth-l4 { display: none; }
+
+.chapter[data-depth="deepread"] .depth-l4 { display: none; }
+
+/* research: all layers visible — no additional rules needed */
+
+/* ── Glance Bar ─────────────────────────────────────────────────────── */
+.chapter-glance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.65rem 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  font-size: 0.8125rem;
+}
+.chapter-glance-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.chapter-glance-sep {
+  color: var(--color-border, #ccc);
+  font-size: 0.75rem;
+}
+
+/* ── "Expand All" button ────────────────────────────────────────────── */
+.report-expand-all-wrap {
+  text-align: right;
+  margin-bottom: 1.5rem;
+}
+.report-expand-all-btn {
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.report-expand-all-btn:hover { opacity: 1; }
