@@ -44,12 +44,17 @@ const SCORING_CLASS_PATTERNS = [
   /class="[^"]*\bscore\b/,
   /class="[^"]*\b(?:score-ring|score-value|score-grade|score-band)\b/,
   /class="[^"]*\bgrade-ring\b/,
+  // Numeric display classes — e.g. walk-display-num, score-display-num
+  /class="[^"]*\bdisplay-num\b/,
 ];
 
 // Numeric score formats (X/10 or X/100) as standalone rating indicators.
 // Uses negative lookbehind to exclude arithmetic chains like `1.5 / 100 / 12`
 // (where the digit is preceded by `.`) and negative lookahead to exclude `/100 /`.
 const NUMERIC_SCORE_PATTERN = /(?<![a-z_$.])\b[1-9]\d?\s*\/\s*(?:10|100)\b(?!\s*\/)/;
+
+// Index range labels like "walkability index (0–100)" — signals a numeric scoring UI.
+const INDEX_RANGE_PATTERN = /index\s*\(\s*0\s*[–-]\s*\d+\s*\)/;
 
 describe('CONSTRAINT-001: No scoring UI in template files', () => {
   TEMPLATE_FILES.forEach((relPath) => {
@@ -63,6 +68,11 @@ describe('CONSTRAINT-001: No scoring UI in template files', () => {
     test(`${relPath} contains no X/10 or X/100 numeric ratings`, () => {
       const src = readFile(relPath);
       expect(src).not.toMatch(NUMERIC_SCORE_PATTERN);
+    });
+
+    test(`${relPath} contains no index range labels (0–N)`, () => {
+      const src = readFile(relPath);
+      expect(src).not.toMatch(INDEX_RANGE_PATTERN);
     });
   });
 });

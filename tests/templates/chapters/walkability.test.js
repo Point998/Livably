@@ -50,4 +50,20 @@ describe('buildWalkabilityHTML — FR-045 glance bar', () => {
     const violations = html.match(/style="(?!--)[^"]+"/g);
     expect(violations).toBeNull();
   });
+
+  test('CONSTRAINT-001: numeric score not rendered', () => {
+    const html = buildWalkabilityHTML(baseWalk);
+    // The raw number 62 must not appear as a displayed score
+    expect(html).not.toMatch(/walk-display-num/);
+    expect(html).not.toMatch(/walkability index \(0/i);
+    // Category label is still present
+    expect(html).toMatch(/Somewhat Walkable/);
+  });
+
+  test('CONSTRAINT-001: score not rendered even at high value', () => {
+    const highWalk = { ...baseWalk, score: 95, category: { label: "Walker's Paradise", color: 'green', description: 'Daily errands do not require a car.' } };
+    const html = buildWalkabilityHTML(highWalk);
+    expect(html).not.toMatch(/walk-display-num/);
+    expect(html).not.toMatch(/>95</);
+  });
 });
