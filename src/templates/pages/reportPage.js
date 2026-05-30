@@ -6,6 +6,7 @@ const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalS
 const { buildTrafficCardHTML } = require('../chapters/traffic');
 const { buildHealthSafetyChapterHTML } = require('../chapters/health');
 const { buildChaptersHTML } = require('../../chapters');
+const { renderDepthSelector } = require('../components/depthSelector');
 
 function buildGrocerySection(stores) {
   const label = '<div class="dest-label">Grocery Stores</div>';
@@ -139,6 +140,23 @@ function buildHeroInsightRowsHTML(hospital, school, highwayRamp, chapters) {
 }
 
 
+function buildReachGlanceHTML(grocery, hospital, highwayRamp) {
+  const g = Array.isArray(grocery) ? grocery[0] : grocery;
+  const times = [
+    g?.driveTimeMinutes != null           ? `Grocery: ${g.driveTimeMinutes} min`          : null,
+    hospital?.driveTimeMinutes != null     ? `ER: ${hospital.driveTimeMinutes} min`        : null,
+    highwayRamp?.driveTimeMinutes != null  ? `Highway: ${highwayRamp.driveTimeMinutes} min` : null,
+  ].filter(Boolean);
+
+  if (!times.length) return '';
+  const items = times.map((t, i) =>
+    i === 0
+      ? `<span class="chapter-glance-item">${escapeHtml(t)}</span>`
+      : `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">${escapeHtml(t)}</span>`
+  ).join('');
+  return `<div class="chapter-glance">${items}</div>`;
+}
+
 function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, chapters }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
@@ -250,7 +268,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <div class="report-content">
     ${healthSafetyChapterHTML}
     ${insightsCardHTML}
-    <section class="chapter chapter--alt" data-ch="reach">
+    <section class="chapter chapter--alt" data-ch="reach" data-depth="overview">
       <div class="chapter-inner">
         <div class="chapter-num" aria-hidden="true">03</div>
         <header class="chapter-hd">
@@ -261,12 +279,14 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
           <h2 class="chapter-title">The drives you'll make 300 times a year.</h2>
         </header>
         <p class="chapter-intro">You make these trips every week. Five minutes each way adds 50 hours a year. Here's what the math looks like for this address.</p>
-        <div class="chapter-body">
+        <div class="depth-l1">${buildReachGlanceHTML(grocery, hospital, highwayRamp)}</div>
+        <div class="chapter-body depth-l2">
           <div class="chapter-left">
             ${sectionsHTML}
           </div>
           <div class="chapter-right"></div>
         </div>
+        ${renderDepthSelector('reach')}
       </div>
     </section>
     <div class="chapter-rule"></div>

@@ -1,6 +1,7 @@
 'use strict';
 const { escapeHtml, formatDriveTime } = require('../../utils/text');
 const { CUSTOM_DEST_ICONS } = require('../../utils/constants');
+const { renderDepthSelector } = require('../components/depthSelector');
 
 function buildDestSection(label, result) {
   const labelHTML = `<div class="dest-label">${label}</div>`;
@@ -198,6 +199,23 @@ function buildInsightSectionHTML(icon, title, subtitle, narrative) {
     </div>`;
 }
 
+function buildDailyGlanceHTML(grocery, pharmacy, hospital) {
+  const g = Array.isArray(grocery) ? grocery[0] : grocery;
+  const times = [
+    g?.driveTimeMinutes != null        ? `Grocery: ${g.driveTimeMinutes} min`        : null,
+    pharmacy?.driveTimeMinutes != null ? `Pharmacy: ${pharmacy.driveTimeMinutes} min` : null,
+    hospital?.driveTimeMinutes != null ? `ER: ${hospital.driveTimeMinutes} min`      : null,
+  ].filter(Boolean);
+
+  if (!times.length) return '';
+  const items = times.map((t, i) =>
+    i === 0
+      ? `<span class="chapter-glance-item">${escapeHtml(t)}</span>`
+      : `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">${escapeHtml(t)}</span>`
+  ).join('');
+  return `<div class="chapter-glance">${items}</div>`;
+}
+
 function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation) {
   const daily = generateDailyConveniencesNarrative(grocery, pharmacy, gasStation);
   const peace = generatePeaceOfMindNarrative(hospital, urgentCare);
@@ -224,7 +242,7 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
   const sunSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:120" aria-hidden="true"><circle cx="12" cy="12" r="5" style="--path-len:32"/><line x1="12" y1="1" x2="12" y2="3" style="--path-len:16"/><line x1="12" y1="21" x2="12" y2="23" style="--path-len:16"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" style="--path-len:12"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" style="--path-len:12"/><line x1="1" y1="12" x2="3" y2="12" style="--path-len:16"/><line x1="21" y1="12" x2="23" y2="12" style="--path-len:16"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" style="--path-len:12"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" style="--path-len:12"/></svg>`;
 
   return `
-  <section class="chapter chapter--alt" data-ch="daily">
+  <section class="chapter chapter--alt" data-ch="daily" data-depth="overview">
     <div class="chapter-inner">
       <div class="chapter-num" aria-hidden="true">02</div>
       <header class="chapter-hd">
@@ -235,7 +253,8 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
         <h2 class="chapter-title">What living here actually feels like.</h2>
       </header>
       <p class="chapter-intro">The stuff you'd only learn after living here for two years — or by reading this.</p>
-      <div class="chapter-body">
+      <div class="depth-l1">${buildDailyGlanceHTML(grocery, pharmacy, hospital)}</div>
+      <div class="chapter-body depth-l2">
         <div class="chapter-left">
           ${sectionsHTML}
         </div>
@@ -243,6 +262,7 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
           ${calloutsHTML}
         </div>
       </div>
+      ${renderDepthSelector('daily')}
     </div>
   </section>
   <div class="chapter-rule"></div>`;
