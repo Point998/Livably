@@ -47,6 +47,11 @@ function getDateSlug() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function safeInt(n) {
+  const v = parseInt(n, 10);
+  return isNaN(v) || v < 0 ? 0 : v;
+}
+
 module.exports = {
   escapeHtml,
   formatDriveTime,
@@ -56,4 +61,5 @@ module.exports = {
   formatMoney,
   slugify,
   getDateSlug,
+  safeInt,
 };

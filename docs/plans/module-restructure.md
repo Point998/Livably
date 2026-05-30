@@ -3,6 +3,10 @@
 
 ## Current Status (May 2026)
 
+### Phase 1 Module Extraction — COMPLETE
+
+Phase 1 module extraction complete as of May 2026. `src/chapters.js` is now a thin orchestrator (~180 lines) calling per-module data functions. The three-layer pattern per module (data/logic/template) is partially complete — logic is centralized in `src/shared/validate.js`, templates are in `src/templates/chapters/`.
+
 ### Completed
 - `src/shared/google/` — geocoding, reverseGeocode, distanceMatrix, client ✅
 - `src/shared/validate.js` — Logic Layer, all coherence rules ✅
@@ -14,27 +18,28 @@
 - `src/modules/reachability/data.js` — grocery, pharmacy, gas station ✅
 - `src/modules/recreation/data.js` — parks, coffee shops ✅
 - `src/modules/schools/data.js` — school searches ✅
+- `src/modules/community/data.js` — Census demographics ✅
+- `src/modules/garden/data.js` — native plants, wildlife, garden data ✅
+- `src/modules/walkability/data.js` — walkability score ✅
+- `src/modules/safety/data.js` — emergency services, crime context ✅
+- `src/modules/climate/data.js` — climate history, FEMA, NOAA ✅
+- `src/modules/property/data.js` — property intelligence, soil data ✅
+- `src/modules/growth/data.js` — development pipeline ✅
+- `src/modules/sensory/data.js` — airports, noise, AQI, radon ✅
 - `src/templates/chapters/*.js` — all 14 chapter templates extracted ✅
 - `src/templates/components/` — shared components extracted ✅
 
+### What Remains in `src/chapters.js`
+- `getSchoolRatings` — inline multi-level school search (elementary/middle/high + private); distinct from `src/modules/schools/data.js` which handles single nearest-school queries
+- `getChapterData` — master orchestrator: calls all per-module data functions in parallel, assembles result object
+- `buildChaptersHTML` — delegates to all chapter template functions, returns assembled HTML
+
 ### Three-Layer Pattern Note
 The full four-file pattern (`data.js` / `logic.js` / `template.js` / `index.js`) is the target, but **during this migration phase**, the layers are organized as follows:
-- **Data layer** (`data.js`): Per-module, extracted for 5 modules above
+- **Data layer** (`data.js`): Per-module, extracted for all 8 domain modules above
 - **Logic layer**: Centralized in `src/shared/validate.js` rather than per-module `logic.js` files — this is intentional for cross-module coherence (CONSTRAINT-014)
 - **Template layer**: Centralized in `src/templates/chapters/` rather than per-module `template.js` files
 - **`index.js`**: Not yet created for any module; imports happen directly from `data.js`
-
-The remaining data logic (demographics, climate, garden, growth, walkability, sensory, property, community) lives in `src/chapters.js` (~1,700 lines). This is the primary extraction target for the next phase.
-
-### Still in `src/chapters.js` (extraction targets)
-- getDemographics → `src/modules/community/data.js`
-- getClimateHistoryData, getNOAAClimateNormals → `src/modules/climate/data.js`
-- getGardenData → `src/modules/garden/data.js`
-- getGrowthAndDevelopment → `src/modules/growth/data.js`
-- getWalkabilityScore → `src/modules/walkability/data.js`
-- getEnvironmentalData → `src/modules/sensory/data.js`
-- getPropertyIntelligence → `src/modules/property/data.js`
-- getEmergencyServices → merge into `src/modules/health/data.js`
 
 ---
 
