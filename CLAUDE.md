@@ -141,6 +141,9 @@ Never implement a feature in a single unstructured session without the 4-phase w
 **CONSTRAINT-015: Graceful degradation required**
 No chapter may render an empty section or generic "data not available" message without providing a specific actionable alternative — a named URL, a phone number, or specific instructions for getting the information. Dead API = actionable fallback, not silence.
 
+**CONSTRAINT-016: NOAA CDO station metadata is unreliable**
+A station appearing in a `datatypeid=MLY-TMAX-NORMAL` filtered search does not guarantee it has actual temperature records for the requested period. Always validate that fetched records contain the expected datatype before accepting a station as valid. Iterate candidates until a station with confirmed data is found. Do not trust station metadata alone. See PM-004.
+
 ---
 
 ## Known Bugs — Never Repeat
@@ -165,6 +168,9 @@ Cause: Claude Code reports success but doesn't always push. Always verify with g
 
 ### BUG-007 (→ CONSTRAINT-006): School returned from wrong state
 Cause: No jurisdictional filter on school search. Jeffersonville IN returned Louisville KY school. See PM-001.
+
+### BUG-008 (→ CONSTRAINT-016): Climate normals rendered without temperature data
+Cause: NOAA CDO station passed the datatype filter but had no actual TMAX/TMIN records for the normals period. Louisville KY used BEDFORD 4 SW, IN station. Fixed by validating actual record content after fetch. See PM-004.
 
 ---
 
