@@ -126,7 +126,22 @@ function buildDemographicsHTML(d) {
     </div>
     <p class="prem-disclaimer">Data: U.S. Census Bureau American Community Survey 5-year estimates (2022). Census tract level. Provided for informational purposes only; not to be used as a basis for housing discrimination.</p>`;
   const peopleSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
-  return renderChapterCard('community', '07', peopleSvg, 'Demographics & Community', 'Who lives here, and what that means for daily life.', null, body, null, null, null);
+  const glanceHTML = buildCommunityGlanceHTML(d);
+  return renderChapterCard('community', '07', peopleSvg, 'Demographics & Community', 'Who lives here, and what that means for daily life.', null, body, null, null, null, glanceHTML || null);
 }
 
-module.exports = { buildDemographicsHTML };
+function buildCommunityGlanceHTML(demographics) {
+  if (!demographics) return '';
+  const { ownershipRate, medianTenureYears } = demographics.community || {};
+  const income = demographics.income;
+
+  const items = [
+    ownershipRate != null ? `<span class="chapter-glance-item">${ownershipRate}% owner-occupied</span>` : '',
+    medianTenureYears != null ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">Median ${medianTenureYears}-yr tenure</span>` : '',
+    income?.level?.label ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">${escapeHtml(income.level.label)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  return items ? `<div class="chapter-glance">${items}</div>` : '';
+}
+
+module.exports = { buildDemographicsHTML, buildCommunityGlanceHTML };

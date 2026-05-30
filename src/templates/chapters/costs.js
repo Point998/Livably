@@ -92,7 +92,19 @@ function buildPropertyDataHTML(p) {
     </div>
     <p class="prem-disclaimer">Property tax rate: ${escapeHtml(p.state)} state effective average (Lincoln Institute, 2024). Insurance: NAIC 2024 state averages, scaled to home price. Utilities: EIA/BLS state averages, 2024. These are estimates — your actual costs will vary. Research date: ${today}.</p>`;
   const chartSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`;
-  return renderChapterCard('costs', '14', chartSvg, 'Property Costs & Market', 'The monthly numbers behind the asking price.', null, body, null, null, null);
+  const glanceHTML = buildCostsGlanceHTML(p);
+  return renderChapterCard('costs', '14', chartSvg, 'Property Costs & Market', 'The monthly numbers behind the asking price.', null, body, null, null, null, glanceHTML || null);
 }
 
-module.exports = { buildPropertyDataHTML };
+function buildCostsGlanceHTML(p) {
+  if (!p) return '';
+  const price = 300000;
+  const taxMo = Math.round(price * (p.taxRate / 100) / 12);
+  const insMo = Math.round(p.insuranceYear / 12);
+  const total = taxMo + insMo + p.utilitiesMo;
+  return `<div class="chapter-glance">
+    <span class="chapter-glance-item">~$${total.toLocaleString()}/mo carrying costs at $300k (before mortgage)</span>
+  </div>`;
+}
+
+module.exports = { buildPropertyDataHTML, buildCostsGlanceHTML };

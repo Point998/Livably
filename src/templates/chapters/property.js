@@ -135,7 +135,21 @@ function buildPropertyIntelligenceHTML(propIntel) {
     <p class="prem-disclaimer">Sources: ${escapeHtml(sources.join('; ') || 'See notes above')}. Research date: ${today}. Construction era is a tract-level Census ACS estimate — not specific to this parcel. Parcel-level permit and tax history requires direct inquiry with the county.</p>`;
 
   const homeSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
-  return renderChapterCard('property', '11', homeSvg, 'Property Intelligence', 'Soil, broadband, permits, and the details that listings don\'t show.', null, body, null, null, null);
+  const glanceHTML = buildPropertyGlanceHTML(propIntel);
+  return renderChapterCard('property', '11', homeSvg, 'Property Intelligence', 'Soil, broadband, permits, and the details that listings don\'t show.', null, body, null, null, null, glanceHTML || null);
 }
 
-module.exports = { buildPropertyIntelligenceHTML };
+function buildPropertyGlanceHTML(propIntel) {
+  if (!propIntel) return '';
+  const eraLabel = propIntel.era?.context?.era;
+  const drain = propIntel.soil?.drainageCategory;
+
+  const items = [
+    eraLabel ? `<span class="chapter-glance-item">${escapeHtml(eraLabel.split(' ').slice(0, 4).join(' '))}</span>` : '',
+    drain?.label ? `<span class="chapter-glance-sep">·</span><span class="chapter-glance-item">${escapeHtml(drain.label)}</span>` : '',
+  ].filter(Boolean).join('');
+
+  return items ? `<div class="chapter-glance">${items}</div>` : '';
+}
+
+module.exports = { buildPropertyIntelligenceHTML, buildPropertyGlanceHTML };

@@ -125,7 +125,17 @@ function buildWalkabilityHTML(walk) {
     <p class="prem-disclaimer">Walkability is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
 
   const walkSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M8 22l2-7 3 3 3-4 2 8"/><path d="M7.5 13.5L9 11l4 1 2-3.5"/></svg>`;
-  return renderChapterCard('walk', '13', walkSvg, 'Getting Around on Foot', 'What\'s reachable without a car — and what that means for daily life.', null, walkLeftHTML, null, walkFullHTML, null);
+  const glanceHTML = buildWalkGlanceHTML(walk);
+  return renderChapterCard('walk', '13', walkSvg, 'Getting Around on Foot', 'What\'s reachable without a car — and what that means for daily life.', null, walkLeftHTML, null, walkFullHTML, null, glanceHTML || null);
 }
 
-module.exports = { buildWalkabilityHTML };
+function buildWalkGlanceHTML(walk) {
+  if (!walk?.category) return '';
+  return `<div class="chapter-glance">
+    <span class="chapter-glance-item"><span class="prem-badge badge-${escapeHtml(walk.category.color)}">${escapeHtml(walk.category.label)}</span></span>
+    <span class="chapter-glance-sep">·</span>
+    <span class="chapter-glance-item">${escapeHtml(walk.category.description)}</span>
+  </div>`;
+}
+
+module.exports = { buildWalkabilityHTML, buildWalkGlanceHTML };

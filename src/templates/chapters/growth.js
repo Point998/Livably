@@ -156,7 +156,17 @@ function buildGrowthAndDevelopmentHTML(growth) {
     <p class="prem-disclaimer">Sources: ${escapeHtml(sources.join('; ') || 'See notes above')}. Research date: ${today}. Permit data is county-level — not neighborhood-specific. Specific planned projects require direct inquiry with the county planning department.</p>`;
 
   const craneSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="14" width="6" height="8"/><rect x="9" y="10" width="6" height="12"/><rect x="16" y="6" width="6" height="16"/><line x1="2" y1="22" x2="22" y2="22"/></svg>`;
-  return renderChapterCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, null, null);
+  const glanceHTML = buildGrowthGlanceHTML(growth);
+  return renderChapterCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, null, null, glanceHTML || null);
 }
 
-module.exports = { buildGrowthAndDevelopmentHTML };
+function buildGrowthGlanceHTML(growth) {
+  if (!growth) return '';
+  const named = growth.namedProjects || [];
+  const text = named.length > 0
+    ? named.slice(0, 2).map((p) => escapeHtml(p.name || p.project || p.title || String(p))).join(', ')
+    : 'No confirmed development projects nearby';
+  return `<div class="chapter-glance"><span class="chapter-glance-item">${text}</span></div>`;
+}
+
+module.exports = { buildGrowthAndDevelopmentHTML, buildGrowthGlanceHTML };
