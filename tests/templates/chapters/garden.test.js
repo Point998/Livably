@@ -59,10 +59,9 @@ describe('buildWhatWillGrowHTML', () => {
     expect(html).toMatch(/183/);
   });
 
-  test('renders Level 3 expand toggle button', () => {
+  test('no garden-deep-toggle button (replaced by depth system)', () => {
     const html = buildWhatWillGrowHTML(gardenData, soil, locationInfo);
-    expect(html).toMatch(/garden-deep-toggle/);
-    expect(html).toMatch(/Explore your yard/i);
+    expect(html).not.toMatch(/garden-deep-toggle/);
   });
 
   test('renders 8 tab buttons', () => {
@@ -140,5 +139,58 @@ describe('buildWhatWillGrowHTML', () => {
     const html = buildWhatWillGrowHTML(noSeasonal, soil, locationInfo);
     // Should still render without crash and show general birds
     expect(html).toMatch(/Northern Cardinal/);
+  });
+});
+
+describe('buildWhatWillGrowHTML — FR-045 depth system', () => {
+  const baseGarden = {
+    hardinessZone: { zone: '6b', tempRange: '-5 to 0', frost: { lastSpring: 'April 15', firstFall: 'October 15', days: 183 } },
+    nativePlants: [{ name: 'Red Maple', sci: 'Acer rubrum', count: 42 }],
+    invasivePlants: [],
+    wildlife: [],
+    birds: [],
+    nativePlantsByForm: { trees: [], shrubs: [], perennials: [], grasses: [], vines: [] },
+    reptiles: [], insects: [], butterflies: [],
+    birdsBySeason: { yearRound: [], spring: [], summer: [], fall: [], winter: [] },
+    monarchCorridor: { inCorridor: false, milkweedSpecies: [] },
+    fireflyHabitat: false,
+  };
+  const locationInfo = { state: 'KY', county: 'Scott County', zip: '40324' };
+
+  test('renders depth-l1 glance bar', () => {
+    const html = buildWhatWillGrowHTML(baseGarden, null, locationInfo);
+    expect(html).toMatch(/depth-l1/);
+    expect(html).toMatch(/chapter-glance/);
+  });
+
+  test('glance bar shows zone', () => {
+    const html = buildWhatWillGrowHTML(baseGarden, null, locationInfo);
+    expect(html).toMatch(/6b/);
+  });
+
+  test('glance bar shows growing season days', () => {
+    const html = buildWhatWillGrowHTML(baseGarden, null, locationInfo);
+    expect(html).toMatch(/183/);
+  });
+
+  test('no garden-deep-toggle button (replaced by depth selector)', () => {
+    const html = buildWhatWillGrowHTML(baseGarden, null, locationInfo);
+    expect(html).not.toMatch(/garden-deep-toggle/);
+  });
+
+  test('deep dive content wrapped in depth-l3', () => {
+    const html = buildWhatWillGrowHTML(baseGarden, null, locationInfo);
+    expect(html).toMatch(/depth-l3/);
+  });
+
+  test('depth selector rendered (chapter-depth-control)', () => {
+    const html = buildWhatWillGrowHTML(baseGarden, null, locationInfo);
+    expect(html).toMatch(/chapter-depth-control/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildWhatWillGrowHTML(baseGarden, null, locationInfo);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
   });
 });
