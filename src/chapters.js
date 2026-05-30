@@ -19,7 +19,6 @@ const {
   OVERPASS_ENDPOINTS,
   NON_AIRPORT_RE, AIRPORT_RE,
   AIRPORT_SEARCH_RADIUS_M, AIRPORT_MAX_DISTANCE_MILES,
-  WALKABILITY_SEARCH_RADIUS_M, WALK_TYPES,
   DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M, COMMERCIAL_DEV_TYPES,
   RESPONSE_SPEED_MPH, RESPONSE_DISPATCH_MINUTES, RESPONSE_TIME_THRESHOLDS,
   FEMA_FLOOD_ZONES,
@@ -52,6 +51,7 @@ const {
   getMonarchCorridorInfo, getFireflyHabitat,
 } = require('./modules/garden/data');
 const { getDemographics, getDensityType } = require('./modules/community/data');
+const { getWalkabilityScore } = require('./modules/walkability/data');
 
 // ── FR-023: Property Costs & Market ──────────────────────────────────────────
 
@@ -80,53 +80,6 @@ async function getPropertyData(fips, locationInfo) {
     county,
     densityLabel: getDensityType(tractPop || 0).label,
   };
-}
-
-// ── FR-021: Walkability Score (proxy via Google Places) ───────────────────────
-
-async function getWalkabilityScore(lat, lng, googleMapsClient, googleMapsApiKey) {
-  const results = await Promise.allSettled(
-    WALK_TYPES.map(({ type }) =>
-      googleMapsClient.placesNearby({
-        params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: WALKABILITY_SEARCH_RADIUS_M, type },
-      })
-    )
-  );
-
-  let totalScore = 0;
-  const destinations = [];
-
-  for (let i = 0; i < WALK_TYPES.length; i++) {
-    const { weight, label, icon } = WALK_TYPES[i];
-    const r = results[i];
-    if (r.status !== 'fulfilled') continue;
-    const places = r.value.data.results || [];
-    const count = places.length;
-    totalScore += count === 0 ? 0 : count <= 2 ? Math.round(weight * 0.5) : weight;
-
-    places.slice(0, 2).forEach((place) => {
-      const dist = haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng);
-      destinations.push({
-        label, icon,
-        name: place.name,
-        distanceMiles: dist,
-        walkMinutes: Math.max(1, Math.round(dist * 20)),
-      });
-    });
-  }
-
-  destinations.sort((a, b) => a.distanceMiles - b.distanceMiles);
-
-  const score = Math.min(100, totalScore);
-  return { score, category: getWalkCategory(score), destinations, isProxy: true };
-}
-
-function getWalkCategory(score) {
-  if (score >= 90) return { label: "Walker's Paradise", color: 'green', description: 'Daily errands do not require a car.' };
-  if (score >= 70) return { label: 'Very Walkable', color: 'lightgreen', description: 'Most errands can be done on foot.' };
-  if (score >= 50) return { label: 'Somewhat Walkable', color: 'gold', description: 'Some errands can be done on foot.' };
-  if (score >= 25) return { label: 'Car-Dependent', color: 'orange', description: 'Most errands require a car.' };
-  return { label: 'Very Car-Dependent', color: 'red', description: 'Almost all errands require a car.' };
 }
 
 // ── FR-020: Emergency Services ────────────────────────────────────────────────
@@ -1220,7 +1173,7 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
     await Promise.allSettled([
       getDemographics(lat, lng, fips),
       getPropertyData(fips, locationInfo),
-      getWalkabilityScore(lat, lng, googleMapsClient, googleMapsApiKey),
+      getWalkabilityScore(lat, lng),
       getEmergencyServices(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
       getEnvironmentalData(lat, lng, highwayDriveMinutes, fips, googleMapsClient, googleMapsApiKey),
       getSafetyLocationContext(locationInfo),
