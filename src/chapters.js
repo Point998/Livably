@@ -20,7 +20,6 @@ const {
   NON_AIRPORT_RE, AIRPORT_RE,
   AIRPORT_SEARCH_RADIUS_M, AIRPORT_MAX_DISTANCE_MILES,
   DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M, COMMERCIAL_DEV_TYPES,
-  RESPONSE_SPEED_MPH, RESPONSE_DISPATCH_MINUTES, RESPONSE_TIME_THRESHOLDS,
   FEMA_FLOOD_ZONES,
   BROADBAND_TECH_CODES,
   OSM_ROAD_NOISE_RADIUS_M, OSM_RAIL_RADIUS_M, OSM_LANDUSE_RADIUS_M,
@@ -52,6 +51,7 @@ const {
 } = require('./modules/garden/data');
 const { getDemographics, getDensityType } = require('./modules/community/data');
 const { getWalkabilityScore } = require('./modules/walkability/data');
+const { getEmergencyServices, getSafetyLocationContext } = require('./modules/safety/data');
 
 // ── FR-023: Property Costs & Market ──────────────────────────────────────────
 
@@ -80,58 +80,6 @@ async function getPropertyData(fips, locationInfo) {
     county,
     densityLabel: getDensityType(tractPop || 0).label,
   };
-}
-
-// ── FR-020: Emergency Services ────────────────────────────────────────────────
-
-function normalizeStationName(name) {
-  if (!name) return name;
-  return name.replace(/Fire\s+Protction\s+Services/gi, 'Fire Protection Services');
-}
-
-async function getEmergencyServices(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime) {
-  const [policeResult, fireResult] = await Promise.allSettled([
-    googleMapsClient.placesNearby({
-      params: { key: googleMapsApiKey, location: `${lat},${lng}`, rankby: 'distance', type: 'police' },
-    }),
-    googleMapsClient.placesNearby({
-      params: { key: googleMapsApiKey, location: `${lat},${lng}`, rankby: 'distance', type: 'fire_station' },
-    }),
-  ]);
-
-  async function processStation(result, serviceType) {
-    if (result.status !== 'fulfilled') return null;
-    const place = (result.value.data.results || [])[0];
-    if (!place) return null;
-    const distanceMiles = haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng);
-    let driveTimeMinutes = null;
-    try { driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location); } catch {}
-    return {
-      name: normalizeStationName(place.name),
-      address: place.vicinity || place.formatted_address || place.name,
-      distanceMiles: distanceMiles.toFixed(1),
-      driveTimeMinutes,
-      response: estimateResponseTime(distanceMiles, serviceType),
-    };
-  }
-
-  const [police, fire] = await Promise.all([
-    processStation(policeResult, 'police'),
-    processStation(fireResult, 'fire'),
-  ]);
-
-  return { police, fire };
-}
-
-function estimateResponseTime(distanceMiles, type) {
-  const minutes = Math.round((distanceMiles / (RESPONSE_SPEED_MPH[type] || 30)) * 60 + (RESPONSE_DISPATCH_MINUTES[type] || 2));
-  const t = RESPONSE_TIME_THRESHOLDS[type] || { excellent: 5, good: 10, fair: 15 };
-  let category;
-  if (minutes <= t.excellent) category = { label: 'Excellent', color: 'green' };
-  else if (minutes <= t.good) category = { label: 'Good', color: 'gold' };
-  else if (minutes <= t.fair) category = { label: 'Fair', color: 'orange' };
-  else category = { label: 'Delayed', color: 'red' };
-  return { estimate: minutes, category };
 }
 
 // ── FR-027: Sensory & Environmental (supersedes FR-019) ──────────────────────
@@ -490,14 +438,6 @@ async function getEJScreen(lat, lng) {
   } catch {
     return null;
   }
-}
-
-// ── FR-018: Safety & Emergency Response ──────────────────────────────────────
-
-async function getSafetyLocationContext(locationInfo) {
-  const { state, city, county } = locationInfo || {};
-  if (!state) return null;
-  return { state, city, county };
 }
 
 // ── FR-017: Schools & Education ──────────────────────────────────────────────
@@ -1174,7 +1114,7 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
       getDemographics(lat, lng, fips),
       getPropertyData(fips, locationInfo),
       getWalkabilityScore(lat, lng),
-      getEmergencyServices(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
+      getEmergencyServices(lat, lng, originLatLng),
       getEnvironmentalData(lat, lng, highwayDriveMinutes, fips, googleMapsClient, googleMapsApiKey),
       getSafetyLocationContext(locationInfo),
       getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
