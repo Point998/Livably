@@ -1,5 +1,5 @@
 'use strict';
-const { buildGrowthAndDevelopmentHTML } = require('../../../src/templates/chapters/growth');
+const { buildGrowthAndDevelopmentHTML } = require('../../../src/modules/growth/template');
 
 const baseGrowth = {
   namedProjects: [

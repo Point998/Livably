@@ -20,7 +20,7 @@ const CHAPTER_FILES = [
   'templates/chapters/community.js',
   'templates/chapters/costs.js',
   'templates/chapters/garden.js',
-  'templates/chapters/growth.js',
+  'modules/growth/template.js',
   'templates/chapters/property.js',
   'templates/chapters/reachability.js',
   'templates/chapters/sensory.js',

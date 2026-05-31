@@ -9,6 +9,7 @@ const {
   COMMERCIAL_DEV_TYPES,
   DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M,
 } = require('../../utils/constants');
+const { calcPermitPercentChange, classifyPermitTrend } = require('./logic');
 
 // ── FR-025: Growth & Development ─────────────────────────────────────────────
 
@@ -53,15 +54,11 @@ async function getBuildingPermitTrend(fips) {
     permitsByYear.sort((a, b) => b.year - a.year);
     const current = permitsByYear[0];
     const prior   = permitsByYear[1] || null;
-    let percentChange = null;
-    if (current && prior && prior.permits > 0) {
-      percentChange = Math.round((current.permits - prior.permits) / prior.permits * 100);
-    }
-    const trend =
-      percentChange === null ? 'stable'
-      : percentChange >= 10  ? 'rising'
-      : percentChange <= -10 ? 'declining'
-      : 'stable';
+    const percentChange = calcPermitPercentChange(
+      current.permits,
+      prior?.permits ?? null,
+    );
+    const trend = classifyPermitTrend(percentChange);
     return {
       current:      current.permits,
       currentYear:  current.year,
