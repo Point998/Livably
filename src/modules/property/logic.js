@@ -31,4 +31,31 @@ function getConstructionEraContext(year) {
   return { era: 'Pre-1940 construction', cautions: ['Lead paint presumed in original surfaces', 'Plumbing and electrical may be original or patchwork-updated — verify', 'Asbestos common in original building materials', 'Structural updates vary widely — confirm with inspection'] };
 }
 
-module.exports = { getDrainageCategory, getBroadbandCategory, getConstructionEraContext };
+function buildHousingAgeBands(get) {
+  const safeCount = (v) => {
+    const n = parseInt(v, 10);
+    return isNaN(n) || n < 0 ? 0 : n;
+  };
+
+  const total = safeCount(get('B25034_001E'));
+  if (!total) return null;
+
+  const rawBands = [
+    { label: '2010+',    count: safeCount(get('B25034_002E')) + safeCount(get('B25034_003E')) },
+    { label: '2000s',    count: safeCount(get('B25034_004E')) },
+    { label: '1990s',    count: safeCount(get('B25034_005E')) },
+    { label: '1980s',    count: safeCount(get('B25034_006E')) },
+    { label: '1970s',    count: safeCount(get('B25034_007E')) },
+    { label: '1960s',    count: safeCount(get('B25034_008E')) },
+    { label: 'Pre-1960', count: safeCount(get('B25034_009E')) + safeCount(get('B25034_010E')) + safeCount(get('B25034_011E')) },
+  ];
+
+  const bands = rawBands.map(b => ({
+    ...b,
+    pct: Math.round(b.count / total * 100),
+  }));
+
+  return { totalUnits: total, bands };
+}
+
+module.exports = { getDrainageCategory, getBroadbandCategory, getConstructionEraContext, buildHousingAgeBands };
