@@ -1,5 +1,5 @@
 'use strict';
-const { buildCrimeHTML } = require('../../../src/templates/chapters/safety');
+const { buildCrimeHTML } = require('../../../src/modules/safety/template');
 
 const baseEmergency = {
   police: {
