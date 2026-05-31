@@ -11,7 +11,7 @@ const { buildDemographicsHTML } = require('./community');
 const { buildGrowthAndDevelopmentHTML } = require('./growth');
 const { buildPropertyIntelligenceHTML } = require('./property');
 const { buildHealthSafetyChapterHTML } = require('../../modules/health/template');
-const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('./reachability');
+const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('../../modules/reachability/template');
 const { buildTrafficItemHTML, buildTrafficCardHTML } = require('./traffic');
 
 module.exports = {

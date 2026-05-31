@@ -6,8 +6,9 @@ const { placesCache } = require('../../cache');
 const { getMitigation } = require('../../errorMemory');
 const { logError } = require('../../logger');
 const {
-  GROCERY_SEARCH_RADIUS_M, GROCERY_CANDIDATE_COUNT, GROCERY_EXCLUDED_TYPES,
+  GROCERY_SEARCH_RADIUS_M, GROCERY_CANDIDATE_COUNT,
 } = require('../../utils/constants');
+const { isExcludedGroceryType } = require('./logic');
 
 // Returns top 3 nearest grocery stores by drive time.
 // Uses textSearch with tight radius so Google relevance is overridden by actual drive time.
@@ -28,10 +29,7 @@ async function findNearestGrocery(originLatLng, ruralMode = 'suburban') {
     },
   });
 
-  const placeResults = (placesResponse.data.results || []).filter((place) => {
-    const types = place.types || [];
-    return !GROCERY_EXCLUDED_TYPES.some((t) => types.includes(t));
-  });
+  const placeResults = (placesResponse.data.results || []).filter((place) => !isExcludedGroceryType(place));
 
   if (!placeResults.length) {
     throw new Error('No grocery stores found near that address.');

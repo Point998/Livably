@@ -1,7 +1,7 @@
 'use strict';
 const { escapeHtml, formatDriveTime } = require('../../utils/text');
 const { CUSTOM_DEST_ICONS } = require('../../utils/constants');
-const { renderDepthSelector } = require('../components/depthSelector');
+const { renderDepthSelector } = require('../../templates/components/depthSelector');
 
 function buildDestSection(label, result) {
   const labelHTML = `<div class="dest-label">${label}</div>`;

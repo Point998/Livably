@@ -2,7 +2,7 @@
 
 const { escapeHtml, formatDriveTime, parseAddressParts, formatResearchDate } = require('../../utils/text');
 const { HIGHWAY_MAX_DRIVE_MINUTES } = require('../../utils/constants');
-const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('../chapters/reachability');
+const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('../../modules/reachability/template');
 const { buildTrafficCardHTML } = require('../chapters/traffic');
 const { buildHealthSafetyChapterHTML } = require('../../modules/health/template');
 const { buildChaptersHTML } = require('../../chapters');

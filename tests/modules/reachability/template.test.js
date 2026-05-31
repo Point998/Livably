@@ -1,5 +1,5 @@
 'use strict';
-const { buildInsightsCardHTML } = require('../../../src/templates/chapters/reachability');
+const { buildInsightsCardHTML } = require('../../../src/modules/reachability/template');
 
 const grocery = [{ name: 'Kroger', address: '100 Main St', driveTimeMinutes: 6 }];
 const pharmacy = { name: 'CVS', address: '200 Main St', driveTimeMinutes: 4 };
