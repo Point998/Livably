@@ -2,6 +2,173 @@
 const { escapeHtml, formatMoney } = require('../../utils/text');
 const { badgeClass, renderChapterCard } = require('../components');
 
+function buildIncomeTab(dist, medianIncome) {
+  const national = [22, 23, 18, 14, 23];
+  const medianNote = medianIncome ? `Median household income in this tract: ${formatMoney(medianIncome)}.` : '';
+  const suppressedNote = dist.hasSuppressed ? ' Some income brackets had suppressed data (small cell counts) and are shown as 0.' : '';
+
+  const bars = dist.brackets.map((b, i) => {
+    const diff = b.pct - national[i];
+    const diffLabel = diff > 2 ? `(${diff} pts above US avg)`
+      : diff < -2 ? `(${Math.abs(diff)} pts below US avg)`
+      : '(near US avg)';
+    return `
+      <div class="prem-age-row">
+        <span class="prem-age-label">${escapeHtml(b.label)}</span>
+        <div class="prem-age-track"><div class="prem-age-fill" data-w="${b.pct}"></div></div>
+        <span class="prem-age-pct">${b.pct}%</span>
+      </div>
+      <div class="prem-demo-note">${escapeHtml(diffLabel)}</div>`;
+  }).join('');
+
+  return `
+    <p class="prem-narrative-body">${medianNote} Distribution of households across income brackets for this Census tract.${suppressedNote}</p>
+    ${bars}
+    <p class="prem-disclaimer">Source: U.S. Census Bureau ACS 5-year estimates, Table B19001. US averages: approx. 22% under $25k, 23% $25–50k, 18% $50–75k, 14% $75–100k, 23% over $100k.</p>`;
+}
+
+function buildEducationTab(ladder) {
+  const national = [12, 27, 20, 20, 13];
+  const bars = ladder.steps.map((s, i) => {
+    const diff = s.pct - national[i];
+    const diffLabel = diff > 2 ? `(${diff} pts above US avg)`
+      : diff < -2 ? `(${Math.abs(diff)} pts below US avg)`
+      : '(near US avg)';
+    return `
+      <div class="prem-age-row">
+        <span class="prem-age-label">${escapeHtml(s.label)}</span>
+        <div class="prem-age-track"><div class="prem-age-fill" data-w="${s.pct}"></div></div>
+        <span class="prem-age-pct">${s.pct}%</span>
+      </div>
+      <div class="prem-demo-note">${escapeHtml(diffLabel)}</div>`;
+  }).join('');
+
+  return `
+    <p class="prem-narrative-body">Educational attainment for adults 25 and older in this Census tract.</p>
+    ${bars}
+    <p class="prem-disclaimer">Source: U.S. Census Bureau ACS 5-year estimates, Table B15003. US averages approximate.</p>`;
+}
+
+function buildHouseholdTab(comp) {
+  const items = [
+    { label: 'Family households',       pct: comp.familyPct },
+    { label: 'Married-couple families', pct: comp.marriedCouplePct },
+    { label: 'Single-parent families',  pct: comp.singleParentPct },
+    { label: 'Non-family households',   pct: comp.nonfamilyPct },
+    { label: 'Living alone',            pct: comp.livingAlonePct },
+  ];
+
+  const bars = items.map(it => `
+    <div class="prem-age-row">
+      <span class="prem-age-label">${escapeHtml(it.label)}</span>
+      <div class="prem-age-track"><div class="prem-age-fill" data-w="${it.pct}"></div></div>
+      <span class="prem-age-pct">${it.pct}%</span>
+    </div>`).join('');
+
+  return `
+    <p class="prem-narrative-body">Household structure across the ${comp.totalHouseholds.toLocaleString()} households in this Census tract.</p>
+    ${bars}
+    <p class="prem-disclaimer">Source: U.S. Census Bureau ACS 5-year estimates, Table B11001.</p>`;
+}
+
+function buildCommuteTab(commute) {
+  const modes = [
+    { label: 'Drove alone',      pct: commute.droveAlonePct },
+    { label: 'Carpooled',        pct: commute.carpoolPct },
+    { label: 'Public transit',   pct: commute.transitPct },
+    { label: 'Walked',           pct: commute.walkedPct },
+    { label: 'Bicycle',          pct: commute.bicyclePct },
+    { label: 'Worked from home', pct: commute.wfhPct },
+    { label: 'Other',            pct: commute.otherPct },
+  ].filter(m => m.pct > 0);
+
+  const bars = modes.map(m => `
+    <div class="prem-age-row">
+      <span class="prem-age-label">${escapeHtml(m.label)}</span>
+      <div class="prem-age-track"><div class="prem-age-fill" data-w="${m.pct}"></div></div>
+      <span class="prem-age-pct">${m.pct}%</span>
+    </div>`).join('');
+
+  const transitNote = commute.transitPct > 10
+    ? ` Transit at ${commute.transitPct}% suggests viable public transit infrastructure nearby.` : '';
+  const wfhNote = commute.wfhPct > 25
+    ? ` With ${commute.wfhPct}% working from home, expect higher daytime neighborhood activity than in drive-to-work areas.` : '';
+
+  return `
+    <p class="prem-narrative-body">How the ${commute.totalWorkers.toLocaleString()} workers in this tract commute.${transitNote}${wfhNote}</p>
+    ${bars}
+    <p class="prem-disclaimer">Source: U.S. Census Bureau ACS 5-year estimates, Table B08006.</p>`;
+}
+
+function buildCommunityDeepDiveHTML(d) {
+  if (!d) return '';
+
+  const tabs = [
+    d.incomeDistribution
+      ? { id: 'income',    label: 'Income Distribution',      content: buildIncomeTab(d.incomeDistribution, d.income?.median) }
+      : null,
+    d.educationLadder
+      ? { id: 'education', label: 'Education Ladder',          content: buildEducationTab(d.educationLadder) }
+      : null,
+    d.householdComposition
+      ? { id: 'household', label: 'Household Types',           content: buildHouseholdTab(d.householdComposition) }
+      : null,
+    d.commuteMode
+      ? { id: 'commute',   label: 'How People Get to Work',    content: buildCommuteTab(d.commuteMode) }
+      : null,
+  ].filter(Boolean);
+
+  if (!tabs.length) return '';
+
+  const tabButtons = tabs.map((t, i) =>
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="cdtab-${t.id}" id="cdbtn-${t.id}">${t.label}</button>`
+  ).join('');
+
+  const tabPanels = tabs.map((t, i) =>
+    `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="cdtab-${t.id}" role="tabpanel" aria-labelledby="cdbtn-${t.id}">${t.content}</div>`
+  ).join('');
+
+  return `
+    <div class="community-deep-dive">
+      <div class="community-deep-dive-label">Demographics in Depth</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Community demographics deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
+      </div>
+    </div>`;
+}
+
+function buildCommunityResearchHTML(d) {
+  if (!d) return '';
+  if (!d.incomeDistribution && !d.educationLadder && !d.tractFips) return '';
+
+  const incomeTableRows = d.incomeDistribution
+    ? d.incomeDistribution.brackets.map(b =>
+        `<tr><td>${escapeHtml(b.label)}</td><td>${b.pct}%</td><td>${b.count != null ? b.count.toLocaleString() : '—'}</td></tr>`
+      ).join('')
+    : '';
+
+  const incomeTable = incomeTableRows ? `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Income Distribution — Raw Counts</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Bracket</th><th>Percent</th><th>Households</th></tr></thead>
+          <tbody>${incomeTableRows}</tbody>
+        </table>
+      </div>
+    </div>` : '';
+
+  const censusLink = d.tractFips?.censusExplorerUrl
+    ? `<div class="climate-research-section"><p class="prem-narrative-body">Full ACS data for this Census tract: <a href="${escapeHtml(d.tractFips.censusExplorerUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(d.tractFips.censusExplorerUrl)}</a></p></div>`
+    : '';
+
+  const content = [incomeTable, censusLink].filter(Boolean).join('');
+  return content || '';
+}
+
 function buildDemographicsHTML(d) {
   if (!d) return '';
 
@@ -127,7 +294,15 @@ function buildDemographicsHTML(d) {
     <p class="prem-disclaimer">Data: U.S. Census Bureau American Community Survey 5-year estimates (2022). Census tract level. Provided for informational purposes only; not to be used as a basis for housing discrimination.</p>`;
   const peopleSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
   const glanceHTML = buildCommunityGlanceHTML(d);
-  return renderChapterCard('community', '07', peopleSvg, 'Demographics & Community', 'Who lives here, and what that means for daily life.', null, body, null, null, null, glanceHTML || null);
+
+  const deepDiveHTML = buildCommunityDeepDiveHTML(d);
+  const researchHTML = buildCommunityResearchHTML(d);
+  const fullHTML = [
+    deepDiveHTML  ? `<div class="depth-l3">${deepDiveHTML}</div>` : '',
+    researchHTML  ? `<div class="depth-l4">${researchHTML}</div>` : '',
+  ].filter(Boolean).join('');
+
+  return renderChapterCard('community', '07', peopleSvg, 'Demographics & Community', 'Who lives here, and what that means for daily life.', null, body, null, fullHTML || null, null, glanceHTML || null);
 }
 
 function buildCommunityGlanceHTML(demographics) {

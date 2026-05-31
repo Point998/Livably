@@ -2697,6 +2697,7 @@ body.report-page {
 }
 
 .climate-deep-dive { margin-top: var(--space-4); }
+.community-deep-dive { margin-top: var(--space-4); }
 
 .climate-tab-nav {
   display: flex;
