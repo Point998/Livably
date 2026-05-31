@@ -1,18 +1,12 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
-const { badgeClass } = require('../components/badge');
-const { renderChapterCard } = require('../components/chapterCard');
+const { badgeClass } = require('../../templates/components/badge');
+const { renderChapterCard } = require('../../templates/components/chapterCard');
 const {
   CLIMATE_FEMA_LOOKBACK_YEARS,
   CLIMATE_STORM_LOOKBACK_YEARS,
 } = require('../../utils/constants');
-
-// Private helper — inline copy to avoid circular require with chapters.js
-function _computeRarityStatement(count, years, eventType) {
-  if (count === 0) return `No recorded ${eventType} events in this county in ${years} years.`;
-  const perDecade = Math.round((count / years) * 10);
-  return `${count} ${eventType} event${count === 1 ? '' : 's'} in ${years} years — roughly ${perDecade} per decade.`;
-}
+const { computeRarityStatement: _computeRarityStatement } = require('./logic');
 
 function buildClimateGlanceHTML(environment, climateHistory) {
   const flood = environment?.floodRisk;

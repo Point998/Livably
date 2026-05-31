@@ -16,7 +16,7 @@ function readFile(relPath) {
 // All chapter and component template files. adminPage.js is internal tooling
 // exempt from the constraint (it has no public CSS to enforce against).
 const CHAPTER_FILES = [
-  'templates/chapters/climate.js',
+  'modules/climate/template.js',
   'modules/community/template.js',
   'templates/chapters/costs.js',
   'modules/garden/template.js',

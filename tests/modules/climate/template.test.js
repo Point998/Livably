@@ -1,5 +1,5 @@
 'use strict';
-const { buildClimateChapterHTML } = require('../../../src/templates/chapters/climate');
+const { buildClimateChapterHTML } = require('../../../src/modules/climate/template');
 
 const baseEnv = {
   floodRisk: { zone: 'X', risk: 'Minimal', insuranceRequired: false },

@@ -16,18 +16,20 @@ const { getWalkabilityScore } = require('./modules/walkability/data');
 const { getEmergencyServices, getSafetyLocationContext } = require('./modules/safety/data');
 const {
   getClimateHistoryData,
+  getWatershedContext,
+  fetchElevationWithRetry,
+} = require('./modules/climate/data');
+const {
   getEmergencySystem,
   getLastSignificantEvent,
   computeRarityStatement,
   classifyTopographicPosition,
-  getWatershedContext,
-  fetchElevationWithRetry,
-} = require('./modules/climate/data');
+} = require('./modules/climate/logic');
 const { getPropertyData, getPropertyIntelligence } = require('./modules/property/data');
 const { getGrowthAndDevelopment } = require('./modules/growth/data');
 const { getEnvironmentalData } = require('./modules/sensory/data');
 
-const { buildClimateChapterHTML } = require('./templates/chapters/climate');
+const { buildClimateChapterHTML } = require('./modules/climate/template');
 const { buildWhatWillGrowHTML } = require('./modules/garden/template');
 const { buildSchoolRatingsHTML } = require('./modules/schools/template');
 const { buildCrimeHTML } = require('./modules/safety/template');

@@ -13,7 +13,7 @@ function readFile(relPath) {
 }
 
 const TEMPLATE_FILES = [
-  'templates/chapters/climate.js',
+  'modules/climate/template.js',
   'modules/community/template.js',
   'templates/chapters/costs.js',
   'modules/garden/template.js',
