@@ -1,5 +1,5 @@
 'use strict';
-const { buildSensoryEnvironmentalHTML } = require('../../../src/templates/chapters/sensory');
+const { buildSensoryEnvironmentalHTML } = require('../../../src/modules/sensory/template');
 
 const baseEnv = {
   airports: [{ name: 'Cincinnati/Northern Kentucky International', distanceMiles: 22.5 }],

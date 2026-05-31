@@ -23,7 +23,7 @@ const CHAPTER_FILES = [
   'modules/growth/template.js',
   'modules/property/template.js',
   'modules/reachability/template.js',
-  'templates/chapters/sensory.js',
+  'modules/sensory/template.js',
   'modules/safety/template.js',
   'templates/chapters/traffic.js',
   'modules/health/template.js',

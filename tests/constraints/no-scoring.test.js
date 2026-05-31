@@ -20,7 +20,7 @@ const TEMPLATE_FILES = [
   'modules/growth/template.js',
   'modules/property/template.js',
   'modules/reachability/template.js',
-  'templates/chapters/sensory.js',
+  'modules/sensory/template.js',
   'modules/safety/template.js',
   'modules/schools/template.js',
   'templates/chapters/traffic.js',
