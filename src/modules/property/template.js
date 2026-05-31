@@ -13,7 +13,7 @@ function buildBroadbandTab(broadband) {
     : '';
 
   const cards = broadband.providers.map(p => {
-    const fiberBadge = p.tech === 'Fiber' ? `<span class="prem-badge prem-badge--green">Fiber</span>` : '';
+    const fiberBadge = p.tech === 'Fiber' ? `<span class="prem-badge ${badgeClass('green')}">Fiber</span>` : '';
     return `
       <div class="prem-intel-bb-provider prem-intel-bb-provider--full">
         <span class="prem-intel-bb-name">${escapeHtml(p.name)}</span>
@@ -49,7 +49,7 @@ function buildSoilTab(soil) {
   const hydricSection = soil.isHydric
     ? `<div class="prem-intel-soil-detail prem-intel-soil-detail--hydric">
         <span class="prem-intel-soil-label">Hydric Soil</span>
-        <span class="prem-badge prem-badge--orange">Hydric — Wetland Indicator</span>
+        <span class="prem-badge ${badgeClass('orange')}">Hydric — Wetland Indicator</span>
         <p class="prem-narrative-body">USDA classifies this soil as hydric, indicating it formed under saturated conditions. This is a potential wetland indicator and may affect foundation drainage, landscaping, and any planned additions or outbuildings. Discuss with your inspector and consider a drainage evaluation.</p>
       </div>`
     : '';
