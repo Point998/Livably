@@ -169,6 +169,58 @@ function groupIncomeBrackets(get) {
   return { totalHouseholds: total, brackets, hasSuppressed };
 }
 
+function buildEducationLadder(get) {
+  const total = suppressed(get('B15003_001E'));
+  if (!total || total === 0) return null;
+
+  const hs     = suppressed(get('B15003_017E')) || 0;
+  const ged    = suppressed(get('B15003_018E')) || 0;
+  const sc1    = suppressed(get('B15003_019E')) || 0;
+  const sc2    = suppressed(get('B15003_020E')) || 0;
+  const assoc  = suppressed(get('B15003_021E')) || 0;
+  const bach   = suppressed(get('B15003_022E')) || 0;
+  const master = suppressed(get('B15003_023E')) || 0;
+  const prof   = suppressed(get('B15003_024E')) || 0;
+  const doc    = suppressed(get('B15003_025E')) || 0;
+
+  const known  = hs + ged + sc1 + sc2 + assoc + bach + master + prof + doc;
+  const lessHS = Math.max(0, total - known);
+  const pct    = (n) => Math.round(n / total * 100);
+
+  return {
+    totalAdults: total,
+    steps: [
+      { label: 'Less than high school',       pct: pct(lessHS) },
+      { label: 'High school / GED',           pct: pct(hs + ged) },
+      { label: "Some college / Associate's",  pct: pct(sc1 + sc2 + assoc) },
+      { label: "Bachelor's degree",           pct: pct(bach) },
+      { label: 'Graduate degree',             pct: pct(master + prof + doc) },
+    ],
+  };
+}
+
+function buildHouseholdComposition(get) {
+  const total = suppressed(get('B11001_001E'));
+  if (!total || total === 0) return null;
+
+  const family     = suppressed(get('B11001_002E')) || 0;
+  const married    = suppressed(get('B11001_003E')) || 0;
+  const maleSingle = suppressed(get('B11001_005E')) || 0;
+  const femSingle  = suppressed(get('B11001_006E')) || 0;
+  const nonfamily  = suppressed(get('B11001_007E')) || 0;
+  const alone      = suppressed(get('B11001_008E')) || 0;
+  const pct        = (n) => Math.round(n / total * 100);
+
+  return {
+    totalHouseholds: total,
+    familyPct:       pct(family),
+    marriedCouplePct: pct(married),
+    singleParentPct:  pct(maleSingle + femSingle),
+    nonfamilyPct:    pct(nonfamily),
+    livingAlonePct:  pct(alone),
+  };
+}
+
 module.exports = {
   getDemographics,
   getIncomeLevel,
@@ -177,4 +229,6 @@ module.exports = {
   getCommunityType,
   suppressed,
   groupIncomeBrackets,
+  buildEducationLadder,
+  buildHouseholdComposition,
 };

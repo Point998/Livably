@@ -14,6 +14,8 @@ const {
   getCommunityType,
   suppressed,
   groupIncomeBrackets,
+  buildEducationLadder,
+  buildHouseholdComposition,
 } = require('../../../src/modules/community/data');
 
 describe('getIncomeLevel', () => {
@@ -143,5 +145,92 @@ describe('groupIncomeBrackets', () => {
     const result = groupIncomeBrackets(makeGet(map));
     expect(result.hasSuppressed).toBe(true);
     expect(result.brackets[0].count).toBe(200);
+  });
+});
+
+describe('buildEducationLadder', () => {
+  function makeGet(map) { return (k) => map[k]; }
+
+  test('returns null when total is 0', () => {
+    expect(buildEducationLadder(makeGet({ B15003_001E: '0' }))).toBeNull();
+  });
+
+  test('returns null when total is missing', () => {
+    expect(buildEducationLadder(makeGet({}))).toBeNull();
+  });
+
+  test('returns 5 steps', () => {
+    const map = {
+      B15003_001E: '1000',
+      B15003_017E: '200', B15003_018E: '50',
+      B15003_019E: '80',  B15003_020E: '70', B15003_021E: '100',
+      B15003_022E: '200',
+      B15003_023E: '100', B15003_024E: '50', B15003_025E: '50',
+    };
+    const result = buildEducationLadder(makeGet(map));
+    expect(result.steps).toHaveLength(5);
+  });
+
+  test('step labels match spec', () => {
+    const map = { B15003_001E: '100', B15003_017E: '0', B15003_018E: '0', B15003_019E: '0', B15003_020E: '0', B15003_021E: '0', B15003_022E: '0', B15003_023E: '0', B15003_024E: '0', B15003_025E: '0' };
+    const result = buildEducationLadder(makeGet(map));
+    expect(result.steps[0].label).toBe('Less than high school');
+    expect(result.steps[1].label).toBe('High school / GED');
+    expect(result.steps[2].label).toBe("Some college / Associate's");
+    expect(result.steps[3].label).toBe("Bachelor's degree");
+    expect(result.steps[4].label).toBe('Graduate degree');
+  });
+
+  test('less-than-HS is derived as remainder not fetched directly', () => {
+    const map = {
+      B15003_001E: '1000',
+      B15003_017E: '300', B15003_018E: '0',
+      B15003_019E: '0',   B15003_020E: '0', B15003_021E: '0',
+      B15003_022E: '400',
+      B15003_023E: '0',   B15003_024E: '0', B15003_025E: '0',
+    };
+    const result = buildEducationLadder(makeGet(map));
+    expect(result.steps[0].pct).toBe(30);
+  });
+
+  test('pcts are non-negative even if Census data has rounding gaps', () => {
+    const map = {
+      B15003_001E: '100',
+      B15003_017E: '30', B15003_018E: '0', B15003_019E: '0', B15003_020E: '0', B15003_021E: '0',
+      B15003_022E: '40', B15003_023E: '15', B15003_024E: '5', B15003_025E: '10',
+    };
+    const result = buildEducationLadder(makeGet(map));
+    for (const s of result.steps) expect(s.pct).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('buildHouseholdComposition', () => {
+  function makeGet(map) { return (k) => map[k]; }
+
+  test('returns null when total is 0', () => {
+    expect(buildHouseholdComposition(makeGet({ B11001_001E: '0' }))).toBeNull();
+  });
+
+  test('returns null when total is missing', () => {
+    expect(buildHouseholdComposition(makeGet({}))).toBeNull();
+  });
+
+  test('familyPct is correct', () => {
+    const map = {
+      B11001_001E: '1000',
+      B11001_002E: '700',
+      B11001_003E: '500',
+      B11001_005E: '100',
+      B11001_006E: '100',
+      B11001_007E: '300',
+      B11001_008E: '200',
+    };
+    const result = buildHouseholdComposition(makeGet(map));
+    expect(result.familyPct).toBe(70);
+    expect(result.marriedCouplePct).toBe(50);
+    expect(result.singleParentPct).toBe(20);
+    expect(result.nonfamilyPct).toBe(30);
+    expect(result.livingAlonePct).toBe(20);
+    expect(result.totalHouseholds).toBe(1000);
   });
 });
