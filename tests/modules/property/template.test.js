@@ -135,6 +135,7 @@ describe('buildPropertyIntelligenceHTML — L3 deep dive', () => {
     // The L2 body may mention "remote work" in the category desc — check the L3 tab specifically
     // We verify by ensuring upload IS shown (↑ arrow) but NOT the specific remote-work note
     expect(html).toMatch(/↑/); // upload speed still shown
+    expect(html).not.toMatch(/At least one provider offers upload speeds of 100 Mbps or higher/);
   });
 
   test('shows hydric badge when isHydric is true', () => {
@@ -160,6 +161,20 @@ describe('buildPropertyIntelligenceHTML — L3 deep dive', () => {
   test('shows era risk note for 1980s band (15% > 5% threshold)', () => {
     const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
     expect(html).toMatch(/[Pp]olybutylene/);
+  });
+
+  test('does not show 1980s era risk note when band is below 5% threshold', () => {
+    const lowThreshold = {
+      ...basePropIntelWithBands,
+      housingAgeBands: {
+        ...basePropIntelWithBands.housingAgeBands,
+        bands: basePropIntelWithBands.housingAgeBands.bands.map(b =>
+          b.label === '1980s' ? { ...b, pct: 3 } : b
+        ),
+      },
+    };
+    const html = buildPropertyIntelligenceHTML(lowThreshold);
+    expect(html).not.toMatch(/Polybutylene/);
   });
 
   test('shows median year note when era.medianYearBuilt is set', () => {
