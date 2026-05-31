@@ -8,7 +8,7 @@ const {
   BROADBAND_TECH_CODES,
 } = require('../../utils/constants');
 const { getDensityType } = require('../community/logic');
-const { getDrainageCategory, getBroadbandCategory, getConstructionEraContext } = require('./logic');
+const { getDrainageCategory, getBroadbandCategory, getConstructionEraContext, buildHousingAgeBands } = require('./logic');
 
 // ── FR-023: Property Costs & Market ──────────────────────────────────────────
 
@@ -133,7 +133,12 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
     getSoilData(lat, lng),
     getBroadbandData(lat, lng),
     fips
-      ? fetchCensusACS(fips, ['B25035_001E', 'B25034_001E', 'B25034_002E', 'B25034_003E'])
+      ? fetchCensusACS(fips, [
+          'B25035_001E',
+          'B25034_001E', 'B25034_002E', 'B25034_003E',
+          'B25034_004E', 'B25034_005E', 'B25034_006E', 'B25034_007E',
+          'B25034_008E', 'B25034_009E', 'B25034_010E', 'B25034_011E',
+        ])
       : Promise.resolve(null),
   ]);
 
@@ -154,7 +159,9 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
     };
   }
 
-  return { soil, broadband, era, locationInfo };
+  const housingAgeBands = acs ? buildHousingAgeBands((k) => acs.get(k)) : null;
+
+  return { soil, broadband, era, housingAgeBands, locationInfo };
 }
 
 module.exports = {
