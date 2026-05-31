@@ -127,6 +127,51 @@ describe('buildReport', () => {
       expect.objectContaining({ fips })
     );
   });
+
+  test('passes ruralMode to findNearestGrocery based on tract population', async () => {
+    mockFetchCensusACS.mockResolvedValue(new Map([['B01001_001E', '6000']]));
+    await buildReport('100 Main St, Georgetown, KY');
+    expect(mockFindNearestGrocery).toHaveBeenCalledWith(
+      expect.any(String),
+      'urban'
+    );
+  });
+
+  test('passes rural ruralMode for low-population tract', async () => {
+    mockFetchCensusACS.mockResolvedValue(new Map([['B01001_001E', '500']]));
+    await buildReport('456 Rural Route 1, Harlan, KY');
+    expect(mockFindNearestGrocery).toHaveBeenCalledWith(
+      expect.any(String),
+      'rural'
+    );
+  });
+
+  test('falls back to suburban ruralMode when getCensusFIPS throws', async () => {
+    mockGetCensusFIPS.mockRejectedValue(new Error('Census API error'));
+    await buildReport('100 Main St, Georgetown, KY');
+    expect(mockFindNearestGrocery).toHaveBeenCalledWith(
+      expect.any(String),
+      'suburban'
+    );
+  });
+
+  test('falls back to suburban when fetchCensusACS returns null', async () => {
+    mockFetchCensusACS.mockResolvedValue(null);
+    await buildReport('100 Main St, Georgetown, KY');
+    expect(mockFindNearestGrocery).toHaveBeenCalledWith(
+      expect.any(String),
+      'suburban'
+    );
+  });
+
+  test('falls back to suburban when tractPop is 0', async () => {
+    mockFetchCensusACS.mockResolvedValue(new Map([['B01001_001E', '0']]));
+    await buildReport('100 Main St, Georgetown, KY');
+    expect(mockFindNearestGrocery).toHaveBeenCalledWith(
+      expect.any(String),
+      'suburban'
+    );
+  });
 });
 
 describe('classifyError', () => {

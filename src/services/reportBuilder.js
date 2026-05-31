@@ -14,6 +14,8 @@ const { saveReport } = require('./reportStore');
 const { logRequest, logError, logAnalysis } = require('../logger');
 const { buildReportHTML } = require('../templates/pages/reportPage');
 const { QuotaExceededError, RateLimitError } = require('../rateLimit');
+const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
+const { detectRuralMode } = require('../shared/validate');
 
 function classifyError(error) {
   if (error instanceof QuotaExceededError) {
@@ -43,8 +45,26 @@ async function buildReport(address, options = {}) {
   const locationInfo = await reverseGeocodeAddress(originLatLng);
   const originState = locationInfo.state;
 
+  // Pre-fetch FIPS + tract population to compute rural mode before parallel batch.
+  // CONSTRAINT-007: classify address before narrative generation.
+  // Falls back to 'suburban' silently if Census is unavailable.
+  let ruralMode = 'suburban';
+  let prefetchedFips = null;
+  try {
+    prefetchedFips = await getCensusFIPS(origin.lat, origin.lng);
+    if (prefetchedFips) {
+      const popMap = await fetchCensusACS(prefetchedFips, ['B01001_001E']);
+      const tractPop = popMap ? parseInt(popMap.get('B01001_001E'), 10) : 0;
+      if (tractPop > 0) {
+        ruralMode = detectRuralMode(tractPop).mode;
+      }
+    }
+  } catch (_) {
+    // Census pre-fetch failed — ruralMode stays 'suburban'
+  }
+
   const results = await Promise.allSettled([
-    findNearestGrocery(originLatLng),
+    findNearestGrocery(originLatLng, ruralMode),
     findNearestPharmacy(originLatLng),
     findNearestHospital(originLatLng, originState),       // CONSTRAINT-006: cross-state filter
     findNearestUrgentCare(originLatLng, originState),     // CONSTRAINT-006: cross-state filter
@@ -107,6 +127,7 @@ async function buildReport(address, options = {}) {
       googleMapsApiKey,
       getDriveTime,
       highwayDriveMinutes,
+      fips: prefetchedFips,
     });
   } catch (chapErr) {
     console.error('[Chapters] fetch error:', chapErr.message);
