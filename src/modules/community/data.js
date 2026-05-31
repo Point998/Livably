@@ -221,6 +221,37 @@ function buildHouseholdComposition(get) {
   };
 }
 
+function buildCommuteMode(get) {
+  const total = suppressed(get('B08006_001E'));
+  if (!total || total === 0) return null;
+
+  const pct = (varName) => Math.round((suppressed(get(varName)) || 0) / total * 100);
+
+  return {
+    totalWorkers:  total,
+    droveAlonePct: pct('B08006_002E'),
+    carpoolPct:    pct('B08006_003E'),
+    transitPct:    pct('B08006_008E'),
+    bicyclePct:    pct('B08006_014E'),
+    walkedPct:     pct('B08006_015E'),
+    otherPct:      pct('B08006_016E'),
+    wfhPct:        pct('B08006_017E'),
+  };
+}
+
+function buildTractFips(fips) {
+  if (!fips?.state || !fips?.county || !fips?.tract) return null;
+  const state  = String(fips.state).padStart(2, '0');
+  const county = String(fips.county).padStart(3, '0');
+  const tract  = String(fips.tract).padStart(6, '0');
+  return {
+    state,
+    county,
+    tract,
+    censusExplorerUrl: `https://data.census.gov/table?g=1400000US${state}${county}${tract}`,
+  };
+}
+
 module.exports = {
   getDemographics,
   getIncomeLevel,
@@ -231,4 +262,6 @@ module.exports = {
   groupIncomeBrackets,
   buildEducationLadder,
   buildHouseholdComposition,
+  buildCommuteMode,
+  buildTractFips,
 };

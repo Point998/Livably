@@ -16,6 +16,8 @@ const {
   groupIncomeBrackets,
   buildEducationLadder,
   buildHouseholdComposition,
+  buildCommuteMode,
+  buildTractFips,
 } = require('../../../src/modules/community/data');
 
 describe('getIncomeLevel', () => {
@@ -232,5 +234,75 @@ describe('buildHouseholdComposition', () => {
     expect(result.nonfamilyPct).toBe(30);
     expect(result.livingAlonePct).toBe(20);
     expect(result.totalHouseholds).toBe(1000);
+  });
+});
+
+describe('buildCommuteMode', () => {
+  function makeGet(map) { return (k) => map[k]; }
+
+  test('returns null when total workers is 0', () => {
+    expect(buildCommuteMode(makeGet({ B08006_001E: '0' }))).toBeNull();
+  });
+
+  test('returns null when total workers is missing', () => {
+    expect(buildCommuteMode(makeGet({}))).toBeNull();
+  });
+
+  test('droveAlonePct is correct', () => {
+    const map = {
+      B08006_001E: '1000',
+      B08006_002E: '700',
+      B08006_003E: '100',
+      B08006_008E: '50',
+      B08006_014E: '10',
+      B08006_015E: '40',
+      B08006_016E: '20',
+      B08006_017E: '80',
+    };
+    const result = buildCommuteMode(makeGet(map));
+    expect(result.droveAlonePct).toBe(70);
+    expect(result.carpoolPct).toBe(10);
+    expect(result.transitPct).toBe(5);
+    expect(result.wfhPct).toBe(8);
+    expect(result.totalWorkers).toBe(1000);
+  });
+
+  test('suppressed cell treated as 0', () => {
+    const map = {
+      B08006_001E: '1000',
+      B08006_002E: '-666666666',
+      B08006_003E: '0', B08006_008E: '0', B08006_014E: '0',
+      B08006_015E: '0', B08006_016E: '0', B08006_017E: '0',
+    };
+    const result = buildCommuteMode(makeGet(map));
+    expect(result.droveAlonePct).toBe(0);
+  });
+});
+
+describe('buildTractFips', () => {
+  test('returns null when fips is null', () => {
+    expect(buildTractFips(null)).toBeNull();
+  });
+
+  test('returns null when any component is missing', () => {
+    expect(buildTractFips({ state: '21', county: '077' })).toBeNull();
+  });
+
+  test('pads state to 2 digits, county to 3, tract to 6', () => {
+    const result = buildTractFips({ state: '1', county: '1', tract: '1' });
+    expect(result.state).toBe('01');
+    expect(result.county).toBe('001');
+    expect(result.tract).toBe('000001');
+  });
+
+  test('censusExplorerUrl contains all FIPS components', () => {
+    const result = buildTractFips({ state: '21', county: '077', tract: '010101' });
+    expect(result.censusExplorerUrl).toBe('https://data.census.gov/table?g=1400000US21077010101');
+  });
+
+  test('does not mutate the input fips object', () => {
+    const fips = { state: '21', county: '077', tract: '010101' };
+    buildTractFips(fips);
+    expect(fips.state).toBe('21');
   });
 });
