@@ -21,6 +21,8 @@ const mockLogError = jest.fn();
 const mockLogAnalysis = jest.fn();
 const mockBuildReportHTML = jest.fn();
 const mockBuildChaptersHTML = jest.fn();
+const mockGetCensusFIPS = jest.fn();
+const mockFetchCensusACS = jest.fn();
 
 jest.mock('../../src/shared/google/geocoding', () => ({ geocodeAddress: mockGeocodeAddress }));
 jest.mock('../../src/shared/google/reverseGeocode', () => ({ reverseGeocodeAddress: mockReverseGeocode }));
@@ -35,6 +37,10 @@ jest.mock('../../src/chapters', () => ({ getChapterData: mockGetChapterData, bui
 jest.mock('../../src/services/reportStore', () => ({ saveReport: mockSaveReport }));
 jest.mock('../../src/logger', () => ({ logRequest: mockLogRequest, logError: mockLogError, logAnalysis: mockLogAnalysis }));
 jest.mock('../../src/templates/pages/reportPage', () => ({ buildReportHTML: mockBuildReportHTML }));
+jest.mock('../../src/shared/census', () => ({
+  getCensusFIPS: mockGetCensusFIPS,
+  fetchCensusACS: mockFetchCensusACS,
+}));
 
 const { buildReport, classifyError } = require('../../src/services/reportBuilder');
 
@@ -60,6 +66,8 @@ beforeEach(() => {
   mockSaveReport.mockReturnValue('abc12345');
   mockBuildReportHTML.mockReturnValue('<html>report</html>');
   mockBuildChaptersHTML.mockReturnValue('');
+  mockGetCensusFIPS.mockResolvedValue({ state: '21', county: '077', tract: '010101' });
+  mockFetchCensusACS.mockResolvedValue(new Map([['B01001_001E', '5200']]));
 });
 
 describe('buildReport', () => {
@@ -105,6 +113,18 @@ describe('buildReport', () => {
     expect(mockBuildReportHTML).toHaveBeenCalledWith(
       '100 Main St, Georgetown, KY',
       expect.objectContaining({ hospital: expect.objectContaining({ name: 'Georgetown Community Hospital' }) }),
+    );
+  });
+
+  test('passes pre-fetched fips to getChapterData so chapters.js skips getCensusFIPS', async () => {
+    const fips = { state: '21', county: '077', tract: '010101' };
+    mockGetCensusFIPS.mockResolvedValue(fips);
+    mockFetchCensusACS.mockResolvedValue(new Map([['B01001_001E', '5200']]));
+
+    await buildReport('100 Main St, Georgetown, KY');
+
+    expect(mockGetChapterData).toHaveBeenCalledWith(
+      expect.objectContaining({ fips })
     );
   });
 });

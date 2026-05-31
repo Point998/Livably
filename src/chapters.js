@@ -100,8 +100,8 @@ async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, google
 
 // ── Master fetch ──────────────────────────────────────────────────────────────
 
-async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes }) {
-  const fips = await getCensusFIPS(lat, lng);
+async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes, fips: prefetchedFips }) {
+  const fips = prefetchedFips ?? await getCensusFIPS(lat, lng);
 
   const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel, gardenData, climateHistory] =
     await Promise.allSettled([
