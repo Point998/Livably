@@ -24,14 +24,26 @@ async function getDemographics(lat, lng, fips) {
     'B01001_037E','B01001_038E','B01001_039E','B01001_040E','B01001_041E','B01001_042E','B01001_043E',
     'B01001_044E','B01001_045E','B01001_046E','B01001_047E','B01001_048E','B01001_049E',
   ];
+  const varsBatch3 = [
+    'B19001_001E','B19001_002E','B19001_003E','B19001_004E','B19001_005E',
+    'B19001_006E','B19001_007E','B19001_008E','B19001_009E','B19001_010E',
+    'B19001_011E','B19001_012E','B19001_013E','B19001_014E','B19001_015E',
+    'B19001_016E','B19001_017E',
+    'B15003_018E','B15003_019E','B15003_020E','B15003_021E',
+    'B11001_001E','B11001_002E','B11001_003E','B11001_005E',
+    'B11001_006E','B11001_007E','B11001_008E',
+    'B08006_001E','B08006_002E','B08006_003E','B08006_008E',
+    'B08006_014E','B08006_015E','B08006_016E','B08006_017E',
+  ];
 
   try {
-    const [acs1, acs2] = await Promise.all([
+    const [acs1, acs2, acs3] = await Promise.all([
       fetchCensusACS(fips, varsBatch1),
       fetchCensusACS(fips, varsBatch2),
+      fetchCensusACS(fips, varsBatch3),
     ]);
     if (!acs1) return null;
-    const get = (name) => acs1.get(name) ?? (acs2 ? acs2.get(name) : undefined);
+    const get = (name) => acs1.get(name) ?? acs2?.get(name) ?? acs3?.get(name);
 
     const totalPop = safeInt(get('B01001_001E')) || 1;
     const medianAge = parseFloat(get('B01002_001E')) || null;
@@ -103,6 +115,11 @@ async function getDemographics(lat, lng, fips) {
         type: getCommunityType(ownershipRate, avgHHSize),
         densityType: getDensityType(totalPop),
       },
+      incomeDistribution:    groupIncomeBrackets(get),
+      educationLadder:       buildEducationLadder(get),
+      householdComposition:  buildHouseholdComposition(get),
+      commuteMode:           buildCommuteMode(get),
+      tractFips:             buildTractFips(fips),
     };
   } catch (err) {
     console.error('[Demographics]', err.message);
