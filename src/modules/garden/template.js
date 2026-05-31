@@ -1,6 +1,6 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
-const { renderChapterCard } = require('../components/chapterCard');
+const { renderChapterCard } = require('../../templates/components/chapterCard');
 const { STATE_EXTENSION } = require('../../utils/constants');
 
 function buildGardenGlanceHTML(gardenData) {

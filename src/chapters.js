@@ -5,12 +5,12 @@
 const { haversineDistance } = require('./utils/geo');
 
 const { getCensusFIPS } = require('./shared/census');
+const { getGardenData } = require('./modules/garden/data');
 const {
-  getGardenData,
   filterReptiles, filterInsects, filterButterflies,
   categorizeSeasonalBirds, categorizePlantsByForm,
   getMonarchCorridorInfo, getFireflyHabitat,
-} = require('./modules/garden/data');
+} = require('./modules/garden/logic');
 const { getDemographics } = require('./modules/community/data');
 const { getWalkabilityScore } = require('./modules/walkability/data');
 const { getEmergencyServices, getSafetyLocationContext } = require('./modules/safety/data');
@@ -28,7 +28,7 @@ const { getGrowthAndDevelopment } = require('./modules/growth/data');
 const { getEnvironmentalData } = require('./modules/sensory/data');
 
 const { buildClimateChapterHTML } = require('./templates/chapters/climate');
-const { buildWhatWillGrowHTML } = require('./templates/chapters/garden');
+const { buildWhatWillGrowHTML } = require('./modules/garden/template');
 const { buildSchoolRatingsHTML } = require('./modules/schools/template');
 const { buildCrimeHTML } = require('./modules/safety/template');
 const { buildSensoryEnvironmentalHTML } = require('./modules/sensory/template');

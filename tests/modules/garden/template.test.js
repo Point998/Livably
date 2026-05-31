@@ -1,5 +1,5 @@
 'use strict';
-const { buildWhatWillGrowHTML } = require('../../../src/templates/chapters/garden');
+const { buildWhatWillGrowHTML } = require('../../../src/modules/garden/template');
 
 const frost = { lastSpring: 'April 15', firstFall: 'October 15', days: 183 };
 const hardinessZone = { zone: '6b', tempRange: '-5 to 0', frost };
