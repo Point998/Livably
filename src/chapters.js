@@ -36,7 +36,7 @@ const { buildWalkabilityHTML } = require('./modules/walkability/template');
 const { buildPropertyDataHTML } = require('./templates/chapters/costs');
 const { buildDemographicsHTML } = require('./templates/chapters/community');
 const { buildGrowthAndDevelopmentHTML } = require('./modules/growth/template');
-const { buildPropertyIntelligenceHTML } = require('./templates/chapters/property');
+const { buildPropertyIntelligenceHTML } = require('./modules/property/template');
 const { buildHealthSafetyChapterHTML } = require('./modules/health/template');
 
 // ── FR-017: Schools & Education ──────────────────────────────────────────────

@@ -18,7 +18,7 @@ const TEMPLATE_FILES = [
   'templates/chapters/costs.js',
   'templates/chapters/garden.js',
   'modules/growth/template.js',
-  'templates/chapters/property.js',
+  'modules/property/template.js',
   'templates/chapters/reachability.js',
   'templates/chapters/sensory.js',
   'modules/safety/template.js',

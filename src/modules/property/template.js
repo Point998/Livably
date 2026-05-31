@@ -1,6 +1,6 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
-const { badgeClass, renderChapterCard } = require('../components');
+const { badgeClass, renderChapterCard } = require('../../templates/components');
 
 function buildPropertyIntelligenceHTML(propIntel) {
   if (!propIntel) return '';

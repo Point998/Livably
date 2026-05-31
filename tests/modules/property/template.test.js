@@ -1,5 +1,5 @@
 'use strict';
-const { buildPropertyIntelligenceHTML } = require('../../../src/templates/chapters/property');
+const { buildPropertyIntelligenceHTML } = require('../../../src/modules/property/template');
 
 const basePropIntel = {
   era: {
