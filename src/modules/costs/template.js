@@ -1,6 +1,6 @@
 'use strict';
 const { escapeHtml, formatMoney } = require('../../utils/text');
-const { renderChapterCard } = require('../components/chapterCard');
+const { renderChapterCard } = require('../../templates/components/chapterCard');
 
 function buildPropertyDataHTML(p) {
   if (!p) return '';

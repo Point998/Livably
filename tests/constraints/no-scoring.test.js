@@ -15,7 +15,7 @@ function readFile(relPath) {
 const TEMPLATE_FILES = [
   'modules/climate/template.js',
   'modules/community/template.js',
-  'templates/chapters/costs.js',
+  'modules/costs/template.js',
   'modules/garden/template.js',
   'modules/growth/template.js',
   'modules/property/template.js',
@@ -23,7 +23,7 @@ const TEMPLATE_FILES = [
   'modules/sensory/template.js',
   'modules/safety/template.js',
   'modules/schools/template.js',
-  'templates/chapters/traffic.js',
+  'modules/traffic/template.js',
   'modules/health/template.js',
   'modules/walkability/template.js',
   'templates/components/badge.js',

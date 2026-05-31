@@ -1,5 +1,5 @@
 'use strict';
-const { buildTrafficCardHTML } = require('../../../src/templates/chapters/traffic');
+const { buildTrafficCardHTML } = require('../../../src/modules/traffic/template');
 
 const trafficData = [
   {

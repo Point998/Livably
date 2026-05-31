@@ -1,5 +1,5 @@
 'use strict';
-const { buildPropertyDataHTML } = require('../../../src/templates/chapters/costs');
+const { buildPropertyDataHTML } = require('../../../src/modules/costs/template');
 
 const basePropertyData = {
   state: 'KY',

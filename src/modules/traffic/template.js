@@ -1,6 +1,6 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
-const { renderDepthSelector } = require('../components/depthSelector');
+const { renderDepthSelector } = require('../../templates/components/depthSelector');
 
 function buildTrafficItemHTML(name, traffic) {
   const { variations, stats } = traffic;

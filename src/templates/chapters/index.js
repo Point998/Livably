@@ -6,13 +6,13 @@ const { buildSchoolRatingsHTML } = require('./schools');
 const { buildCrimeHTML, buildEmergencyServicesHTML } = require('./safety');
 const { buildSensoryEnvironmentalHTML } = require('./sensory');
 const { buildWalkabilityHTML } = require('./walkability');
-const { buildPropertyDataHTML } = require('./costs');
+const { buildPropertyDataHTML } = require('../../modules/costs/template');
 const { buildDemographicsHTML } = require('./community');
 const { buildGrowthAndDevelopmentHTML } = require('./growth');
 const { buildPropertyIntelligenceHTML } = require('./property');
 const { buildHealthSafetyChapterHTML } = require('../../modules/health/template');
 const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('../../modules/reachability/template');
-const { buildTrafficItemHTML, buildTrafficCardHTML } = require('./traffic');
+const { buildTrafficItemHTML, buildTrafficCardHTML } = require('../../modules/traffic/template');
 
 module.exports = {
   buildClimateChapterHTML,
