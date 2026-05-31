@@ -161,11 +161,26 @@ function buildCommunityResearchHTML(d) {
       </div>
     </div>` : '';
 
+  const eduTable = d.educationLadder?.steps?.length ? `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Educational Attainment — Adults 25+ (ACS B15003)</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Attainment Level</th><th>% of Adults 25+</th></tr></thead>
+          <tbody>
+            ${d.educationLadder.steps.map(s =>
+              `<tr><td>${escapeHtml(s.label)}</td><td>${s.pct}%</td></tr>`
+            ).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : '';
+
   const censusLink = d.tractFips?.censusExplorerUrl
     ? `<div class="climate-research-section"><p class="prem-narrative-body">Full ACS data for this Census tract: <a href="${escapeHtml(d.tractFips.censusExplorerUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(d.tractFips.censusExplorerUrl)}</a></p></div>`
     : '';
 
-  const content = [incomeTable, censusLink].filter(Boolean).join('');
+  const content = [incomeTable, eduTable, censusLink].filter(Boolean).join('');
   return content || '';
 }
 
