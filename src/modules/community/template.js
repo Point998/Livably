@@ -234,15 +234,11 @@ function buildDemographicsHTML(d) {
 
   // ── Community character synthesis ────────────────────────────────────────
   const synthesisParts = [];
-  if (d.age.under18 > 28) synthesisParts.push('family-oriented with active youth presence');
-  else if (d.age.age65plus > 25) synthesisParts.push('established and senior-skewing');
-  else if (d.age.age18to34 > 30) synthesisParts.push('young and professionally active');
-  else synthesisParts.push('multi-generational');
-
   if (d.community.ownershipRate > 70) synthesisParts.push('high owner-occupancy');
-  else if (d.community.ownershipRate < 45) synthesisParts.push('predominantly renter');
+  else if (d.community.ownershipRate < 45) synthesisParts.push('majority renter-occupied');
 
-  if (d.education.collegePct > 50) synthesisParts.push('college-educated workforce');
+  if (d.community.medianTenureYears >= 12) synthesisParts.push('long-term resident stability');
+  else if (d.community.medianTenureYears && d.community.medianTenureYears <= 5) synthesisParts.push('higher population turnover');
 
   const synthesisLine = synthesisParts.length >= 2
     ? `This Census tract is characterized by: ${synthesisParts.join(', ')}. That combination shapes the daily character of the neighborhood more than any single metric.`

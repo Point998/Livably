@@ -36,14 +36,14 @@ describe('getDensityType', () => {
 });
 
 describe('getCommunityType', () => {
-  test('high ownership + large household = established family', () => {
-    expect(getCommunityType(75, 3.0).label).toMatch(/family/i);
+  test('high ownership + large household = owner-occupied family-sized', () => {
+    expect(getCommunityType(75, 3.0).label).toMatch(/owner.occupied/i);
   });
-  test('low ownership = renter community', () => {
+  test('low ownership = majority renter-occupied', () => {
     expect(getCommunityType(35, 2.5).label).toMatch(/renter/i);
   });
-  test('small household = singles', () => {
-    expect(getCommunityType(55, 1.5).label).toMatch(/single|young/i);
+  test('small household = smaller households higher mobility', () => {
+    expect(getCommunityType(55, 1.5).label).toMatch(/smaller.households|higher.mobility/i);
   });
 });
 

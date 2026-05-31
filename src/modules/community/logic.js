@@ -9,10 +9,10 @@ function getIncomeLevel(median) {
 }
 
 function getEducationLevel(collegePct) {
-  if (collegePct > 60) return { label: 'Very highly educated', color: 'green' };
-  if (collegePct > 40) return { label: 'Highly educated', color: 'lightgreen' };
-  if (collegePct > 25) return { label: 'College-educated area', color: 'gold' };
-  return { label: 'Moderate education', color: 'muted' };
+  if (collegePct > 60) return { label: 'Well above US avg', color: 'green' };
+  if (collegePct > 40) return { label: 'Above US avg', color: 'lightgreen' };
+  if (collegePct > 25) return { label: 'Near US avg', color: 'gold' };
+  return { label: 'Below US avg', color: 'muted' };
 }
 
 function getDensityType(population) {
@@ -22,9 +22,9 @@ function getDensityType(population) {
 }
 
 function getCommunityType(ownershipRate, householdSize) {
-  if (ownershipRate > 70 && householdSize > 2.5) return { label: 'Established family neighborhood', icon: '👨‍👩‍👧‍👦' };
-  if (ownershipRate < 40) return { label: 'Renter community', icon: '🏢' };
-  if (householdSize && householdSize < 2) return { label: 'Singles and young professionals', icon: '👤' };
+  if (ownershipRate > 70 && householdSize > 2.5) return { label: 'Owner-occupied, family-sized households', icon: '🏡' };
+  if (ownershipRate < 40) return { label: 'Majority renter-occupied', icon: '🏢' };
+  if (householdSize && householdSize < 2) return { label: 'Smaller households, higher mobility', icon: '👤' };
   return { label: 'Mixed residential community', icon: '🏘️' };
 }
 
