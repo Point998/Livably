@@ -1,6 +1,6 @@
 'use strict';
 const { escapeHtml, formatMoney } = require('../../utils/text');
-const { badgeClass, renderChapterCard } = require('../components');
+const { badgeClass, renderChapterCard } = require('../../templates/components');
 
 function buildIncomeTab(dist, medianIncome) {
   const national = [22, 23, 18, 14, 23];

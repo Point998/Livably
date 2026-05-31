@@ -5,7 +5,7 @@
 // or demographic composition language. Income findings must compare to national
 // median only — never characterize area economic class.
 
-const { buildDemographicsHTML } = require('../../src/templates/chapters/community');
+const { buildDemographicsHTML } = require('../../src/modules/community/template');
 
 // Phrases that would violate Fair Housing. This list is illustrative — any
 // demographic characterization of a neighborhood is a violation even if unlisted.

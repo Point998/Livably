@@ -1,5 +1,5 @@
 'use strict';
-const { buildDemographicsHTML } = require('../../../src/templates/chapters/community');
+const { buildDemographicsHTML } = require('../../../src/modules/community/template');
 
 const baseDemographics = {
   age: {

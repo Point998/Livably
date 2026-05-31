@@ -17,7 +17,7 @@ function readFile(relPath) {
 // exempt from the constraint (it has no public CSS to enforce against).
 const CHAPTER_FILES = [
   'templates/chapters/climate.js',
-  'templates/chapters/community.js',
+  'modules/community/template.js',
   'templates/chapters/costs.js',
   'templates/chapters/garden.js',
   'modules/growth/template.js',
