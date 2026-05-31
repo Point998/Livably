@@ -36,6 +36,7 @@ Modular structure with bounded contexts. Each chapter is a module. Each module o
 ```
 src/
   modules/         ← One folder per chapter/domain
+                      Each has: data.js (API fetch) · logic.js (business rules) · template.js (HTML)
   shared/          ← Cross-module utilities and validation
   server/          ← Express setup and routes only
 public/
