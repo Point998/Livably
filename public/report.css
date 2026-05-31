@@ -2351,7 +2351,7 @@ body.report-page {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--ink-10);
 }
 
 .prem-intel-soil-card {
@@ -2379,17 +2379,17 @@ body.report-page {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  color: var(--ink-30);
 }
 
 .prem-intel-soil-value {
   font-size: var(--text-sm);
-  color: var(--color-text-primary);
+  color: var(--ink);
 }
 
 .prem-intel-era-note {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--ink-60);
   padding: var(--space-2) var(--space-3);
   background: var(--color-bg-subtle, #fafaf9);
   border-radius: var(--radius-sm, 4px);
