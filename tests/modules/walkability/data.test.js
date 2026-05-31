@@ -8,7 +8,8 @@ jest.mock('../../../src/shared/google/client', () => ({
 }));
 
 const { googleMapsClient } = require('../../../src/shared/google/client');
-const { getWalkabilityScore, getWalkCategory } = require('../../../src/modules/walkability/data');
+const { getWalkabilityScore } = require('../../../src/modules/walkability/data');
+const { getWalkCategory } = require('../../../src/modules/walkability/logic');
 
 describe('getWalkCategory', () => {
   test('90+ is Walkers Paradise', () => expect(getWalkCategory(90).label).toMatch(/paradise/i));

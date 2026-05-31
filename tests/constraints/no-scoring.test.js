@@ -25,7 +25,7 @@ const TEMPLATE_FILES = [
   'templates/chapters/schools.js',
   'templates/chapters/sensory.js',
   'templates/chapters/traffic.js',
-  'templates/chapters/walkability.js',
+  'modules/walkability/template.js',
   'templates/components/badge.js',
   'templates/components/buckets.js',
   'templates/components/checklist.js',

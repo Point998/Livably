@@ -1,6 +1,6 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
-const { renderChapterCard } = require('../components/chapterCard');
+const { renderChapterCard } = require('../../templates/components/chapterCard');
 
 function getPedestrianFeatures(score) {
   if (score >= 90) return {

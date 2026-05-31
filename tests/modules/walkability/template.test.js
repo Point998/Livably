@@ -1,5 +1,5 @@
 'use strict';
-const { buildWalkabilityHTML } = require('../../../src/templates/chapters/walkability');
+const { buildWalkabilityHTML } = require('../../../src/modules/walkability/template');
 
 const baseWalk = {
   score: 62,
@@ -40,7 +40,7 @@ describe('buildWalkabilityHTML — FR-045 glance bar', () => {
   test('glance bar absent when category is missing', () => {
     // buildWalkGlanceHTML guards on walk?.category; the chapter card renders without a glance
     // But buildWalkabilityHTML itself requires category - test the glance function directly
-    const { buildWalkGlanceHTML } = require('../../../src/templates/chapters/walkability');
+    const { buildWalkGlanceHTML } = require('../../../src/modules/walkability/template');
     const html = buildWalkGlanceHTML({ score: 50, destinations: [] });
     expect(html).toBe('');
   });

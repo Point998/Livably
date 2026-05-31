@@ -28,7 +28,7 @@ const CHAPTER_FILES = [
   'templates/chapters/schools.js',
   'templates/chapters/sensory.js',
   'templates/chapters/traffic.js',
-  'templates/chapters/walkability.js',
+  'modules/walkability/template.js',
 ];
 
 const COMPONENT_FILES = [
