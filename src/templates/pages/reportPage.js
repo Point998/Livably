@@ -4,7 +4,7 @@ const { escapeHtml, formatDriveTime, parseAddressParts, formatResearchDate } = r
 const { HIGHWAY_MAX_DRIVE_MINUTES } = require('../../utils/constants');
 const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('../chapters/reachability');
 const { buildTrafficCardHTML } = require('../chapters/traffic');
-const { buildHealthSafetyChapterHTML } = require('../chapters/health');
+const { buildHealthSafetyChapterHTML } = require('../../modules/health/template');
 const { buildChaptersHTML } = require('../../chapters');
 const { renderDepthSelector } = require('../components/depthSelector');
 

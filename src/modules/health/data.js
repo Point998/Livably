@@ -9,17 +9,7 @@ const { logError } = require('../../logger');
 const {
   HOSPITAL_SEARCH_RADIUS_M, HOSPITAL_CANDIDATE_COUNT,
 } = require('../../utils/constants');
-
-// Returns true for places that are primarily a pharmacy, drug store, or retail store —
-// indicating an in-store health clinic rather than a standalone urgent care facility.
-function isRetailEmbeddedHealth(place) {
-  const types = place.types || [];
-  return types.includes('pharmacy') ||
-         types.includes('drug_store') ||
-         types.includes('store') ||
-         types.includes('supermarket') ||
-         types.includes('grocery_or_supermarket');
-}
+const { isRetailEmbeddedHealth } = require('./logic');
 
 // Gets top 5 hospital results, calculates actual drive time to each,
 // and returns the one with the shortest drive time — not just Google's first result.

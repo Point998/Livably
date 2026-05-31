@@ -10,7 +10,7 @@ const { buildPropertyDataHTML } = require('./costs');
 const { buildDemographicsHTML } = require('./community');
 const { buildGrowthAndDevelopmentHTML } = require('./growth');
 const { buildPropertyIntelligenceHTML } = require('./property');
-const { buildHealthSafetyChapterHTML } = require('./health');
+const { buildHealthSafetyChapterHTML } = require('../../modules/health/template');
 const { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML } = require('./reachability');
 const { buildTrafficItemHTML, buildTrafficCardHTML } = require('./traffic');
 

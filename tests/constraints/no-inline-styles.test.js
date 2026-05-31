@@ -21,13 +21,13 @@ const CHAPTER_FILES = [
   'templates/chapters/costs.js',
   'templates/chapters/garden.js',
   'templates/chapters/growth.js',
-  'templates/chapters/health.js',
   'templates/chapters/property.js',
   'templates/chapters/reachability.js',
   'templates/chapters/safety.js',
   'templates/chapters/schools.js',
   'templates/chapters/sensory.js',
   'templates/chapters/traffic.js',
+  'modules/health/template.js',
   'modules/walkability/template.js',
 ];
 

@@ -1,5 +1,5 @@
 'use strict';
-const { buildHealthSafetyChapterHTML } = require('../../../src/templates/chapters/health');
+const { buildHealthSafetyChapterHTML } = require('../../../src/modules/health/template');
 
 const hospital = { name: 'Georgetown Community Hospital', driveTimeMinutes: 12, address: '100 Hospital Dr' };
 const emergency = {
