@@ -10,6 +10,7 @@ const {
   HIGHWAY_MAX_DRIVE_MINUTES,
   HIGHWAY_INTERCHANGE_MAX_MINUTES,
 } = require('../../utils/constants');
+const { isValidHighwayName } = require('./logic');
 
 // Finds nearby interstates by geocoding each highway name near the address city/state.
 // Validates the returned result actually mentions the highway to filter out false matches.
@@ -34,15 +35,7 @@ async function findNearestHighwayOnRamp(originLatLng) {
         const result = response.data.results?.[0];
         if (!result) return null;
 
-        const returned = (result.formatted_address || '').toUpperCase();
-        const num = highway.replace('I-', '');
-        const isReal =
-          returned.includes(highway.toUpperCase()) ||
-          returned.includes(`INTERSTATE ${num}`) ||
-          returned.includes(`I-${num}`) ||
-          returned.includes(`I ${num}`);
-
-        if (!isReal) return null;
+        if (!isValidHighwayName(result.formatted_address, highway)) return null;
 
         return {
           highway,
@@ -98,14 +91,7 @@ async function findNearestHighwayOnRamp(originLatLng) {
           const result = response.data.results?.[0];
           if (!result) return null;
 
-          const returned = (result.formatted_address || '').toUpperCase();
-          const num = farHwy.highway.replace('I-', '');
-          const isReal =
-            returned.includes(farHwy.highway.toUpperCase()) ||
-            returned.includes(`INTERSTATE ${num}`) ||
-            returned.includes(`I-${num}`) ||
-            returned.includes(`I ${num}`);
-          if (!isReal) return null;
+          if (!isValidHighwayName(result.formatted_address, farHwy.highway)) return null;
 
           const driveTimeMinutes = await getDriveTime(originLatLng, result.geometry.location);
           if (driveTimeMinutes > HIGHWAY_MAX_DRIVE_MINUTES) return null;
