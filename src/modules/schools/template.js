@@ -1,6 +1,6 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
-const { renderChapterCard } = require('../components/chapterCard');
+const { renderChapterCard } = require('../../templates/components/chapterCard');
 
 function buildSchoolRatingsHTML(schools) {
   if (!schools) return '';

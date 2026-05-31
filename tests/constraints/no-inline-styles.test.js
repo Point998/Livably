@@ -24,10 +24,10 @@ const CHAPTER_FILES = [
   'templates/chapters/property.js',
   'templates/chapters/reachability.js',
   'templates/chapters/safety.js',
-  'templates/chapters/schools.js',
   'templates/chapters/sensory.js',
   'templates/chapters/traffic.js',
   'modules/health/template.js',
+  'modules/schools/template.js',
   'modules/walkability/template.js',
 ];
 

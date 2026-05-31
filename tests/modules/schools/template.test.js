@@ -1,5 +1,5 @@
 'use strict';
-const { buildSchoolRatingsHTML } = require('../../../src/templates/chapters/schools');
+const { buildSchoolRatingsHTML } = require('../../../src/modules/schools/template');
 
 const baseSchools = {
   public: [

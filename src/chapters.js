@@ -29,7 +29,7 @@ const { getEnvironmentalData } = require('./modules/sensory/data');
 
 const { buildClimateChapterHTML } = require('./templates/chapters/climate');
 const { buildWhatWillGrowHTML } = require('./templates/chapters/garden');
-const { buildSchoolRatingsHTML } = require('./templates/chapters/schools');
+const { buildSchoolRatingsHTML } = require('./modules/schools/template');
 const { buildCrimeHTML } = require('./templates/chapters/safety');
 const { buildSensoryEnvironmentalHTML } = require('./templates/chapters/sensory');
 const { buildWalkabilityHTML } = require('./modules/walkability/template');

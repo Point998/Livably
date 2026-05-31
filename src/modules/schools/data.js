@@ -4,20 +4,9 @@ const { getDriveTime } = require('../../shared/google/distanceMatrix');
 const { checkCrossState } = require('../../shared/validate');
 const { placesCache } = require('../../cache');
 const {
-  SCHOOL_PLACE_TYPES, SCHOOL_NAME_TERMS,
   ELEMENTARY_SCHOOL_SEARCH_RADIUS_M, ELEMENTARY_SCHOOL_EXCLUSIONS,
 } = require('../../utils/constants');
-
-function isExcludedPlaceName(name, excludeTerms) {
-  const normalized = (name || '').toLowerCase();
-  return excludeTerms.some((term) => normalized.includes(term));
-}
-
-function isValidSchoolPlace(p) {
-  const hasSchoolType = (p.types || []).some((t) => SCHOOL_PLACE_TYPES.has(t));
-  const hasSchoolName = SCHOOL_NAME_TERMS.test(p.name || '');
-  return hasSchoolType && hasSchoolName;
-}
+const { isExcludedPlaceName, isValidSchoolPlace } = require('./logic');
 
 // Returns nearest school by distance.
 // Note: nearest by distance is not the assigned school for the parcel.
