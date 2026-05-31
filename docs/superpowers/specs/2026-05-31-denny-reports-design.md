@@ -29,12 +29,12 @@ He is not following the project day-to-day. He has no context on recent FRs, the
 
 ## Trigger
 
-Manual invocation. Nathan says one of:
+Manual invocation only. Nathan says one of:
 - "denny report" / "DR report" / "write a DR"
 - "brief Denny" / "update Denny" / "send Denny a report"
 - After completing FRs: "let's write a DR" / "denny update"
 
-**Soft nudge:** After any FR summary is written, the skill checks `docs/denny-reports/` for the last DR. If 3 or more FRs have been completed since the last report, it appends one line: "Last Denny Report was DR-NNN ({N} FRs ago) — worth writing a new one soon." This is a reminder, not automation. Nathan decides when to generate.
+Nathan controls cadence entirely. No automatic nudge or count-based trigger. Revisit if a scheduling convention becomes useful later.
 
 ---
 
@@ -166,7 +166,7 @@ Single file, everything inline. No supporting files needed — the email templat
 
 ## Out of Scope
 
-- Scheduling / automatic trigger (Approach B — deferred, revisit after format is proven)
+- Scheduling / automatic trigger (Approach B — deferred indefinitely, revisit if cadence convention becomes useful)
 - Phase 6 workflow integration (Approach C — deferred to separate session on 6-phase skill)
 - Direct email to Denny (always goes to Nathan first)
 - Project-level skills for constraint enforcement and 6-phase workflow (separate session)
