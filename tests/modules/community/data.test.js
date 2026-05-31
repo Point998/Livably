@@ -12,6 +12,8 @@ const {
   getEducationLevel,
   getDensityType,
   getCommunityType,
+  suppressed,
+  groupIncomeBrackets,
 } = require('../../../src/modules/community/data');
 
 describe('getIncomeLevel', () => {
@@ -80,5 +82,66 @@ describe('getDemographics', () => {
     expect(result.community.ownershipRate).toBe(75);
     expect(result).toHaveProperty('age');
     expect(result).toHaveProperty('education');
+  });
+});
+
+describe('suppressed', () => {
+  test('positive integer returns the integer', () => expect(suppressed('500')).toBe(500));
+  test('zero returns 0', () => expect(suppressed('0')).toBe(0));
+  test('ACS suppression sentinel -666666666 returns null', () => expect(suppressed('-666666666')).toBeNull());
+  test('negative number returns null', () => expect(suppressed('-1')).toBeNull());
+  test('NaN string returns null', () => expect(suppressed('N/A')).toBeNull());
+  test('undefined returns null', () => expect(suppressed(undefined)).toBeNull());
+  test('null returns null', () => expect(suppressed(null)).toBeNull());
+});
+
+describe('groupIncomeBrackets', () => {
+  function makeGet(map) { return (k) => map[k]; }
+
+  test('returns null when total is 0', () => {
+    expect(groupIncomeBrackets(makeGet({ B19001_001E: '0' }))).toBeNull();
+  });
+
+  test('returns null when total is missing', () => {
+    expect(groupIncomeBrackets(makeGet({}))).toBeNull();
+  });
+
+  test('brackets sum to roughly 100% when all data present', () => {
+    const map = {
+      B19001_001E: '1000',
+      B19001_002E: '50', B19001_003E: '50', B19001_004E: '50', B19001_005E: '50',
+      B19001_006E: '50', B19001_007E: '50', B19001_008E: '50', B19001_009E: '50', B19001_010E: '50',
+      B19001_011E: '100', B19001_012E: '80',
+      B19001_013E: '100',
+      B19001_014E: '50', B19001_015E: '50', B19001_016E: '100', B19001_017E: '70',
+    };
+    const result = groupIncomeBrackets(makeGet(map));
+    expect(result).not.toBeNull();
+    expect(result.brackets).toHaveLength(5);
+    const total = result.brackets.reduce((s, b) => s + b.pct, 0);
+    expect(total).toBeGreaterThanOrEqual(99);
+    expect(total).toBeLessThanOrEqual(101);
+  });
+
+  test('bracket labels are correct', () => {
+    const map = { B19001_001E: '100', B19001_002E: '25', B19001_003E: '0', B19001_004E: '0', B19001_005E: '0' };
+    const result = groupIncomeBrackets(makeGet(map));
+    expect(result.brackets[0].label).toBe('Under $25k');
+    expect(result.brackets[4].label).toBe('$100k+');
+  });
+
+  test('suppressed cell sets hasSuppressed and counts as 0', () => {
+    const map = {
+      B19001_001E: '1000',
+      B19001_002E: '-666666666',
+      B19001_003E: '200', B19001_004E: '0', B19001_005E: '0',
+      B19001_006E: '0', B19001_007E: '0', B19001_008E: '0', B19001_009E: '0', B19001_010E: '0',
+      B19001_011E: '0', B19001_012E: '0',
+      B19001_013E: '0',
+      B19001_014E: '0', B19001_015E: '0', B19001_016E: '0', B19001_017E: '0',
+    };
+    const result = groupIncomeBrackets(makeGet(map));
+    expect(result.hasSuppressed).toBe(true);
+    expect(result.brackets[0].count).toBe(200);
   });
 });

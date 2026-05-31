@@ -138,10 +138,43 @@ function getCommunityType(ownershipRate, householdSize) {
   return { label: 'Mixed residential community', icon: '🏘️' };
 }
 
+function suppressed(val) {
+  const n = parseInt(val, 10);
+  return (isNaN(n) || n < 0) ? null : n;
+}
+
+function groupIncomeBrackets(get) {
+  const total = suppressed(get('B19001_001E'));
+  if (!total || total === 0) return null;
+
+  const buckets = [
+    { label: 'Under $25k',   vars: ['B19001_002E','B19001_003E','B19001_004E','B19001_005E'] },
+    { label: '$25k–$50k',    vars: ['B19001_006E','B19001_007E','B19001_008E','B19001_009E','B19001_010E'] },
+    { label: '$50k–$75k',    vars: ['B19001_011E','B19001_012E'] },
+    { label: '$75k–$100k',   vars: ['B19001_013E'] },
+    { label: '$100k+',       vars: ['B19001_014E','B19001_015E','B19001_016E','B19001_017E'] },
+  ];
+
+  let hasSuppressed = false;
+  const brackets = buckets.map(({ label, vars: names }) => {
+    let count = 0;
+    for (const n of names) {
+      const v = suppressed(get(n));
+      if (v === null) { hasSuppressed = true; }
+      else { count += v; }
+    }
+    return { label, count, pct: Math.round(count / total * 100) };
+  });
+
+  return { totalHouseholds: total, brackets, hasSuppressed };
+}
+
 module.exports = {
   getDemographics,
   getIncomeLevel,
   getEducationLevel,
   getDensityType,
   getCommunityType,
+  suppressed,
+  groupIncomeBrackets,
 };
