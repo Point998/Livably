@@ -2470,6 +2470,51 @@ body.report-page {
 .growth-permit-trend-down { color: var(--badge-red-color); }
 .growth-permit-trend-flat { color: var(--ink-60); }
 
+/* ── Sensory Chapter L3/L4 ─────────────────────────────────────── */
+
+.sensory-deep-dive { margin-top: var(--space-4); }
+
+.sensory-deep-dive-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-60);
+  margin-bottom: var(--space-2);
+}
+
+.sensory-research-item {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.sensory-research-item:last-of-type { border-bottom: none; }
+
+.sensory-research-item-hd {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.sensory-research-item-icon {
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+.sensory-research-item-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sensory-research-item-detail {
+  font-size: var(--text-sm);
+  color: var(--ink-60);
+  margin: 0;
+  padding-left: calc(var(--text-base) + var(--space-2));
+}
+
 /* ── Costs Chapter ─────────────────────────────────────────────── */
 
 .prem-carrying-section {
