@@ -103,6 +103,51 @@ function buildGrowthResearchGuideTab(locationInfo) {
     ${rows}`;
 }
 
+function buildGrowthResearchHTML(growth) {
+  if (!growth) return '';
+  const { namedProjects = [], establishments = [] } = growth;
+
+  const projectRows = namedProjects.map(p => `
+    <tr>
+      <td>${escapeHtml(p.name)}</td>
+      <td>${escapeHtml(p.type)}</td>
+      <td>${escapeHtml(p.status)}</td>
+      <td>${escapeHtml(p.expectedOpening || '—')}</td>
+    </tr>`).join('');
+
+  const projectsTable = projectRows ? `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Named Development Projects</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Project</th><th>Type</th><th>Status</th><th>Expected</th></tr></thead>
+          <tbody>${projectRows}</tbody>
+        </table>
+      </div>
+    </div>` : '';
+
+  const establishmentRows = establishments.map(e => `
+    <tr>
+      <td>${escapeHtml(e.name)}</td>
+      <td>${escapeHtml(e.label)}</td>
+      <td>${e.distanceMiles.toFixed(1)} mi</td>
+    </tr>`).join('');
+
+  const establishmentsTable = establishmentRows ? `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Commercial Establishments Within 1.5 Miles</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Name</th><th>Category</th><th>Distance</th></tr></thead>
+          <tbody>${establishmentRows}</tbody>
+        </table>
+      </div>
+    </div>` : '';
+
+  const content = [projectsTable, establishmentsTable].filter(Boolean).join('');
+  return content || '';
+}
+
 function buildGrowthDeepDiveHTML(growth) {
   if (!growth) return '';
   const { permits, newConstruction, locationInfo } = growth;
@@ -289,7 +334,10 @@ function buildGrowthAndDevelopmentHTML(growth) {
   const glanceHTML = buildGrowthGlanceHTML(growth);
   const deepDiveHTML = buildGrowthDeepDiveHTML(growth);
   const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
-  return renderChapterCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, l3HTML || null, null, glanceHTML || null);
+  const researchHTML = buildGrowthResearchHTML(growth);
+  const l4HTML = researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '';
+  const fullHTML = [l3HTML, l4HTML].filter(Boolean).join('');
+  return renderChapterCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, fullHTML || null, null, glanceHTML || null);
 }
 
 function buildGrowthGlanceHTML(growth) {

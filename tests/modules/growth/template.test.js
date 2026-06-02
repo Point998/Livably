@@ -116,3 +116,50 @@ describe('buildGrowthAndDevelopmentHTML — L3 deep dive', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildGrowthAndDevelopmentHTML — L4 research', () => {
+  test('depth-l4 wrapper present when named projects exist', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('named projects table rendered', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/climate-data-table/);
+  });
+
+  test('named project names appear in table', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/Georgetown Commons Retail Center/);
+    expect(html).toMatch(/Maplewood Subdivision Phase 2/);
+  });
+
+  test('project status appears in table', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/Under Construction/);
+    expect(html).toMatch(/Approved/);
+  });
+
+  test('expected opening shown when available', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/2026/);
+  });
+
+  test('establishments table rendered when establishments present', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/Walmart Supercenter/);
+    expect(html).toMatch(/CVS Pharmacy/);
+  });
+
+  test('L4 absent when no named projects and no establishments', () => {
+    const g = { ...fullGrowth, namedProjects: [], establishments: [] };
+    const html = buildGrowthAndDevelopmentHTML(g);
+    expect(html).not.toMatch(/depth-l4/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
