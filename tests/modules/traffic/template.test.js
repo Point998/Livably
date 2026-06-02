@@ -121,3 +121,54 @@ describe('buildTrafficCardHTML — L3 deep dive', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildTrafficCardHTML — L4 research', () => {
+  test('depth-l4 wrapper present', () => {
+    const html = buildTrafficCardHTML(trafficData);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('research table rendered', () => {
+    const html = buildTrafficCardHTML(trafficData);
+    expect(html).toMatch(/climate-data-table/);
+  });
+
+  test('destination name appears as section label', () => {
+    const html = buildTrafficCardHTML(trafficData);
+    expect(html).toMatch(/Kroger/);
+  });
+
+  test('time slot rows rendered', () => {
+    const html = buildTrafficCardHTML(trafficData);
+    expect(html).toMatch(/Mon–Fri 8am/);
+    expect(html).toMatch(/12 min/);
+  });
+
+  test('percentage above baseline shown for non-zero slots', () => {
+    const html = buildTrafficCardHTML(trafficData);
+    expect(html).toMatch(/\+50%/);
+  });
+
+  test('baseline label shown for 0% slots', () => {
+    const html = buildTrafficCardHTML(trafficData);
+    expect(html).toMatch(/baseline/);
+  });
+
+  test('multiple destinations produce multiple section labels', () => {
+    const multiData = [...trafficData, ...highVariationData];
+    const html = buildTrafficCardHTML(multiData);
+    expect(html).toMatch(/Kroger/);
+    expect(html).toMatch(/Downtown Office/);
+  });
+
+  test('L4 absent when trafficData is empty', () => {
+    const html = buildTrafficCardHTML([]);
+    expect(html).toBe('');
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildTrafficCardHTML(trafficData);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});

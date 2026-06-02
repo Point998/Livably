@@ -45,6 +45,33 @@ function buildTrafficGlanceHTML(trafficData) {
   return `<div class="chapter-glance"><span class="chapter-glance-item">${escapeHtml(glanceText)}</span></div>`;
 }
 
+function buildTrafficResearchHTML(trafficData) {
+  if (!trafficData || !trafficData.length) return '';
+
+  const sections = trafficData.map(t => {
+    const rows = t.traffic.variations.map(v => `
+      <tr>
+        <td>${escapeHtml(v.display)}</td>
+        <td>${v.minutes} min</td>
+        <td>${v.percentAboveBase > 0 ? `+${v.percentAboveBase}%` : 'baseline'}</td>
+      </tr>`).join('');
+
+    return `
+      <div class="climate-research-section">
+        <div class="climate-research-section-label">${escapeHtml(t.name)}</div>
+        <div class="climate-table-scroll">
+          <table class="climate-data-table">
+            <thead><tr><th>Departure</th><th>Drive Time</th><th>Above Baseline</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <p class="prem-narrative-body">Best: ${t.traffic.stats.min} min · Worst: ${t.traffic.stats.max} min · Avg: ${t.traffic.stats.avg} min</p>
+      </div>`;
+  }).join('');
+
+  return sections;
+}
+
 function buildTrafficDeepDiveHTML(trafficData) {
   if (!trafficData || !trafficData.length) return '';
 
@@ -105,6 +132,9 @@ function buildTrafficCardHTML(trafficData) {
   const deepDiveHTML = buildTrafficDeepDiveHTML(trafficData);
   const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
 
+  const researchHTML = buildTrafficResearchHTML(trafficData);
+  const l4HTML = researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '';
+
   return `
   <section class="chapter" data-ch="traffic" data-depth="overview">
     <div class="chapter-inner">
@@ -119,6 +149,7 @@ function buildTrafficCardHTML(trafficData) {
       <p class="chapter-intro">Drive times aren't fixed — they shift significantly based on when you leave. The "Worst" time is the one to internalize if you're planning a regular commute.</p>
       <div class="depth-l1">${buildTrafficGlanceHTML(trafficData)}</div>
       ${l3HTML}
+      ${l4HTML}
       ${renderDepthSelector('traffic')}
     </div>
     <div class="chapter-full depth-l2">
