@@ -122,3 +122,47 @@ describe('buildSensoryEnvironmentalHTML — L3 deep dive', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildSensoryEnvironmentalHTML — L4 research', () => {
+  test('depth-l4 wrapper present', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('environmental data table rendered', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/climate-data-table/);
+  });
+
+  test('AQI value in table', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/42/);
+  });
+
+  test('road noise dB in table', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/52 dB/);
+  });
+
+  test('radon zone in table', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/Zone 2/);
+  });
+
+  test('water system name in table', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/Georgetown Water Works/);
+  });
+
+  test('bortle scale still present alongside L4', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/prem-bortle-scale/);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});

@@ -116,6 +116,47 @@ function buildSensoryInspectionTab(env) {
     ${rows}`;
 }
 
+function buildSensoryResearchHTML(env) {
+  if (!env) return '';
+  const { airQuality, roadNoise, lightPollution, radon, waterQuality, ejscreen, airports } = env;
+
+  const rows = [
+    airQuality
+      ? `<tr><td>Air Quality (AQI)</td><td>${airQuality.aqi}</td><td>${escapeHtml(airQuality.category.label)}</td><td>EPA AirNow</td></tr>`
+      : `<tr><td>Air Quality (AQI)</td><td>—</td><td>Data unavailable</td><td>EPA AirNow</td></tr>`,
+    roadNoise
+      ? `<tr><td>Road Noise</td><td>${roadNoise.dnl} dB</td><td>${roadNoise.dnl < 55 ? 'Low' : roadNoise.dnl < 65 ? 'Moderate' : 'Elevated'}</td><td>BTS Noise Map</td></tr>`
+      : `<tr><td>Road Noise</td><td>—</td><td>Data unavailable</td><td>BTS Noise Map</td></tr>`,
+    lightPollution
+      ? `<tr><td>Light Pollution</td><td>Bortle ${lightPollution.bortle}</td><td>${escapeHtml(lightPollution.label)}</td><td>Census / OSM (estimated)</td></tr>`
+      : null,
+    radon
+      ? `<tr><td>Radon Risk</td><td>Zone ${radon.zone}</td><td>${radon.zone === 1 ? 'High' : radon.zone === 2 ? 'Moderate' : 'Lower'}</td><td>EPA Radon Map (county)</td></tr>`
+      : null,
+    waterQuality
+      ? `<tr><td>Water Quality</td><td>${escapeHtml(waterQuality.systemName)}</td><td>${waterQuality.violations.length === 0 ? 'No violations (5 yr)' : `${waterQuality.violations.length} violation${waterQuality.violations.length > 1 ? 's' : ''}`}</td><td>EPA SDWIS</td></tr>`
+      : `<tr><td>Water Quality</td><td>—</td><td>Data unavailable</td><td>EPA SDWIS</td></tr>`,
+    ejscreen
+      ? `<tr><td>Hazard Proximity</td><td>${ejscreen.flagged ? 'Flagged' : 'No flags'}</td><td>${ejscreen.flagged ? 'Above 75th pct on 1+ metrics' : 'Below 75th pct all metrics'}</td><td>EPA EJSCREEN</td></tr>`
+      : null,
+    airports?.length
+      ? `<tr><td>Nearest Airport</td><td>${airports[0].distanceMiles.toFixed(1)} mi</td><td>${escapeHtml(airports[0].name)}</td><td>Google Places</td></tr>`
+      : null,
+  ].filter(Boolean).join('');
+
+  return `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Environmental Data — Full Summary</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Category</th><th>Value</th><th>Status</th><th>Source</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p class="prem-disclaimer">Data collected at report generation time. Air quality, noise, and water quality can change — sources listed above provide current readings.</p>
+    </div>`;
+}
+
 function buildSensoryDeepDiveHTML(env) {
   if (!env) return '';
 
@@ -350,7 +391,9 @@ function buildSensoryEnvironmentalHTML(env) {
   const glanceHTML = buildSensoryGlanceHTML(env);
   const deepDiveHTML = buildSensoryDeepDiveHTML(env);
   const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
-  const fullHTML = [bortleFullHTML, l3HTML].filter(Boolean).join('');
+  const researchHTML = buildSensoryResearchHTML(env);
+  const l4HTML = researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '';
+  const fullHTML = [bortleFullHTML, l3HTML, l4HTML].filter(Boolean).join('');
   return renderChapterCard('sensory', '12', eyeSvg, 'Sensory &amp; Environmental', 'What you can\'t discover during a showing.', null, leftHTML, sectionB, fullHTML || null, null, glanceHTML || null);
 }
 
