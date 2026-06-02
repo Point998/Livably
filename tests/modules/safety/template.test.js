@@ -120,3 +120,53 @@ describe('buildCrimeHTML — L3 deep dive', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildCrimeHTML — L4 research', () => {
+  test('depth-l4 wrapper present', () => {
+    const html = buildCrimeHTML(null, baseEmergency);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('station data table rendered', () => {
+    const html = buildCrimeHTML(null, baseEmergency);
+    expect(html).toMatch(/climate-data-table/);
+  });
+
+  test('police station name in table', () => {
+    const html = buildCrimeHTML(null, baseEmergency);
+    expect(html).toMatch(/Georgetown Police Department/);
+  });
+
+  test('fire station name in table', () => {
+    const html = buildCrimeHTML(null, baseEmergency);
+    expect(html).toMatch(/Georgetown Fire Station 1/);
+  });
+
+  test('response estimate shown in table', () => {
+    const html = buildCrimeHTML(null, baseEmergency);
+    expect(html).toMatch(/~6 min/);
+    expect(html).toMatch(/~7 min/);
+  });
+
+  test('drive time shown when available', () => {
+    const html = buildCrimeHTML(null, slowEmergency);
+    expect(html).toMatch(/18 min drive/);
+    expect(html).toMatch(/15 min drive/);
+  });
+
+  test('dash shown when drive time missing', () => {
+    const html = buildCrimeHTML(null, baseEmergency);
+    expect(html).toMatch(/—/);
+  });
+
+  test('L4 absent when no emergency', () => {
+    const html = buildCrimeHTML(null, null);
+    expect(html).toBe('');
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildCrimeHTML(null, baseEmergency);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});

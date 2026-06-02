@@ -94,6 +94,43 @@ function buildSafetyDeepDiveHTML(crime, emergency) {
     </div>`;
 }
 
+function buildSafetyResearchHTML(emergency) {
+  if (!emergency?.police && !emergency?.fire) return '';
+
+  function stationRow(type, station) {
+    if (!station) return '';
+    const driveTime = station.driveTimeMinutes != null ? `${station.driveTimeMinutes} min drive` : '—';
+    return `
+      <tr>
+        <td>${escapeHtml(type)}</td>
+        <td>${escapeHtml(station.name)}</td>
+        <td>${escapeHtml(station.address)}</td>
+        <td>${escapeHtml(station.distanceMiles)} mi</td>
+        <td>~${station.response.estimate} min</td>
+        <td>${driveTime}</td>
+      </tr>`;
+  }
+
+  const rows = [
+    stationRow('Police / EMS', emergency.police),
+    stationRow('Fire Station', emergency.fire),
+  ].filter(Boolean).join('');
+
+  if (!rows) return '';
+
+  return `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Emergency Stations — Full Data</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Type</th><th>Name</th><th>Address</th><th>Distance</th><th>Est. Response</th><th>Drive Time</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p class="prem-disclaimer">Response estimates are calculated from station distance using typical dispatch speeds. Drive time is door-to-door from the subject address. Actual response varies with call volume and unit availability.</p>
+    </div>`;
+}
+
 function buildCrimeHTML(crime, emergency) {
   if (!crime && !emergency) return '';
   const police = emergency?.police;
@@ -200,7 +237,10 @@ function buildCrimeHTML(crime, emergency) {
   const glanceHTML = buildSafetyGlanceHTML(null, emergency);
   const deepDiveHTML = buildSafetyDeepDiveHTML(crime, emergency);
   const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
-  return renderChapterCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, l3HTML || null, null, glanceHTML || null);
+  const researchHTML = buildSafetyResearchHTML(emergency);
+  const l4HTML = researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '';
+  const fullHTML = [l3HTML, l4HTML].filter(Boolean).join('');
+  return renderChapterCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, fullHTML || null, null, glanceHTML || null);
 }
 
 function buildEmergencyServicesHTML(emergency) {
