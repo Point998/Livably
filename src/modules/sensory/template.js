@@ -2,6 +2,148 @@
 const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../../templates/components/chapterCard');
 
+function buildSensoryResearchToolsTab(env) {
+  const { airQuality, waterQuality, radon, ejscreen } = env || {};
+  const aqiNote = airQuality ? ` (current AQI: ${airQuality.aqi} — ${escapeHtml(airQuality.category.label)})` : '';
+  const radonNote = radon ? ` This county is Radon Zone ${radon.zone}.` : '';
+  const waterNote = waterQuality?.violations?.length
+    ? ` ${waterQuality.violations.length} violation${waterQuality.violations.length > 1 ? 's' : ''} on record.`
+    : waterQuality ? ' No violations on record.' : '';
+  const ejNote = ejscreen?.flagged ? ' EJSCREEN flags elevated hazard proximity for this address.' : '';
+
+  const items = [
+    {
+      icon: '💨',
+      title: 'EPA AirNow',
+      detail: `Real-time and historical air quality data by zip code${aqiNote}. Also shows current fire smoke conditions and forecast AQI for the week ahead.`,
+      url: 'https://www.airnow.gov/',
+    },
+    {
+      icon: '🏭',
+      title: 'EPA EJSCREEN',
+      detail: `Environmental screening tool showing Superfund proximity, air toxics, chemical risk facilities, and hazardous waste sites by address${ejNote}. Useful for identifying industrial neighbors.`,
+      url: 'https://ejscreen.epa.gov/mapper/',
+    },
+    {
+      icon: '🚰',
+      title: 'EWG Tap Water Database',
+      detail: `Search by zip code to see years of water system test results and contaminant levels${waterNote} More granular than EPA data for drinking water quality trends.`,
+      url: 'https://www.ewg.org/tapwater/',
+    },
+    {
+      icon: '☢️',
+      title: 'EPA Radon Zone Map',
+      detail: `County-level geologic radon potential${radonNote} Actual radon levels vary by home — testing is the only way to know your specific exposure.`,
+      url: 'https://www.epa.gov/radon/find-information-about-local-radon-zones-and-state-contact-information',
+    },
+    {
+      icon: '🗺️',
+      title: 'BTS National Transportation Noise Map',
+      detail: 'Interactive map of road and aviation noise levels (day-night average dB) across the US. Useful for comparing noise levels across neighborhoods.',
+      url: 'https://www.bts.gov/transportation-noise',
+    },
+  ];
+
+  const rows = items.map(it => `
+    <div class="sensory-research-item">
+      <div class="sensory-research-item-hd">
+        <span class="sensory-research-item-icon">${it.icon}</span>
+        <span class="sensory-research-item-title"><a href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(it.title)}</a></span>
+      </div>
+      <p class="sensory-research-item-detail">${it.detail}</p>
+    </div>`).join('');
+
+  return `
+    <p class="prem-narrative-body">These databases are public, free, and updated regularly. Each one provides a different lens on environmental quality at this address.</p>
+    ${rows}`;
+}
+
+function buildSensoryInspectionTab(env) {
+  const { radon, waterQuality, ejscreen } = env || {};
+  const radonZone = radon?.zone;
+  const hasViolations = !!(waterQuality?.violations?.length);
+  const hasEJFlag = !!(ejscreen?.flagged);
+
+  const radonUrgency = radonZone === 1
+    ? `<strong>Priority — Zone 1 county:</strong> Radon testing is strongly recommended before closing.`
+    : radonZone === 2
+    ? `Radon testing is recommended — Zone 2 county with moderate geologic potential.`
+    : `Radon testing is a reasonable precaution even in lower-risk zones.`;
+
+  const waterUrgency = hasViolations
+    ? `<strong>Priority — water violations on record:</strong> Request the utility's Consumer Confidence Report and consider a certified water test.`
+    : `Request the annual Consumer Confidence Report from the utility (required by law to be provided free on request).`;
+
+  const items = [
+    {
+      icon: '☢️',
+      title: 'Radon test',
+      detail: `${radonUrgency} DIY kits cost $15–$30 and return results in 48–96 hours. If elevated (>4 pCi/L), mitigation systems cost $800–$2,500 installed and reduce levels by 90%+.`,
+    },
+    {
+      icon: '🚰',
+      title: 'Water quality test',
+      detail: `${waterUrgency} A certified lab test ($50–$150) tests for lead, nitrates, bacteria, and common contaminants beyond what the EPA requires utilities to report.`,
+    },
+    {
+      icon: '🌬️',
+      title: 'HVAC filter and ductwork inspection',
+      detail: 'Ask the inspector to note the air filter condition and whether ductwork shows signs of mold or pest activity. Compromised HVAC circulates allergens and particulates that affect daily air quality indoors.',
+    },
+    {
+      icon: '🏭',
+      title: 'EPA ECHO facility search',
+      detail: `${hasEJFlag ? '<strong>Priority — EJSCREEN flagged:</strong> ' : ''}Search this address on EPA ECHO (echo.epa.gov) to see specific permitted industrial facilities within a few miles and their inspection/violation history.`,
+    },
+    {
+      icon: '🪟',
+      title: 'Visit at different times and seasons',
+      detail: 'Road noise, aircraft paths, and industrial odors vary significantly by time of day, day of week, and season. A Sunday afternoon site visit can miss what Monday morning at 7am sounds like.',
+    },
+  ];
+
+  const rows = items.map(it => `
+    <div class="sensory-research-item">
+      <div class="sensory-research-item-hd">
+        <span class="sensory-research-item-icon">${it.icon}</span>
+        <span class="sensory-research-item-title">${escapeHtml(it.title)}</span>
+      </div>
+      <p class="sensory-research-item-detail">${it.detail}</p>
+    </div>`).join('');
+
+  return `
+    <p class="prem-narrative-body">Environmental data identifies risk levels — inspection turns that into specific answers for this home. Here's what to add to your due diligence scope.</p>
+    ${rows}`;
+}
+
+function buildSensoryDeepDiveHTML(env) {
+  if (!env) return '';
+
+  const tabs = [
+    { id: 'research',   label: 'EPA Research Tools',       content: buildSensoryResearchToolsTab(env) },
+    { id: 'inspection', label: 'Environmental Inspection', content: buildSensoryInspectionTab(env) },
+  ];
+
+  const tabButtons = tabs.map((t, i) =>
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="sntab-${t.id}" id="snbtn-${t.id}">${t.label}</button>`
+  ).join('');
+
+  const tabPanels = tabs.map((t, i) =>
+    `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="sntab-${t.id}" role="tabpanel" aria-labelledby="snbtn-${t.id}">${t.content}</div>`
+  ).join('');
+
+  return `
+    <div class="sensory-deep-dive">
+      <div class="sensory-deep-dive-label">Environment in Depth</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Sensory chapter deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
+      </div>
+    </div>`;
+}
+
 function buildSensoryEnvironmentalHTML(env) {
   if (!env) return '';
   const { airports, roadNoise, rail, lightPollution, airQuality, waterQuality, radon, ejscreen } = env;
@@ -206,7 +348,10 @@ function buildSensoryEnvironmentalHTML(env) {
 
   const eyeSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const glanceHTML = buildSensoryGlanceHTML(env);
-  return renderChapterCard('sensory', '12', eyeSvg, 'Sensory &amp; Environmental', 'What you can\'t discover during a showing.', null, leftHTML, sectionB, bortleFullHTML, null, glanceHTML || null);
+  const deepDiveHTML = buildSensoryDeepDiveHTML(env);
+  const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
+  const fullHTML = [bortleFullHTML, l3HTML].filter(Boolean).join('');
+  return renderChapterCard('sensory', '12', eyeSvg, 'Sensory &amp; Environmental', 'What you can\'t discover during a showing.', null, leftHTML, sectionB, fullHTML || null, null, glanceHTML || null);
 }
 
 function buildSensoryGlanceHTML(environment) {

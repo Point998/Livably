@@ -57,3 +57,68 @@ describe('buildSensoryEnvironmentalHTML — FR-045 glance bar', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildSensoryEnvironmentalHTML — L3 deep dive', () => {
+  test('depth-l3 wrapper present', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/depth-l3/);
+  });
+
+  test('sensory-deep-dive container rendered', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/sensory-deep-dive/);
+  });
+
+  test('EPA Research Tools tab rendered', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/EPA Research Tools/);
+  });
+
+  test('AirNow link rendered', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/airnow\.gov/);
+  });
+
+  test('EJSCREEN link rendered', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/ejscreen\.epa\.gov/);
+  });
+
+  test('EWG Tap Water link rendered', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/ewg\.org\/tapwater/);
+  });
+
+  test('radon zone shown in research tools when available', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/Zone 2/);
+  });
+
+  test('Environmental Inspection tab rendered', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/Environmental Inspection/);
+  });
+
+  test('radon test item present in inspection checklist', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/radon test/i);
+  });
+
+  test('urgent radon framing when zone 1', () => {
+    const env = { ...baseEnv, radon: { zone: 1 } };
+    const html = buildSensoryEnvironmentalHTML(env);
+    expect(html).toMatch(/Zone 1/);
+  });
+
+  test('bortle scale still present (fullHTML append not replace)', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/prem-bortle-scale/);
+    expect(html).toMatch(/depth-l3/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
