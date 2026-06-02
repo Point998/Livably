@@ -2,6 +2,98 @@
 const { escapeHtml } = require('../../utils/text');
 const { badgeClass, renderChapterCard } = require('../../templates/components');
 
+function buildSafetyCrimeResearchTab(crime) {
+  const city   = crime?.city   || '';
+  const county = crime?.county || 'your county';
+  const locationLabel = city || county;
+
+  return `
+    <p class="prem-narrative-body">No public crime database covers every neighborhood equally, but combining two or three sources gives a useful picture of recent incident trends on your specific block.</p>
+    <div class="safety-prep-item">
+      <div class="safety-prep-item-hd">
+        <span class="safety-prep-item-icon">🗺️</span>
+        <span class="safety-prep-item-title">CrimeMapping.com</span>
+      </div>
+      <p class="safety-prep-item-detail"><a href="https://www.crimemapping.com/map" target="_blank" rel="noopener noreferrer">CrimeMapping.com</a> — Real-time incident data from participating agencies. Enter the exact address and filter to 90 days. Look at the block level, not city average.</p>
+    </div>
+    <div class="safety-prep-item">
+      <div class="safety-prep-item-hd">
+        <span class="safety-prep-item-icon">📍</span>
+        <span class="safety-prep-item-title">SpotCrime</span>
+      </div>
+      <p class="safety-prep-item-detail"><a href="https://spotcrime.com/" target="_blank" rel="noopener noreferrer">SpotCrime.com</a> — Aggregates police department incident feeds. Search by address for a 6-month view of nearby incidents.</p>
+    </div>
+    <div class="safety-prep-item">
+      <div class="safety-prep-item-hd">
+        <span class="safety-prep-item-icon">🏛️</span>
+        <span class="safety-prep-item-title">${escapeHtml(locationLabel)} Police Department</span>
+      </div>
+      <p class="safety-prep-item-detail">Most departments publish their own crime maps or incident logs. Search "${escapeHtml(locationLabel)} police crime map" — the official source is the most current and most granular.</p>
+    </div>
+    <div class="safety-prep-item">
+      <div class="safety-prep-item-hd">
+        <span class="safety-prep-item-icon">📞</span>
+        <span class="safety-prep-item-title">Call the non-emergency line</span>
+      </div>
+      <p class="safety-prep-item-detail">The fastest way to get a real picture: call the non-emergency line for the ${escapeHtml(locationLabel)} Police Department and ask for the community resource officer for this area. They'll tell you more in 5 minutes than any database.</p>
+    </div>
+    <p class="prem-disclaimer">Crime data is reported, not exhaustive. Incidents that go unreported, or that occurred before a department joined a reporting platform, won't appear.</p>`;
+}
+
+function buildSafetyHomePrepTab(emergency) {
+  const fireMins = emergency?.fire?.response?.estimate;
+  const urgentNote = (fireMins != null && fireMins > 10)
+    ? `<p class="prem-narrative-body"><strong>With a ~${fireMins}-minute fire response time, proactive home safety measures matter more here than average.</strong> The checklist below is worth completing before your first night in the house.</p>`
+    : `<p class="prem-narrative-body">Basic home safety measures take an afternoon and create meaningful margins of safety regardless of location. Complete this checklist before your first night.</p>`;
+
+  const items = [
+    { icon: '🔊', title: 'Smoke detectors — every bedroom and hallway', detail: 'One smoke detector per bedroom, plus one in each hallway. Test every detector on move-in day. Replace batteries regardless of what the seller says. Total cost: $30–60.' },
+    { icon: '💨', title: 'Carbon monoxide detector — each floor', detail: 'Required in most states for homes with attached garages or gas appliances. One per floor minimum, including basement. CO is odorless — these are the only warning.' },
+    { icon: '🧯', title: 'Fire extinguisher — kitchen + each floor', detail: 'A 2.5 lb ABC extinguisher handles kitchen grease fires, electrical fires, and general combustibles. Mount it visible and accessible. Most house fires start in the kitchen.' },
+    { icon: '🗺️', title: 'Two-exit plan for every room', detail: 'Walk every room and confirm two ways out. For upper floors: a collapsible ladder stored near the window is ~$40 and takes 30 seconds to deploy. Practice the plan once — don\'t just draw it.' },
+    { icon: '📲', title: 'Post the address visibly outside', detail: 'Emergency responders lose time searching for house numbers in low-visibility conditions. Confirm your house number is visible from the street at night. This is the cheapest safety upgrade that exists.' },
+  ];
+
+  const rows = items.map(it => `
+    <div class="safety-prep-item">
+      <div class="safety-prep-item-hd">
+        <span class="safety-prep-item-icon">${it.icon}</span>
+        <span class="safety-prep-item-title">${escapeHtml(it.title)}</span>
+      </div>
+      <p class="safety-prep-item-detail">${escapeHtml(it.detail)}</p>
+    </div>`).join('');
+
+  return `${urgentNote}${rows}`;
+}
+
+function buildSafetyDeepDiveHTML(crime, emergency) {
+  if (!emergency?.police && !emergency?.fire) return '';
+
+  const tabs = [
+    { id: 'crime',    label: 'Crime Research',   content: buildSafetyCrimeResearchTab(crime) },
+    { id: 'homeprep', label: 'Home Safety Prep', content: buildSafetyHomePrepTab(emergency) },
+  ];
+
+  const tabButtons = tabs.map((t, i) =>
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="sftab-${t.id}" id="sfbtn-${t.id}">${t.label}</button>`
+  ).join('');
+
+  const tabPanels = tabs.map((t, i) =>
+    `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="sftab-${t.id}" role="tabpanel" aria-labelledby="sfbtn-${t.id}">${t.content}</div>`
+  ).join('');
+
+  return `
+    <div class="safety-deep-dive">
+      <div class="safety-deep-dive-label">Safety in Depth</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Safety chapter deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
+      </div>
+    </div>`;
+}
+
 function buildCrimeHTML(crime, emergency) {
   if (!crime && !emergency) return '';
   const police = emergency?.police;
@@ -106,7 +198,9 @@ function buildCrimeHTML(crime, emergency) {
     <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary by call volume and unit availability. Research date: ${today}. For current safety data, contact ${city ? escapeHtml(city) + ' Police or' : ''} ${escapeHtml(county)} Emergency Management.</p>`;
   const shieldSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
   const glanceHTML = buildSafetyGlanceHTML(null, emergency);
-  return renderChapterCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, null, null, glanceHTML || null);
+  const deepDiveHTML = buildSafetyDeepDiveHTML(crime, emergency);
+  const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
+  return renderChapterCard('safety', '06', shieldSvg, 'Safety & Emergency Response', 'Response times, fire coverage, and the things worth researching before you close.', null, body, null, l3HTML || null, null, glanceHTML || null);
 }
 
 function buildEmergencyServicesHTML(emergency) {
