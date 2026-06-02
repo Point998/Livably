@@ -757,7 +757,7 @@ body.report-page {
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--ch-health);
-  min-width: 80px;
+  min-width: var(--space-80);
 }
 
 .health-iso-desc {
