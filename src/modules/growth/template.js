@@ -2,6 +2,136 @@
 const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../../templates/components/chapterCard');
 
+function buildGrowthPermitTrendsTab(permits, newConstruction, locationInfo) {
+  const county = locationInfo?.county || 'this county';
+
+  if (permits) {
+    const { current, currentYear, priorYear, trend, percentChange } = permits;
+    const trendClass  = trend === 'rising' ? 'growth-permit-trend-up'
+                      : trend === 'declining' ? 'growth-permit-trend-down'
+                      : 'growth-permit-trend-flat';
+    const trendSymbol = trend === 'rising' ? '▲' : trend === 'declining' ? '▼' : '—';
+    const trendLabel  = trend === 'rising'    ? `+${Math.abs(percentChange)}% from ${priorYear || 'prior year'}`
+                      : trend === 'declining' ? `${percentChange}% from ${priorYear || 'prior year'}`
+                      : `Stable vs ${priorYear || 'prior year'}`;
+    const context = trend === 'rising'
+      ? `Rising permit activity in ${escapeHtml(county)} signals active investment in the area — new housing, commercial expansion, and infrastructure improvements tend to follow sustained growth.`
+      : trend === 'declining'
+      ? `Declining permit activity in ${escapeHtml(county)} may reflect a maturing market, rising construction costs, or broader economic conditions. Ask your agent what's driving the slowdown.`
+      : `Stable permit activity in ${escapeHtml(county)} reflects a steady market — neither a boom nor a contraction.`;
+
+    return `
+      <div class="growth-permit-stat-row">
+        <div class="growth-permit-stat">
+          <div class="growth-permit-stat-label">${currentYear || 'Current year'}</div>
+          <div class="growth-permit-stat-val">${current.toLocaleString()}</div>
+          <div class="growth-permit-stat-sub">building permits</div>
+        </div>
+        <div class="growth-permit-stat">
+          <div class="growth-permit-stat-label">Year-over-year</div>
+          <div class="growth-permit-stat-val ${trendClass}">${trendSymbol} ${trendLabel}</div>
+          <div class="growth-permit-stat-sub">vs ${priorYear || 'prior year'}</div>
+        </div>
+      </div>
+      <p class="prem-narrative-body">${context}</p>
+      <p class="prem-disclaimer">Source: U.S. Census Bureau Building Permits Survey. County-level data — not neighborhood-specific.</p>`;
+  }
+
+  if (newConstruction) {
+    const { newConstructionPct } = newConstruction;
+    const context = newConstructionPct >= 20
+      ? `${newConstructionPct}% of housing in this Census tract was built after 2010 — a high share of recent construction, indicating active growth area investment.`
+      : newConstructionPct >= 10
+      ? `About ${newConstructionPct}% of housing in this Census tract was built after 2010, reflecting moderate new construction activity.`
+      : `Only ${newConstructionPct}% of housing in this Census tract was built after 2010, indicating an established neighborhood with limited recent development.`;
+
+    return `
+      <div class="growth-permit-stat-row">
+        <div class="growth-permit-stat">
+          <div class="growth-permit-stat-label">Post-2010 housing</div>
+          <div class="growth-permit-stat-val">${newConstructionPct}%</div>
+          <div class="growth-permit-stat-sub">of tract housing</div>
+        </div>
+      </div>
+      <p class="prem-narrative-body">${context}</p>
+      <p class="prem-disclaimer">Source: U.S. Census Bureau ACS 5-year estimates. Census tract level.</p>`;
+  }
+
+  return `
+    <p class="prem-narrative-body">Building permit trend data was not available for ${escapeHtml(county)} at this time.</p>
+    <p class="prem-narrative-body">To get current permit activity, contact the ${escapeHtml(county)} Planning and Zoning office directly — they maintain a public database of all issued permits and can tell you what's been approved in the last 12 months.</p>`;
+}
+
+function buildGrowthResearchGuideTab(locationInfo) {
+  const county = locationInfo?.county || 'your county';
+  const city   = locationInfo?.city   || county;
+
+  const items = [
+    {
+      icon: '🏛️',
+      title: `${county} Planning & Zoning`,
+      detail: `Search "${county} planning and zoning" to find the county planning department portal. Pending permit applications, approved zoning changes, and variance requests are all public record — but you have to ask.`,
+    },
+    {
+      icon: '🗺️',
+      title: 'GIS Zoning Map',
+      detail: `Search "${county} GIS zoning map" or "${city} zoning map." These interactive maps show current zoning classifications and often have a layer for approved developments. Rezoning of adjacent parcels can significantly affect what gets built next door.`,
+    },
+    {
+      icon: '🛣️',
+      title: 'State DOT Road Projects',
+      detail: `Road widening, new interchanges, and highway extensions are announced years in advance. Search "[state] DOT statewide transportation improvement program" (STIP) — it's a federally mandated list of funded projects with timelines.`,
+    },
+    {
+      icon: '📰',
+      title: 'Local news + planning meeting minutes',
+      detail: `County planning commission minutes are public record and often the first place a major development surfaces before it reaches any database. Search "${city} planning commission minutes" to find recent agendas.`,
+    },
+  ];
+
+  const rows = items.map(it => `
+    <div class="safety-prep-item">
+      <div class="safety-prep-item-hd">
+        <span class="safety-prep-item-icon">${it.icon}</span>
+        <span class="safety-prep-item-title">${escapeHtml(it.title)}</span>
+      </div>
+      <p class="safety-prep-item-detail">${escapeHtml(it.detail)}</p>
+    </div>`).join('');
+
+  return `
+    <p class="prem-narrative-body">The developments that most affect your quality of life — road widenings, large apartment complexes, commercial pads adjacent to your lot — live in planning databases that no API exposes. Here's how to find them.</p>
+    ${rows}`;
+}
+
+function buildGrowthDeepDiveHTML(growth) {
+  if (!growth) return '';
+  const { permits, newConstruction, locationInfo } = growth;
+
+  const tabs = [
+    { id: 'permits',  label: 'Permit Trends',  content: buildGrowthPermitTrendsTab(permits, newConstruction, locationInfo) },
+    { id: 'research', label: 'Research Guide', content: buildGrowthResearchGuideTab(locationInfo) },
+  ];
+
+  const tabButtons = tabs.map((t, i) =>
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="grtab-${t.id}" id="grbtn-${t.id}">${t.label}</button>`
+  ).join('');
+
+  const tabPanels = tabs.map((t, i) =>
+    `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="grtab-${t.id}" role="tabpanel" aria-labelledby="grbtn-${t.id}">${t.content}</div>`
+  ).join('');
+
+  return `
+    <div class="growth-deep-dive">
+      <div class="growth-deep-dive-label">Growth in Depth</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Growth chapter deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
+      </div>
+    </div>`;
+}
+
 function buildGrowthAndDevelopmentHTML(growth) {
   if (!growth) return '';
   const { permits, newConstruction, establishments, namedProjects = [], locationInfo } = growth;
@@ -157,7 +287,9 @@ function buildGrowthAndDevelopmentHTML(growth) {
 
   const craneSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="14" width="6" height="8"/><rect x="9" y="10" width="6" height="12"/><rect x="16" y="6" width="6" height="16"/><line x1="2" y1="22" x2="22" y2="22"/></svg>`;
   const glanceHTML = buildGrowthGlanceHTML(growth);
-  return renderChapterCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, null, null, glanceHTML || null);
+  const deepDiveHTML = buildGrowthDeepDiveHTML(growth);
+  const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
+  return renderChapterCard('growth', '08', craneSvg, 'Growth &amp; Development', 'What\'s being built around you — and what to watch for.', null, body, null, l3HTML || null, null, glanceHTML || null);
 }
 
 function buildGrowthGlanceHTML(growth) {
