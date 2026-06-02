@@ -40,3 +40,95 @@ describe('buildPropertyDataHTML — FR-045 glance bar', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildPropertyDataHTML — L3 deep dive', () => {
+  test('depth-l3 wrapper present', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/depth-l3/);
+  });
+
+  test('costs-deep-dive container rendered', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/costs-deep-dive/);
+  });
+
+  test('Long-Term View tab rendered', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/Long-Term View/);
+  });
+
+  test('30 Years stat label present', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/30 Years/);
+  });
+
+  test('5 Years stat label present', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/5 Years/);
+  });
+
+  test('Verify Before Closing tab rendered', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/Verify Before Closing/);
+  });
+
+  test('county assessor guidance present', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/assessor/i);
+  });
+
+  test('insurance quotes guidance present', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/insurance quotes/i);
+  });
+
+  test('utility bills guidance present', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/utility bills/i);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
+
+describe('buildPropertyDataHTML — L4 research', () => {
+  test('depth-l4 wrapper present', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('extended carrying cost table rendered', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/climate-data-table/);
+  });
+
+  test('$200k price point in table', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/\$200,000/);
+  });
+
+  test('$500k price point in table', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/\$500,000/);
+  });
+
+  test('$350k price point in table', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/\$350,000/);
+  });
+
+  test('KY tax correctly calculated at $300k ($215/mo)', () => {
+    // taxMo = round(300000 * 0.0086 / 12) = round(215) = 215
+    const html = buildPropertyDataHTML(basePropertyData);
+    expect(html).toMatch(/\$215/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildPropertyDataHTML(basePropertyData);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
