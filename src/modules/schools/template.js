@@ -2,6 +2,81 @@
 const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../../templates/components/chapterCard');
 
+function buildSchoolResearchToolsTab(schools) {
+  const publicSchools = schools?.public?.filter(Boolean) || [];
+
+  const schoolLinks = publicSchools.map(s => {
+    const query = encodeURIComponent(s.name);
+    return `
+      <div class="school-research-item">
+        <div class="school-research-item-hd">
+          <span class="school-research-item-name">${escapeHtml(s.name)}</span>
+          <span class="school-research-item-level">${escapeHtml(s.level)}</span>
+        </div>
+        <div class="school-research-item-link">
+          <a href="https://www.greatschools.org/search/search.page?q=${query}" target="_blank" rel="noopener noreferrer">Search on GreatSchools →</a>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <p class="prem-narrative-body">GreatSchools ratings summarize test performance and equity metrics — useful as a starting point, but factor in parent reviews and a site visit before drawing conclusions.</p>
+    ${schoolLinks || '<p class="prem-narrative-body">No public schools found — search GreatSchools.org directly with your address.</p>'}
+    <p class="prem-narrative-body"><a href="https://nces.ed.gov/ccd/schoolsearch/" target="_blank" rel="noopener noreferrer">NCES School Search</a> — Federal database of public school enrollment, demographics, and staffing data. No ratings, just raw counts.</p>
+    <p class="prem-narrative-body">Your state's Department of Education publishes annual school report cards. Search "<em>[state] school report card [school name]</em>" to find the official version.</p>
+    <p class="prem-disclaimer">Ratings and data are updated annually and reflect a snapshot in time. Teaching staff, programs, and school culture change faster than published data.</p>`;
+}
+
+function buildSchoolEnrollmentTab() {
+  const items = [
+    { when: '12–18 months before',       what: 'Start researching private school options. Most selective schools open applications in the fall for the following school year — inquire early.' },
+    { when: '6–12 months before',        what: 'Submit private school applications. Waitlists fill quickly. If you\'re targeting a specific private school, this is the window that matters.' },
+    { when: 'After offer accepted',       what: 'Call the district office immediately with your exact address and ask which school your parcel is zoned to at each level. Don\'t assume — boundaries split streets.' },
+    { when: 'Feb–April (most districts)', what: 'Public school enrollment windows for the coming year open. Submit any open-enrollment or magnet program applications in this window.' },
+    { when: 'Before closing',             what: 'Ask the district about any pending boundary changes or redistricting plans. Changes can affect which school your children attend starting the very next year.' },
+    { when: 'Before school starts',       what: 'Contact the school directly to confirm after-school care availability, pickup times, and waitlist status. These fill up fast and have direct impact on work schedules.' },
+  ];
+
+  const rows = items.map(it => `
+    <div class="school-timeline-item">
+      <div class="school-timeline-when">${escapeHtml(it.when)}</div>
+      <div class="school-timeline-what">${escapeHtml(it.what)}</div>
+    </div>`).join('');
+
+  return `
+    <p class="prem-narrative-body">School enrollment has hard deadlines that don't flex around real estate timelines. Here's the calendar to plan around.</p>
+    ${rows}
+    <p class="prem-disclaimer">Timelines are typical for US school districts. Verify specific dates with your district and target schools — they vary by state and district policy.</p>`;
+}
+
+function buildSchoolDeepDiveHTML(schools) {
+  if (!schools) return '';
+
+  const tabs = [
+    { id: 'research', label: 'Research Tools',      content: buildSchoolResearchToolsTab(schools) },
+    { id: 'timeline', label: 'Enrollment Timeline', content: buildSchoolEnrollmentTab() },
+  ];
+
+  const tabButtons = tabs.map((t, i) =>
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="sdtab-${t.id}" id="sdbtn-${t.id}">${t.label}</button>`
+  ).join('');
+
+  const tabPanels = tabs.map((t, i) =>
+    `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="sdtab-${t.id}" role="tabpanel" aria-labelledby="sdbtn-${t.id}">${t.content}</div>`
+  ).join('');
+
+  return `
+    <div class="school-deep-dive">
+      <div class="school-deep-dive-label">Schools in Depth</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Schools chapter deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
+      </div>
+    </div>`;
+}
+
 function buildSchoolRatingsHTML(schools) {
   if (!schools) return '';
   const publicSchools  = schools.public  || [];
@@ -122,7 +197,9 @@ function buildSchoolRatingsHTML(schools) {
 
   const bookSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:90" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`;
   const glanceHTML = buildSchoolGlanceHTML(schools);
-  return renderChapterCard('school', '05', bookSvg, 'Schools & Education', 'What you need to know before their first day.', null, body, null, null, null, glanceHTML || null);
+  const deepDiveHTML = buildSchoolDeepDiveHTML(schools);
+  const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
+  return renderChapterCard('school', '05', bookSvg, 'Schools & Education', 'What you need to know before their first day.', null, body, null, l3HTML || null, null, glanceHTML || null);
 }
 
 function buildSchoolGlanceHTML(schools) {
