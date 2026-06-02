@@ -1,43 +1,67 @@
 # Livably — Implementation Roadmap
-*Last updated: May 2026*
+*Last updated: June 2026*
 
 ## What Livably Is
 A residential address intelligence report for US homebuyers. Delivered as a web link. The goal is to make a buyer feel genuinely more informed about the home they're buying — not judged, not scared, not overwhelmed.
 
 **The product promise:** The things you'd only learn after living there for two years, handed to you before you sign.
 
-## Current State (May 2026)
-- Chapter 03 Daily Reachability: complete
-- 10+ chapters rendering with real data
-- Design system in place (Fraunces + DM Sans, design-tokens.css)
+## Current State (June 2026)
+- All 14 chapters rendering with real data
+- Modular architecture: each chapter owns data.js / logic.js / template.js
+- Depth slider system (FR-045): Glance / Overview / Deep Read / Research — all 14 chapters wired
+- L3/L4 content shipped for 12 of 14 chapters (Walkability and Costs remaining)
+- Design system: Fraunces + DM Sans, design-tokens.css, report.css
+- 1049 tests across 61 suites
 - Error memory/logging layer
-- Feature request workflow established
+- Feature request workflow established with 4-phase process
 - GitHub: https://github.com/Point998/Livably
 
-## Known Structural Debt
-The project was built iteratively without proper architecture. Two files (`app.js` ~500 lines, `premium.js` ~3000+ lines) contain all data fetching, business logic, validation, narrative generation, and HTML generation mixed together. This causes:
-- Bugs like cross-state school results (PM-001)
-- No testability of business rules
-- Design changes require touching data logic
-- New features compound existing structural problems
+## Completed Phases
 
-## The Rebuild Plan (Phases)
+### Phase 1 — Module Structure ✅ (PR #9, May 2026)
+Extracted the monolith into proper modules. Each module owns its domain completely.
 
-### Phase 1 — Module Structure (Current Priority)
-Extract the monolith into proper modules. Each module owns its domain completely.
-See: `docs/plans/module-restructure.md`
+### Phase 2 — Logic Layer ✅ (FR-035)
+Validation and coherence layer in `src/shared/validate.js` catches data errors before buyers see them.
 
-### Phase 2 — Logic Layer
-Build the validation and coherence layer that catches data errors before buyers see them.
-See: FR-035
+### Phase 3 — Test Suite ✅ (FR-040)
+Automated tests for every business rule. All new features shipped with tests.
 
-### Phase 3 — Test Suite
-Automated tests for every business rule. No feature ships without tests.
-See: FR-040
+### Phase 4 — Depth Slider Engine ✅ (FR-045, PRs #7+#8)
+4-level reading depth system: Glance / Overview / Deep Read / Research.
+All 14 chapters wired. L3/L4 content shipped for 12 chapters.
 
-### Phase 4 — Design Rebuild
-Clean separation of HTML generation from data logic enables Claude Design integration.
-See: LIVABLY-DESIGN-BRIEF.md
+**L3/L4 status per chapter:**
+| Chapter | FR | L3 | L4 |
+|---------|----|----|-----|
+| Climate | FR-043 | ✅ | ✅ |
+| Garden | FR-042 | ✅ | ✅ |
+| Property | FR-049 | ✅ | ✅ |
+| Community | pre-existing | ✅ | ✅ |
+| Health | FR-050 | ✅ | ✅ |
+| Traffic | FR-051 | ✅ | ✅ |
+| Schools | FR-052 | ✅ | ✅ |
+| Safety | FR-053 | ✅ | ✅ |
+| Growth | FR-054 | ✅ | ✅ |
+| Sensory | FR-055 | ✅ | ✅ |
+| Walkability | FR-056 | ⏳ pending | ⏳ pending |
+| Costs | FR-057 | ⏳ pending | ⏳ pending |
+| Daily (Reachability) | — | structure only | — |
+| Reach | — | structure only | — |
+
+**Known outstanding depth system debt:**
+- L3/L4 visual distinction — Deep Read and Research look identical (content stacks, no visual diff). Needs a dedicated design pass in report.css. Not fixed per-chapter; fix once for all chapters.
+
+## Active Work
+
+### FR-056 — Walkability L3/L4
+Next chapter in the L3/L4 rollout.
+
+### FR-057 — Costs L3/L4
+Final chapter in the L3/L4 rollout.
+
+## Next Phases
 
 ### Phase 5 — New Chapters
 Utilities Intelligence, Life at This Address Calculator, Chapter Enhancements.
@@ -64,9 +88,9 @@ src/modules/
   sensory/         Environmental, noise, light
   walkability/     Getting around on foot
   costs/           Property costs and market
-  utilities/       Utilities intelligence (FR-032)
+  utilities/       Utilities intelligence (FR-032, not yet built)
   traffic/         Traffic patterns
-  dailylife/       What daily life looks like here
+  property/        Property intelligence (broadband, soil, building age)
 
 src/shared/
   validate.js      Logic Layer — coherence rules
