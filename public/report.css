@@ -714,6 +714,57 @@ body.report-page {
   line-height: 1.6;
 }
 
+/* ── Health Chapter L3/L4 ──────────────────────────────────────── */
+.health-deep-dive { margin-top: var(--space-4); }
+
+.health-deep-dive-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-60);
+  margin-bottom: var(--space-2);
+}
+
+.health-station-detail {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.health-station-detail:last-of-type { border-bottom: none; }
+
+.health-station-detail-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.health-iso-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.health-iso-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.health-iso-class {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--ch-health);
+  min-width: 80px;
+}
+
+.health-iso-desc {
+  font-size: var(--text-sm);
+  color: var(--ink-60);
+}
+
 /* Right-column snapshot card */
 
 .snapshot-card {
