@@ -3258,6 +3258,24 @@ body.report-page {
   background: var(--ch-costs-light);
 }
 
+/* ── Costs Chapter L3/L4 ──────────────────────────────────────── */
+.costs-deep-dive { margin-top: var(--space-4); }
+
+.costs-deep-dive-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-60);
+  margin-bottom: var(--space-2);
+}
+
+.costs-longterm-stat-val {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--ch-costs);
+}
+
 /* ── Demographics Synthesis ────────────────────────────────────── */
 
 .prem-synthesis-line {
