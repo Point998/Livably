@@ -45,12 +45,65 @@ function buildTrafficGlanceHTML(trafficData) {
   return `<div class="chapter-glance"><span class="chapter-glance-item">${escapeHtml(glanceText)}</span></div>`;
 }
 
+function buildTrafficDeepDiveHTML(trafficData) {
+  if (!trafficData || !trafficData.length) return '';
+
+  const sorted = [...trafficData].sort((a, b) =>
+    (b.traffic?.stats?.range || 0) - (a.traffic?.stats?.range || 0)
+  );
+  const primary = sorted[0];
+  const { stats, variations } = primary.traffic;
+
+  const maxPct = Math.max(...trafficData.flatMap(t =>
+    t.traffic.variations.map(v => v.percentAboveBase || 0)
+  ));
+
+  const bestSlot  = variations.find(v => v.minutes === stats.min);
+  const worstSlot = variations.find(v => v.minutes === stats.max && stats.range > 0);
+
+  const impactNarrative = maxPct >= 20
+    ? `Traffic adds up to ${maxPct}% to drive times during peak hours — a meaningful difference that compounds quickly on a daily commute.`
+    : maxPct >= 10
+    ? `Traffic adds up to ${maxPct}% to drive times during peak hours. Noticeable, but manageable with some schedule flexibility.`
+    : `Traffic variation at this address is minimal — peak hours add less than 10% to drive times. Timing your trips matters less here than at many urban addresses.`;
+
+  const bestWorstHTML = (bestSlot && worstSlot && stats.range > 0) ? `
+    <div class="traffic-ddi-stat-row">
+      <div class="traffic-ddi-stat">
+        <div class="traffic-ddi-stat-label">Best window</div>
+        <div class="traffic-ddi-stat-val">${escapeHtml(bestSlot.display)}</div>
+        <div class="traffic-ddi-stat-sub">${stats.min} min to ${escapeHtml(primary.name)}</div>
+      </div>
+      <div class="traffic-ddi-stat">
+        <div class="traffic-ddi-stat-label">Worst window</div>
+        <div class="traffic-ddi-stat-val">${escapeHtml(worstSlot.display)}</div>
+        <div class="traffic-ddi-stat-sub">${stats.max} min to ${escapeHtml(primary.name)}</div>
+      </div>
+    </div>` : '';
+
+  const annualHours = Math.round(stats.range * 500 / 60);
+  const annualHTML = (stats.range >= 5 && annualHours > 0) ? `
+    <p class="prem-narrative-body">If you commute daily, the difference between the best and worst departure time adds up to roughly <strong>${annualHours} hours per year</strong> for the ${escapeHtml(primary.name)} trip alone. That's based on ${stats.range} min/trip × ~500 commutes/year (2 trips/day, 5 days/week, 50 weeks).</p>` : '';
+
+  return `
+    <div class="traffic-deep-dive">
+      <div class="traffic-deep-dive-label">Traffic Pattern Analysis</div>
+      <p class="prem-narrative-body">${impactNarrative}</p>
+      ${bestWorstHTML}
+      ${annualHTML}
+      <p class="prem-disclaimer">Based on Google Distance Matrix departure time sampling. Actual traffic varies by day and season.</p>
+    </div>`;
+}
+
 function buildTrafficCardHTML(trafficData) {
   if (!trafficData || !trafficData.length) return '';
   const sectionsHTML = trafficData
     .map((t, i) => (i > 0 ? '<div class="traffic-section-divider"></div>' : '') + buildTrafficItemHTML(t.name, t.traffic))
     .join('');
   const waveSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:80" aria-hidden="true"><polyline points="2 12 6 4 10 20 14 8 18 16 22 12" style="--path-len:80"/></svg>`;
+
+  const deepDiveHTML = buildTrafficDeepDiveHTML(trafficData);
+  const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
 
   return `
   <section class="chapter" data-ch="traffic" data-depth="overview">
@@ -65,6 +118,7 @@ function buildTrafficCardHTML(trafficData) {
       </header>
       <p class="chapter-intro">Drive times aren't fixed — they shift significantly based on when you leave. The "Worst" time is the one to internalize if you're planning a regular commute.</p>
       <div class="depth-l1">${buildTrafficGlanceHTML(trafficData)}</div>
+      ${l3HTML}
       ${renderDepthSelector('traffic')}
     </div>
     <div class="chapter-full depth-l2">
