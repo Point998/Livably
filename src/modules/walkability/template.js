@@ -25,6 +25,168 @@ function getPedestrianFeatures(score) {
   };
 }
 
+function buildWalkBeforeClosingTab(walk) {
+  const { score } = walk;
+
+  const scoreContext = score >= 70
+    ? 'The destinations nearby are genuine and close. The main thing to verify is route quality — sidewalk continuity, crossing conditions, and lighting.'
+    : score >= 50
+    ? "Walking is situationally useful here. Before closing, identify the specific trips you'd actually make on foot and test each one."
+    : 'Car-dependency is the reality here. Still worth verifying what walking looks like for exercise, leisure, and occasional short trips.';
+
+  const items = [
+    {
+      icon: '🚶',
+      title: 'Walk your top destinations',
+      detail: `Use the estimated walk times as a starting point, then test each route yourself. Grade changes, sidewalk gaps, and intersection wait times can make a route feel longer than the numbers suggest. ${scoreContext}`,
+    },
+    {
+      icon: '🌃',
+      title: 'Visit in the evening',
+      detail: "Lighting, traffic pace, and pedestrian density shift after dark. If you'd be walking to a restaurant, transit stop, or gym at night, verify the route in those conditions — not just on a sunny weekend afternoon.",
+    },
+    {
+      icon: '📱',
+      title: 'Preview routes in Street View',
+      detail: 'Before your next property visit, use Google Maps Street View to walk routes from the front door. Look for sidewalk gaps that force pedestrians into the road, construction blocking paths, and intersection crossing quality.',
+    },
+    {
+      icon: '🚌',
+      title: 'Verify transit frequency if it applies',
+      detail: "If you're planning to supplement walking with transit, check specific route frequency and hours — not just that a stop exists. A bus that runs twice per day changes the math significantly. Use your city's transit authority app, not just Google Maps.",
+    },
+    {
+      icon: '♿',
+      title: 'Check accessibility if relevant',
+      detail: 'If anyone in your household has mobility limitations, walk each route to verify curb cuts at crossings, ramp conditions, and surface continuity. ADA compliance does not guarantee day-to-day navigability.',
+    },
+  ];
+
+  const rows = items.map((it) => `
+    <div class="safety-prep-item">
+      <div class="safety-prep-item-hd">
+        <span class="safety-prep-item-icon">${it.icon}</span>
+        <span class="safety-prep-item-title">${escapeHtml(it.title)}</span>
+      </div>
+      <p class="safety-prep-item-detail">${it.detail}</p>
+    </div>`).join('');
+
+  return `
+    <p class="prem-narrative-body">Walk time data describes the address, not the experience on foot. These are the things worth verifying in person before closing.</p>
+    ${rows}`;
+}
+
+function buildWalkResearchToolsTab() {
+  const items = [
+    {
+      icon: '📊',
+      title: 'Walk Score',
+      detail: 'The industry-standard walkability database. Enter any US address to see Walk Score, Transit Score, and Bike Score with a breakdown of nearby amenities. More granular than proximity estimates for comparing walkability across addresses.',
+      url: 'https://www.walkscore.com/',
+    },
+    {
+      icon: '🗺️',
+      title: 'Google Maps Street View',
+      detail: 'Walk your routes before visiting. Drag the orange pegman onto any street to see ground-level conditions — sidewalk continuity, crossing infrastructure, and grade changes. Useful for previewing routes to the destinations listed above.',
+      url: 'https://maps.google.com/',
+    },
+    {
+      icon: '🚌',
+      title: 'City transit trip planner',
+      detail: "Search \"[your city] transit trip planner\" to find your local transit authority's official app. More accurate than Google Maps for real schedules and real-time service status. Check frequency and hours, not just whether a route exists.",
+      url: null,
+    },
+    {
+      icon: '🗂️',
+      title: 'OpenStreetMap pedestrian layer',
+      detail: 'A detailed community-mapped database of pedestrian infrastructure — sidewalks, footpaths, crossings, and pedestrian zones. Use the Transport map layer to see pedestrian routing in your specific area.',
+      url: 'https://www.openstreetmap.org/',
+    },
+    {
+      icon: '📋',
+      title: 'City 311 / sidewalk inventory',
+      detail: 'Search "[your city] 311 sidewalk" or "[your city] sidewalk inventory." Many cities maintain public records of reported sidewalk damage, planned repairs, and infrastructure gaps.',
+      url: null,
+    },
+  ];
+
+  const rows = items.map((it) => {
+    const titleContent = it.url
+      ? `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(it.title)}</a>`
+      : escapeHtml(it.title);
+    return `
+    <div class="sensory-research-item">
+      <div class="sensory-research-item-hd">
+        <span class="sensory-research-item-icon">${it.icon}</span>
+        <span class="sensory-research-item-title">${titleContent}</span>
+      </div>
+      <p class="sensory-research-item-detail">${it.detail}</p>
+    </div>`;
+  }).join('');
+
+  return `
+    <p class="prem-narrative-body">These tools let you go deeper on walkability and pedestrian conditions at this specific address.</p>
+    ${rows}`;
+}
+
+function buildWalkResearchHTML(walk) {
+  if (!walk?.destinations?.length) return '';
+  const { destinations } = walk;
+
+  const rows = destinations.map((d) => {
+    const distDisplay = d.distanceMiles < 0.2
+      ? `${Math.round(d.distanceMiles * 5280)} ft`
+      : `${d.distanceMiles.toFixed(1)} mi`;
+    return `
+    <tr>
+      <td>${escapeHtml(d.label)}</td>
+      <td>${escapeHtml(d.name)}</td>
+      <td>${d.walkMinutes} min</td>
+      <td>${distDisplay}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">All Walkable Destinations</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Category</th><th>Name</th><th>Walk Time</th><th>Distance</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p class="prem-disclaimer">Walk times estimated from straight-line distance at average pedestrian pace. Not based on official Walk Score® data. Source: Google Places API.</p>
+    </div>`;
+}
+
+function buildWalkDeepDiveHTML(walk) {
+  if (!walk) return '';
+
+  const tabs = [
+    { id: 'verify',   label: 'Walk Before Closing', content: buildWalkBeforeClosingTab(walk) },
+    { id: 'research', label: 'Research Tools',       content: buildWalkResearchToolsTab() },
+  ];
+
+  const tabButtons = tabs.map((t, i) =>
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="wktab-${t.id}" id="wkbtn-${t.id}">${t.label}</button>`
+  ).join('');
+
+  const tabPanels = tabs.map((t, i) =>
+    `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="wktab-${t.id}" role="tabpanel" aria-labelledby="wkbtn-${t.id}">${t.content}</div>`
+  ).join('');
+
+  return `
+    <div class="walk-deep-dive">
+      <div class="walk-deep-dive-label">Walking in Depth</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Walkability chapter deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
+      </div>
+    </div>`;
+}
+
 function buildWalkabilityHTML(walk) {
   if (!walk) return '';
   const { score, category, destinations } = walk;
@@ -124,8 +286,14 @@ function buildWalkabilityHTML(walk) {
     <p class="prem-disclaimer">Walkability is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
 
   const walkSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M8 22l2-7 3 3 3-4 2 8"/><path d="M7.5 13.5L9 11l4 1 2-3.5"/></svg>`;
+  const deepDiveHTML = buildWalkDeepDiveHTML(walk);
+  const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
+  const researchHTML = buildWalkResearchHTML(walk);
+  const l4HTML = researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '';
+  const fullHTML = [walkFullHTML, l3HTML, l4HTML].filter(Boolean).join('');
+
   const glanceHTML = buildWalkGlanceHTML(walk);
-  return renderChapterCard('walk', '13', walkSvg, 'Getting Around on Foot', 'What\'s reachable without a car — and what that means for daily life.', null, walkLeftHTML, null, walkFullHTML, null, glanceHTML || null);
+  return renderChapterCard('walk', '13', walkSvg, 'Getting Around on Foot', 'What\'s reachable without a car — and what that means for daily life.', null, walkLeftHTML, null, fullHTML || null, null, glanceHTML || null);
 }
 
 function buildWalkGlanceHTML(walk) {
