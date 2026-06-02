@@ -2194,6 +2194,50 @@ body.report-page {
   color: var(--ink-60);
 }
 
+/* ── Safety Chapter L3/L4 ──────────────────────────────────────── */
+.safety-deep-dive { margin-top: var(--space-4); }
+
+.safety-deep-dive-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-60);
+  margin-bottom: var(--space-2);
+}
+
+.safety-prep-item {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.safety-prep-item:last-of-type { border-bottom: none; }
+
+.safety-prep-item-hd {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.safety-prep-item-icon {
+  font-size: var(--text-base);
+  flex-shrink: 0;
+}
+
+.safety-prep-item-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.safety-prep-item-detail {
+  font-size: var(--text-sm);
+  color: var(--ink-60);
+  margin: 0;
+  padding-left: calc(var(--text-base) + var(--space-2));
+}
+
 /* ── Demographics Grid ─────────────────────────────────────────── */
 
 .prem-demo-grid {
