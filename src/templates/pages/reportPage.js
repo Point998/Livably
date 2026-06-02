@@ -176,7 +176,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
   const chapterSectionsHTML = buildChaptersHTML(chapters || null);
-  const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, chapters?.emergency);
+  const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, chapters?.emergency, urgentCare);
 
   // Hero At-a-Glance insight rows (rendered inside the editorial hero block)
   const heroInsightRowsHTML = buildHeroInsightRowsHTML(hospital, school, highwayRamp, chapters);

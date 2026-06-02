@@ -41,3 +41,13 @@ describe('buildHealthSafetyChapterHTML — FR-045 depth system', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildHealthSafetyChapterHTML — urgentCare threading', () => {
+  test('accepts urgentCare as third param without error', () => {
+    const uc = { name: 'FastCare Urgent Care', address: '5 Clinic Rd', driveTimeMinutes: 8 };
+    expect(() => buildHealthSafetyChapterHTML(hospital, emergency, uc)).not.toThrow();
+  });
+  test('accepts undefined urgentCare without error', () => {
+    expect(() => buildHealthSafetyChapterHTML(hospital, emergency, undefined)).not.toThrow();
+  });
+});

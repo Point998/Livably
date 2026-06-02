@@ -13,7 +13,7 @@ function buildHealthGlanceHTML(hospital, emergency) {
   return `<div class="chapter-glance">${erItem}${fireItem}</div>`;
 }
 
-function buildHealthSafetyChapterHTML(hospital, emergency) {
+function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
   if (!hospital && !emergency) return '';
   const fire   = emergency?.fire;
   const police = emergency?.police;
