@@ -49,6 +49,45 @@ function buildSchoolEnrollmentTab() {
     <p class="prem-disclaimer">Timelines are typical for US school districts. Verify specific dates with your district and target schools — they vary by state and district policy.</p>`;
 }
 
+function buildSchoolResearchHTML(schools) {
+  if (!schools) return '';
+
+  const publicSchools  = schools.public?.filter(Boolean) || [];
+  const privateSchools = schools.private || [];
+
+  if (!publicSchools.length && !privateSchools.length) return '';
+
+  const publicRows = publicSchools.map(s => `
+    <tr>
+      <td>${escapeHtml(s.name)}</td>
+      <td>Public</td>
+      <td>${escapeHtml(s.level)}</td>
+      <td>${escapeHtml(s.distanceMiles)} mi</td>
+      <td>${s.driveTimeMinutes != null ? `${s.driveTimeMinutes} min` : '—'}</td>
+    </tr>`).join('');
+
+  const privateRows = privateSchools.map(s => `
+    <tr>
+      <td>${escapeHtml(s.name)}</td>
+      <td>Private</td>
+      <td>—</td>
+      <td>${escapeHtml(s.distanceMiles)} mi</td>
+      <td>—</td>
+    </tr>`).join('');
+
+  return `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">All Schools Found — Full Data</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Name</th><th>Type</th><th>Level</th><th>Distance</th><th>Drive Time</th></tr></thead>
+          <tbody>${publicRows}${privateRows}</tbody>
+        </table>
+      </div>
+      <p class="prem-disclaimer">Nearest schools by distance. Assigned school requires verification with the district. Private school list is not exhaustive.</p>
+    </div>`;
+}
+
 function buildSchoolDeepDiveHTML(schools) {
   if (!schools) return '';
 
@@ -199,7 +238,10 @@ function buildSchoolRatingsHTML(schools) {
   const glanceHTML = buildSchoolGlanceHTML(schools);
   const deepDiveHTML = buildSchoolDeepDiveHTML(schools);
   const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
-  return renderChapterCard('school', '05', bookSvg, 'Schools & Education', 'What you need to know before their first day.', null, body, null, l3HTML || null, null, glanceHTML || null);
+  const researchHTML = buildSchoolResearchHTML(schools);
+  const l4HTML = researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '';
+  const fullHTML = [l3HTML, l4HTML].filter(Boolean).join('');
+  return renderChapterCard('school', '05', bookSvg, 'Schools & Education', 'What you need to know before their first day.', null, body, null, fullHTML || null, null, glanceHTML || null);
 }
 
 function buildSchoolGlanceHTML(schools) {

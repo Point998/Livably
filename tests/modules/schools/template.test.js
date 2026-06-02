@@ -110,3 +110,48 @@ describe('buildSchoolRatingsHTML — L3 deep dive', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildSchoolRatingsHTML — L4 research', () => {
+  test('depth-l4 wrapper present', () => {
+    const html = buildSchoolRatingsHTML(fullSchools);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('schools data table rendered', () => {
+    const html = buildSchoolRatingsHTML(fullSchools);
+    expect(html).toMatch(/climate-data-table/);
+  });
+
+  test('all three public school levels appear in table', () => {
+    const html = buildSchoolRatingsHTML(fullSchools);
+    expect(html).toMatch(/Georgetown Elementary/);
+    expect(html).toMatch(/Georgetown Middle/);
+    expect(html).toMatch(/Scott County High/);
+  });
+
+  test('private school appears in table', () => {
+    const html = buildSchoolRatingsHTML(fullSchools);
+    expect(html).toMatch(/Calvary Christian Academy/);
+  });
+
+  test('drive time shown in table for schools that have it', () => {
+    const html = buildSchoolRatingsHTML(fullSchools);
+    expect(html).toMatch(/6 min/);
+  });
+
+  test('table shows em-dash for private schools with no drive time', () => {
+    const html = buildSchoolRatingsHTML(fullSchools);
+    expect(html).toMatch(/—/);
+  });
+
+  test('L4 absent when schools is null', () => {
+    const html = buildSchoolRatingsHTML(null);
+    expect(html).toBe('');
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildSchoolRatingsHTML(fullSchools);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
