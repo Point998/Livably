@@ -13,6 +13,108 @@ function buildHealthGlanceHTML(hospital, emergency) {
   return `<div class="chapter-glance">${erItem}${fireItem}</div>`;
 }
 
+function buildUrgentCareTab(urgentCare, hospital) {
+  if (!urgentCare) {
+    return `
+      <p class="prem-narrative-body">No urgent care clinic was found within the search radius for this address.</p>
+      <p class="prem-narrative-body">To find nearby options, visit <a href="https://www.solvhealth.com/" target="_blank" rel="noopener noreferrer">Solv Health</a> or the <a href="https://www.urgentcarelocations.com/" target="_blank" rel="noopener noreferrer">Urgent Care Association directory</a> and enter this address directly.</p>`;
+  }
+
+  const comparison = hospital
+    ? urgentCare.driveTimeMinutes < hospital.driveTimeMinutes
+      ? `${urgentCare.driveTimeMinutes} min away — closer than the nearest ER (${hospital.driveTimeMinutes} min). For non-emergencies, urgent care is often the faster and lower-cost first stop.`
+      : `${urgentCare.driveTimeMinutes} min away. For non-emergencies — ear infections, cuts, sprains, flu — urgent care handles most situations faster and at lower cost than an ER.`
+    : `${urgentCare.driveTimeMinutes} min away.`;
+
+  const crossStateNote = urgentCare.crossStateWarning
+    ? `<p class="prem-narrative-body">${escapeHtml(urgentCare.crossStateNote)}</p>`
+    : '';
+
+  return `
+    <p class="prem-narrative-body"><strong>${escapeHtml(urgentCare.name)}</strong> — ${comparison}</p>
+    <p class="prem-narrative-body">${escapeHtml(urgentCare.address)}</p>
+    ${crossStateNote}
+    <p class="prem-disclaimer">Source: Google Places. Urgent care locations and hours change — confirm before visiting.</p>`;
+}
+
+function buildStationDetailsTab(emergency) {
+  const fire   = emergency?.fire;
+  const police = emergency?.police;
+
+  function stationDetail(icon, type, station) {
+    if (!station) return '';
+    const { estimate, category } = station.response;
+    const bc = category.color === 'green'  ? 'badge-response-green'
+             : category.color === 'gold'   ? 'badge-response-gold'
+             : category.color === 'orange' ? 'badge-response-orange'
+             :                               'badge-response-red';
+    return `
+      <div class="health-station-detail">
+        <div class="health-station-detail-hd">
+          <span>${icon} ${escapeHtml(type)}</span>
+          <span class="ch01-response-badge ${bc}">~${estimate} min · ${escapeHtml(category.label)}</span>
+        </div>
+        <p class="prem-narrative-body">${escapeHtml(station.name)}</p>
+        <p class="prem-narrative-body">${escapeHtml(station.address)} · ${station.distanceMiles} mi</p>
+      </div>`;
+  }
+
+  return `
+    ${stationDetail('🚒', 'Fire Station', fire)}
+    ${stationDetail('🚔', 'Police / EMS', police)}
+    <p class="prem-disclaimer">Response times are estimates based on station distance and typical dispatch speeds. Actual times vary with call volume and unit availability.</p>`;
+}
+
+function buildISOTab(fire) {
+  const responseNote = fire
+    ? `<p class="prem-narrative-body">The nearest fire station is ~${fire.response.estimate} minutes away. Response time is one factor in your PPC rating — along with staffing, equipment, and water supply infrastructure.</p>`
+    : '';
+
+  return `
+    <p class="prem-narrative-body">The Insurance Services Office (ISO) assigns every US address a <strong>Public Protection Classification (PPC)</strong> from 1 to 10. Your rating directly determines your homeowner's fire coverage cost.</p>
+    <div class="health-iso-grid">
+      <div class="health-iso-row"><span class="health-iso-class">Class 1–4</span><span class="health-iso-desc">Excellent protection — best rates</span></div>
+      <div class="health-iso-row"><span class="health-iso-class">Class 5–8</span><span class="health-iso-desc">Standard protection — typical rates</span></div>
+      <div class="health-iso-row"><span class="health-iso-class">Class 9</span><span class="health-iso-desc">Limited protection — higher premiums</span></div>
+      <div class="health-iso-row"><span class="health-iso-class">Class 10</span><span class="health-iso-desc">No recognized protection — highest premiums</span></div>
+    </div>
+    ${responseNote}
+    <p class="prem-narrative-body"><strong>How to get your rating:</strong> Call your homeowner's insurance agent and ask for the ISO PPC rating for this specific address. It takes one phone call, it's free, and it's address-specific — not neighborhood-level.</p>
+    <p class="prem-disclaimer">Source: ISO/Verisk. Ratings are updated periodically. Your agent has the most current value for your address.</p>`;
+}
+
+function buildHealthDeepDiveHTML(hospital, emergency, urgentCare) {
+  const hasFire   = !!(emergency?.fire);
+  const hasPolice = !!(emergency?.police);
+
+  const tabs = [
+    { id: 'urgentcare', label: 'Urgent Care',     content: buildUrgentCareTab(urgentCare, hospital) },
+    (hasFire || hasPolice)
+      ? { id: 'stations', label: 'Station Details', content: buildStationDetailsTab(emergency) }
+      : null,
+    { id: 'iso',        label: 'ISO Fire Rating',  content: buildISOTab(emergency?.fire) },
+  ].filter(Boolean);
+
+  const tabButtons = tabs.map((t, i) =>
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="hdtab-${t.id}" id="hdbtn-${t.id}">${t.label}</button>`
+  ).join('');
+
+  const tabPanels = tabs.map((t, i) =>
+    `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="hdtab-${t.id}" role="tabpanel" aria-labelledby="hdbtn-${t.id}">${t.content}</div>`
+  ).join('');
+
+  return `
+    <div class="health-deep-dive">
+      <div class="health-deep-dive-label">Medical Access in Depth</div>
+      <nav class="climate-tab-nav" role="tablist" aria-label="Health chapter deep dive">
+        ${tabButtons}
+      </nav>
+      <div class="climate-tab-panels">
+        ${tabPanels}
+      </div>
+    </div>`;
+}
+
 function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
   if (!hospital && !emergency) return '';
   const fire   = emergency?.fire;
@@ -86,6 +188,9 @@ function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
 
   const erSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:96" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" style="--path-len:96"/></svg>`;
 
+  const deepDiveHTML = buildHealthDeepDiveHTML(hospital, emergency, urgentCare);
+  const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
+
   return `
   <section class="chapter" data-ch="health" data-depth="overview">
     <div class="chapter-inner">
@@ -113,6 +218,7 @@ function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
           ${stationsHTML ? `<div class="snapshot-card"><div class="snapshot-card-label">Emergency Response</div><div class="ch01-stations">${stationsHTML}</div></div>` : ''}
         </div>
       </div>
+      ${l3HTML}
       ${renderDepthSelector('health')}
     </div>
   </section>
