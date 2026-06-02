@@ -83,6 +83,36 @@ function buildISOTab(fire) {
     <p class="prem-disclaimer">Source: ISO/Verisk. Ratings are updated periodically. Your agent has the most current value for your address.</p>`;
 }
 
+function buildHealthResearchHTML(hospital, emergency, urgentCare) {
+  const rows = [
+    hospital
+      ? `<tr><td>Emergency Room</td><td>${escapeHtml(hospital.name)}</td><td>${escapeHtml(hospital.address)}</td><td>${hospital.driveTimeMinutes} min drive</td></tr>`
+      : '',
+    urgentCare
+      ? `<tr><td>Urgent Care</td><td>${escapeHtml(urgentCare.name)}</td><td>${escapeHtml(urgentCare.address)}</td><td>${urgentCare.driveTimeMinutes} min drive</td></tr>`
+      : '',
+    emergency?.fire
+      ? `<tr><td>Fire Station</td><td>${escapeHtml(emergency.fire.name)}</td><td>${escapeHtml(emergency.fire.address)}</td><td>~${emergency.fire.response.estimate} min response</td></tr>`
+      : '',
+    emergency?.police
+      ? `<tr><td>Police / EMS</td><td>${escapeHtml(emergency.police.name)}</td><td>${escapeHtml(emergency.police.address)}</td><td>~${emergency.police.response.estimate} min response</td></tr>`
+      : '',
+  ].filter(Boolean).join('');
+
+  if (!rows) return '';
+
+  return `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Emergency Facilities — Full Data</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Type</th><th>Name</th><th>Address</th><th>Time</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 function buildHealthDeepDiveHTML(hospital, emergency, urgentCare) {
   const hasFire   = !!(emergency?.fire);
   const hasPolice = !!(emergency?.police);
@@ -191,6 +221,9 @@ function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
   const deepDiveHTML = buildHealthDeepDiveHTML(hospital, emergency, urgentCare);
   const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
 
+  const researchHTML = buildHealthResearchHTML(hospital, emergency, urgentCare);
+  const l4HTML = researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '';
+
   return `
   <section class="chapter" data-ch="health" data-depth="overview">
     <div class="chapter-inner">
@@ -219,6 +252,7 @@ function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
         </div>
       </div>
       ${l3HTML}
+      ${l4HTML}
       ${renderDepthSelector('health')}
     </div>
   </section>

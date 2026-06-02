@@ -114,3 +114,49 @@ describe('buildHealthSafetyChapterHTML — L3 deep dive', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildHealthSafetyChapterHTML — L4 research', () => {
+  test('depth-l4 wrapper present when hospital present', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare);
+    expect(html).toMatch(/depth-l4/);
+  });
+
+  test('facilities table rendered', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare);
+    expect(html).toMatch(/climate-data-table/);
+  });
+
+  test('ER row in research table', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare);
+    expect(html).toMatch(/Emergency Room/);
+    expect(html).toMatch(/Georgetown Community Hospital/);
+  });
+
+  test('urgent care row in research table when provided', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare);
+    expect(html).toMatch(/FastCare Urgent Care/);
+  });
+
+  test('urgent care row absent when urgentCare is null', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, null);
+    expect(html).toMatch(/Emergency Room/);
+    expect(html).not.toMatch(/FastCare/);
+  });
+
+  test('fire station row in research table', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare);
+    expect(html).toMatch(/Fire Station/);
+    expect(html).toMatch(/Georgetown Fire Station 1/);
+  });
+
+  test('L4 absent when no data at all', () => {
+    const html = buildHealthSafetyChapterHTML(null, null, null);
+    expect(html).toBe('');
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
