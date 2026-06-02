@@ -45,8 +45,8 @@ All 14 chapters wired. L3/L4 content shipped for 12 chapters.
 | Safety | FR-053 | ✅ | ✅ |
 | Growth | FR-054 | ✅ | ✅ |
 | Sensory | FR-055 | ✅ | ✅ |
-| Walkability | FR-056 | ⏳ pending | ⏳ pending |
-| Costs | FR-057 | ⏳ pending | ⏳ pending |
+| Walkability | FR-056 | ✅ | ✅ |
+| Costs | FR-057 | ✅ | ✅ |
 | Daily (Reachability) | — | structure only | — |
 | Reach | — | structure only | — |
 
@@ -55,11 +55,9 @@ All 14 chapters wired. L3/L4 content shipped for 12 chapters.
 
 ## Active Work
 
-### FR-056 — Walkability L3/L4
-Next chapter in the L3/L4 rollout.
+**Phase 4 complete.** All 14 chapters now have full depth slider coverage (L1–L4).
 
-### FR-057 — Costs L3/L4
-Final chapter in the L3/L4 rollout.
+**Depth slider rollout: done.** Next: Phase 5 (new chapters) or the L3/L4 visual distinction design pass.
 
 ## Next Phases
 
