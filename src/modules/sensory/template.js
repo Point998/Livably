@@ -1,6 +1,7 @@
 'use strict';
 const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../../templates/components/chapterCard');
+const { computeBearing, bearingToCompass } = require('../../utils/geo');
 
 function buildSensoryResearchToolsTab(env) {
   const { airQuality, waterQuality, radon, ejscreen } = env || {};
@@ -197,17 +198,27 @@ function buildSensoryEnvironmentalHTML(env) {
   } else {
     const n = airports[0];
     const d = n.distanceMiles.toFixed(1);
+    const homeLat = env._homeLat;
+    const homeLng = env._homeLng;
+    const COMPASS_WORDS = { N: 'north', NE: 'northeast', E: 'east', SE: 'southeast', S: 'south', SW: 'southwest', W: 'west', NW: 'northwest' };
+    const dirOf = (a) => (a.lat != null && a.lng != null && homeLat != null)
+      ? ` to the ${COMPASS_WORDS[bearingToCompass(computeBearing(homeLat, homeLng, a.lat, a.lng))]}`
+      : '';
+    const nDir = dirOf(n);
     if (n.distanceMiles < 5) {
-      airportPara = `${escapeHtml(n.name)} is ${d} miles away — close enough that aircraft on approach or departure are frequently audible, particularly in the mornings and evenings. Consider visiting the property during early morning hours (6–9am weekdays) before committing.`;
+      airportPara = `${escapeHtml(n.name)} is ${d} miles${nDir} — close enough that aircraft on approach or departure are frequently audible, particularly in the mornings and evenings. Consider visiting the property during early morning hours (6–9am weekdays) before committing.`;
     } else if (n.distanceMiles < 10) {
-      airportPara = `${escapeHtml(n.name)} is approximately ${d} miles away. Aircraft on approach or departure paths may be audible at this distance during peak periods. Worth visiting at different times of day to gauge the actual sound level.`;
+      airportPara = `${escapeHtml(n.name)} is approximately ${d} miles${nDir}. Aircraft on approach or departure paths may be audible at this distance during peak periods. Worth visiting at different times of day to gauge the actual sound level.`;
     } else if (n.distanceMiles < 15) {
-      airportPara = `The nearest airport, ${escapeHtml(n.name)}, is ${d} miles away. Depending on prevailing winds and runway configuration, some approach traffic may occasionally be audible overhead. At this distance, it's not typically disruptive.`;
+      airportPara = `The nearest airport, ${escapeHtml(n.name)}, is ${d} miles${nDir}. Depending on prevailing winds and runway configuration, some approach traffic may occasionally be audible overhead. At this distance, it's not typically disruptive.`;
     } else {
-      airportPara = `The nearest airport, ${escapeHtml(n.name)}, is ${d} miles away. At that distance, aircraft are at altitude and not meaningfully audible at ground level. Flight noise is not a daily factor here.`;
+      airportPara = `The nearest airport, ${escapeHtml(n.name)}, is ${d} miles${nDir}. At that distance, aircraft are at altitude and not meaningfully audible at ground level. Flight noise is not a daily factor here.`;
     }
     if (airports.length > 1) {
-      const others = airports.slice(1, 3).map((a) => `${escapeHtml(a.name)} (${a.distanceMiles.toFixed(1)} mi)`).join(' and ');
+      const others = airports.slice(1, 3).map((a) => {
+        const aDir = dirOf(a);
+        return `${escapeHtml(a.name)} (${a.distanceMiles.toFixed(1)} mi${aDir})`;
+      }).join(' and ');
       airportPara += ` ${others} ${airports.length === 2 ? 'is' : 'are'} also in the region.`;
     }
   }

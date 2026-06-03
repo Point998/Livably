@@ -35,6 +35,8 @@ async function getEnvironmentalData(lat, lng, _highwayDriveMinutes, fips) {
     roadNoise = { dnl: estDnl, source: 'estimated from highway proximity', category: getDNLCategory(estDnl), nearestRoad: null };
   }
   return {
+    _homeLat:       lat,
+    _homeLng:       lng,
     airQuality:     v(airResult),
     floodRisk:      v(floodResult),
     airports:       v(airportsResult),
@@ -90,6 +92,8 @@ async function getAirportData(lat, lng) {
     .map((p) => ({
       name: p.name,
       distanceMiles: haversineDistance(lat, lng, p.geometry.location.lat, p.geometry.location.lng),
+      lat: p.geometry.location.lat,
+      lng: p.geometry.location.lng,
     }))
     .filter((a) => a.distanceMiles <= AIRPORT_MAX_DISTANCE_MILES)
     .sort((a, b) => a.distanceMiles - b.distanceMiles);

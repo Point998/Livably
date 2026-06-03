@@ -2,7 +2,9 @@
 const { buildSensoryEnvironmentalHTML } = require('../../../src/modules/sensory/template');
 
 const baseEnv = {
-  airports: [{ name: 'Cincinnati/Northern Kentucky International', distanceMiles: 22.5 }],
+  _homeLat: 38.2109,
+  _homeLng: -84.5592,
+  airports: [{ name: 'Cincinnati/Northern Kentucky International', distanceMiles: 22.5, lat: 39.0489, lng: -84.6678 }],
   roadNoise: { dnl: 52, source: 'BTS', nearestRoad: { name: 'US-25' } },
   rail: null,
   lightPollution: { bortle: 4, label: 'Rural/Suburban Transition', desc: 'Milky Way visible on clear nights.' },
@@ -162,6 +164,73 @@ describe('buildSensoryEnvironmentalHTML — L4 research', () => {
 
   test('no inline styles (CONSTRAINT-008)', () => {
     const html = buildSensoryEnvironmentalHTML(baseEnv);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
+
+describe('buildSensoryEnvironmentalHTML — air traffic direction', () => {
+  const nearAirport = {
+    ...baseEnv,
+    airports: [{ name: 'Blue Grass Airport', distanceMiles: 4.2, lat: 38.0365, lng: -84.6059 }],
+  };
+
+  test('compass direction appears in airport narrative', () => {
+    const html = buildSensoryEnvironmentalHTML(nearAirport);
+    expect(html).toMatch(/\b(north|northeast|east|southeast|south|southwest|west|northwest)\b/i);
+  });
+
+  test('CVG appears to the north from Georgetown KY', () => {
+    // Georgetown KY (38.21, -84.56) is south of CVG (39.05, -84.67) — airport is "north"
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/to the north/);
+  });
+
+  test('direction appears for secondary airports in multi-airport narrative', () => {
+    const env = {
+      ...baseEnv,
+      airports: [
+        { name: 'Blue Grass Airport', distanceMiles: 4.2, lat: 38.0365, lng: -84.6059 },
+        { name: 'Cincinnati/Northern Kentucky International', distanceMiles: 19.1, lat: 39.0489, lng: -84.6678 },
+      ],
+    };
+    const html = buildSensoryEnvironmentalHTML(env);
+    expect(html).toMatch(/Blue Grass Airport/);
+    expect(html).toMatch(/Cincinnati\/Northern Kentucky International/);
+    expect(html).toMatch(/\b(north|northeast|east|southeast|south|southwest|west|northwest)\b/i);
+  });
+
+  test('falls back to distance-only when airport lat/lng missing — no crash', () => {
+    const env = {
+      ...baseEnv,
+      airports: [{ name: 'Test Airport', distanceMiles: 6.0 }],
+    };
+    const html = buildSensoryEnvironmentalHTML(env);
+    expect(html).toMatch(/Test Airport/);
+    expect(html).toMatch(/6\.0 miles/);
+    expect(html).not.toMatch(/to the undefined/);
+  });
+
+  test('falls back to distance-only when home coords missing — no crash', () => {
+    const env = {
+      ...baseEnv,
+      _homeLat: null,
+      _homeLng: null,
+      airports: [{ name: 'Test Airport', distanceMiles: 6.0, lat: 38.0, lng: -84.0 }],
+    };
+    const html = buildSensoryEnvironmentalHTML(env);
+    expect(html).toMatch(/Test Airport/);
+    expect(html).not.toMatch(/to the null/);
+  });
+
+  test('no airports paragraph unchanged', () => {
+    const env = { ...baseEnv, airports: [] };
+    const html = buildSensoryEnvironmentalHTML(env);
+    expect(html).toMatch(/No airports are within 20 miles/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildSensoryEnvironmentalHTML(nearAirport);
     const violations = html.match(/style="(?!--)[^"]+"/g);
     expect(violations).toBeNull();
   });
