@@ -157,7 +157,7 @@ function buildReachGlanceHTML(grocery, hospital, highwayRamp) {
   return `<div class="chapter-glance">${items}</div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, library, recCenter, postOffice, customDestinations, trafficData, origin, reportId, chapters }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, library, recCenter, postOffice, healthcareDepth, customDestinations, trafficData, origin, reportId, chapters }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -176,7 +176,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
   const chapterSectionsHTML = buildChaptersHTML(chapters || null);
-  const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, chapters?.emergency, urgentCare);
+  const healthSafetyChapterHTML = buildHealthSafetyChapterHTML(hospital, chapters?.emergency, urgentCare, healthcareDepth);
 
   // Hero At-a-Glance insight rows (rendered inside the editorial hero block)
   const heroInsightRowsHTML = buildHeroInsightRowsHTML(hospital, school, highwayRamp, chapters);

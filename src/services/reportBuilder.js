@@ -6,7 +6,7 @@ const { getDriveTime, getTrafficVariations } = require('../shared/google/distanc
 const { googleMapsClient, googleMapsApiKey } = require('../shared/google/client');
 const { findNearestGrocery, findNearestPharmacy, findNearestGasStation } = require('../modules/reachability/data');
 const { findNearestHighwayOnRamp } = require('../modules/access/data');
-const { findNearestHospital, findNearestUrgentCare } = require('../modules/health/data');
+const { findNearestHospital, findNearestUrgentCare, getHealthcareDepth } = require('../modules/health/data');
 const { findNearestSchool, findNearestElementarySchool } = require('../modules/schools/data');
 const { findNearestPark, findNearestCoffeeShop, findNearestLibrary, findNearestRecreationCenter, findNearestPostOffice } = require('../modules/recreation/data');
 const { getChapterData } = require('../chapters');
@@ -82,6 +82,14 @@ async function buildReport(address, options = {}) {
   const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, library, recCenter, postOffice] =
     results.map((r) => (r.status === 'fulfilled' ? r.value : null));
 
+  // Enrich hospital with CMS + NPI healthcare depth data (non-blocking)
+  let healthcareDepth = null;
+  if (hospital) {
+    try {
+      healthcareDepth = await getHealthcareDepth(hospital, locationInfo);
+    } catch {}
+  }
+
   const rawNames     = [].concat(options.customDestName    || []);
   const rawAddresses = [].concat(options.customDestAddress || []);
   const rawTypes     = [].concat(options.customDestType    || []);
@@ -145,7 +153,7 @@ async function buildReport(address, options = {}) {
   const html = buildReportHTML(address, {
     grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation,
     park, coffeeShop, elementarySchool, library, recCenter, postOffice,
-    customDestinations, trafficData, origin, reportId, chapters,
+    healthcareDepth, customDestinations, trafficData, origin, reportId, chapters,
   });
 
   return { html, reportId, address };
