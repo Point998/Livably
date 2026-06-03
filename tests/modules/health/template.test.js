@@ -160,3 +160,64 @@ describe('buildHealthSafetyChapterHTML — L4 research', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildHealthSafetyChapterHTML — Healthcare Ecosystem tab', () => {
+  test('Healthcare Ecosystem tab rendered when hospital present', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, null);
+    expect(html).toMatch(/Healthcare Ecosystem/);
+  });
+
+  test('CMS Care Compare link always present', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, null);
+    expect(html).toMatch(/care-compare/);
+  });
+
+  test('designation label rendered when designation present', () => {
+    const depth = { designation: { label: 'Acute Care Hospital', note: 'Equipped for most emergencies.' }, primaryCareCount: 12 };
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, depth);
+    expect(html).toMatch(/Acute Care Hospital/);
+  });
+
+  test('designation note rendered when designation present', () => {
+    const depth = { designation: { label: 'Critical Access Hospital', note: 'Smaller rural hospital.' }, primaryCareCount: 3 };
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, depth);
+    expect(html).toMatch(/Smaller rural hospital/);
+  });
+
+  test('primary care count rendered when available', () => {
+    const depth = { designation: null, primaryCareCount: 18 };
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, depth);
+    expect(html).toMatch(/18/);
+  });
+
+  test('low primary care count triggers limited-slots framing', () => {
+    const depth = { designation: null, primaryCareCount: 3 };
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, depth);
+    expect(html).toMatch(/3/);
+    expect(html).toMatch(/Competition for new patient slots/i);
+  });
+
+  test('null primaryCareCount shows data unavailable message', () => {
+    const depth = { designation: null, primaryCareCount: null };
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, depth);
+    expect(html).toMatch(/data was not available/i);
+  });
+
+  test('tab rendered when healthcareDepth is null (graceful degradation)', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, null);
+    expect(html).toMatch(/Healthcare Ecosystem/);
+    expect(html).toMatch(/care-compare/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const depth = { designation: { label: 'Acute Care Hospital', note: 'Equipped.' }, primaryCareCount: 10 };
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, depth);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+
+  test('existing urgentCare tab still present with 4th param', () => {
+    const html = buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, null);
+    expect(html).toMatch(/Urgent Care/);
+  });
+});

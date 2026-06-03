@@ -765,6 +765,24 @@ body.report-page {
   color: var(--ink-60);
 }
 
+/* ── Health — Healthcare Ecosystem tab ─────────────────────── */
+.health-ecosystem-section {
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.health-ecosystem-section:last-of-type { border-bottom: none; }
+
+.health-ecosystem-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-60);
+  margin-bottom: var(--space-2);
+}
+
 /* Right-column snapshot card */
 
 .snapshot-card {

@@ -113,16 +113,64 @@ function buildHealthResearchHTML(hospital, emergency, urgentCare) {
     </div>`;
 }
 
-function buildHealthDeepDiveHTML(hospital, emergency, urgentCare) {
+function buildHealthcareEcosystemTab(hospital, healthcareDepth) {
+  const { designation, primaryCareCount } = healthcareDepth || {};
+
+  // Hospital designation section
+  let designationHTML;
+  if (designation) {
+    designationHTML = `
+      <div class="health-ecosystem-section">
+        <div class="health-ecosystem-label">Hospital Type</div>
+        <p class="prem-narrative-body"><strong>${escapeHtml(designation.label)}</strong> — ${escapeHtml(designation.note)}</p>
+        <p class="prem-narrative-body">To verify trauma center designation: call ${escapeHtml(hospital.name)} directly or look it up on <a href="https://www.medicare.gov/care-compare/" target="_blank" rel="noopener noreferrer">CMS Care Compare</a>, which includes emergency services and hospital type for every Medicare-certified facility.</p>
+      </div>`;
+  } else {
+    designationHTML = `
+      <div class="health-ecosystem-section">
+        <div class="health-ecosystem-label">Hospital Type</div>
+        <p class="prem-narrative-body">To understand ${escapeHtml(hospital.name)}'s capabilities — trauma designation, ICU capacity, specialty coverage — call the hospital directly or look it up on <a href="https://www.medicare.gov/care-compare/" target="_blank" rel="noopener noreferrer">CMS Care Compare</a>.</p>
+      </div>`;
+  }
+
+  // Primary care section
+  let pcInterpretation;
+  if (primaryCareCount === null || primaryCareCount === undefined) {
+    pcInterpretation = 'Primary care data was not available for this location. Contact your health insurer for in-network family medicine physicians accepting new patients near this address.';
+  } else if (primaryCareCount === 0) {
+    pcInterpretation = 'No family medicine or internal medicine physicians were found in this city via the CMS NPI Registry. Verify primary care availability directly with your insurer before committing.';
+  } else if (primaryCareCount <= 5) {
+    pcInterpretation = `Only ${primaryCareCount} family medicine and internal medicine physicians are registered here. Competition for new patient slots may be limited — search for a primary care physician before you close, not after.`;
+  } else if (primaryCareCount <= 15) {
+    pcInterpretation = `${primaryCareCount} family medicine and internal medicine physicians are registered in this area — a moderate number. Contact your insurer for in-network options accepting new patients.`;
+  } else {
+    pcInterpretation = `${primaryCareCount} family medicine and internal medicine physicians are registered in this area, indicating solid primary care availability.`;
+  }
+
+  const primaryCareHTML = `
+    <div class="health-ecosystem-section">
+      <div class="health-ecosystem-label">Primary Care Availability</div>
+      <p class="prem-narrative-body">${escapeHtml(pcInterpretation)}</p>
+      <p class="prem-narrative-body"><strong>Action:</strong> Contact your health insurer and ask for in-network primary care physicians accepting new patients at this zip code. It typically takes 2–6 weeks to schedule a first appointment — better to find one before you need one.</p>
+      <p class="prem-disclaimer">Physician count from CMS NPI Registry — registered practitioners in this city. Not all may be actively seeing patients or accepting new patients.</p>
+    </div>`;
+
+  return `${designationHTML}${primaryCareHTML}`;
+}
+
+function buildHealthDeepDiveHTML(hospital, emergency, urgentCare, healthcareDepth) {
   const hasFire   = !!(emergency?.fire);
   const hasPolice = !!(emergency?.police);
 
   const tabs = [
-    { id: 'urgentcare', label: 'Urgent Care',     content: buildUrgentCareTab(urgentCare, hospital) },
+    { id: 'urgentcare',  label: 'Urgent Care',          content: buildUrgentCareTab(urgentCare, hospital) },
     (hasFire || hasPolice)
-      ? { id: 'stations', label: 'Station Details', content: buildStationDetailsTab(emergency) }
+      ? { id: 'stations', label: 'Station Details',      content: buildStationDetailsTab(emergency) }
       : null,
-    { id: 'iso',        label: 'ISO Fire Rating',  content: buildISOTab(emergency?.fire) },
+    { id: 'iso',         label: 'ISO Fire Rating',       content: buildISOTab(emergency?.fire) },
+    hospital
+      ? { id: 'ecosystem', label: 'Healthcare Ecosystem', content: buildHealthcareEcosystemTab(hospital, healthcareDepth) }
+      : null,
   ].filter(Boolean);
 
   const tabButtons = tabs.map((t, i) =>
@@ -145,7 +193,7 @@ function buildHealthDeepDiveHTML(hospital, emergency, urgentCare) {
     </div>`;
 }
 
-function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
+function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare, healthcareDepth) {
   if (!hospital && !emergency) return '';
   const fire   = emergency?.fire;
   const police = emergency?.police;
@@ -218,7 +266,7 @@ function buildHealthSafetyChapterHTML(hospital, emergency, urgentCare) {
 
   const erSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="--path-len:96" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" style="--path-len:96"/></svg>`;
 
-  const deepDiveHTML = buildHealthDeepDiveHTML(hospital, emergency, urgentCare);
+  const deepDiveHTML = buildHealthDeepDiveHTML(hospital, emergency, urgentCare, healthcareDepth);
   const l3HTML = deepDiveHTML ? `<div class="depth-l3">${deepDiveHTML}</div>` : '';
 
   const researchHTML = buildHealthResearchHTML(hospital, emergency, urgentCare);
