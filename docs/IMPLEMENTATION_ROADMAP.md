@@ -50,14 +50,14 @@ All 14 chapters wired. L3/L4 content shipped for 12 chapters.
 | Daily (Reachability) | — | structure only | — |
 | Reach | — | structure only | — |
 
-**Known outstanding depth system debt:**
-- L3/L4 visual distinction — Deep Read and Research look identical (content stacks, no visual diff). Needs a dedicated design pass in report.css. Not fixed per-chapter; fix once for all chapters.
+**Depth system debt: resolved.**
+- L3/L4 visual distinction ✅ — chapter-colored `border-top` on `.depth-l3`; same border + `background: var(--ink-04)` tint on `.depth-l4`. One CSS rule each, applies across all chapters via `var(--ch)`.
 
 ## Active Work
 
-**Phase 4 complete.** All 14 chapters now have full depth slider coverage (L1–L4).
+**Phase 4 fully complete.** All 14 chapters have full depth slider coverage (L1–L4) with visual distinction.
 
-**Depth slider rollout: done.** Next: Phase 5 (new chapters) or the L3/L4 visual distinction design pass.
+**Next: Phase 5** — New chapters (FR-032 Utilities Intelligence, FR-033 Life at This Address Calculator, FR-034 Chapter Enhancements).
 
 ## Next Phases
 
