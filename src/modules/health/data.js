@@ -137,4 +137,74 @@ async function findNearestUrgentCare(originLatLng, originState = '') {
   return result;
 }
 
-module.exports = { findNearestHospital, findNearestUrgentCare };
+function mapCMSHospitalType(hospitalType) {
+  if (!hospitalType) return null;
+  const t = hospitalType.toLowerCase();
+  if (t.includes('critical access'))
+    return { label: 'Critical Access Hospital', note: 'A smaller rural hospital (typically ≤25 beds). Excellent for local access, but major trauma, complex cardiac events, and specialty procedures are typically transferred to a larger regional medical center.' };
+  if (t.includes('acute care') || t.includes('short term'))
+    return { label: 'Acute Care Hospital', note: 'Equipped for most emergencies. Verify trauma center designation directly with the hospital if your household has specific trauma care needs.' };
+  if (t.includes('children'))
+    return { label: "Children's Hospital", note: 'Specialized pediatric facility — not a general emergency department for adults.' };
+  if (t.includes('psychiatric'))
+    return { label: 'Psychiatric Hospital', note: 'Specialized psychiatric facility — not a general emergency department.' };
+  return null;
+}
+
+async function getCMSHospitalType(address) {
+  if (!address) return null;
+  try {
+    const zipMatch = address.match(/\b(\d{5})\b/);
+    if (!zipMatch) return null;
+    const zip = zipMatch[1];
+    const url = `https://data.cms.gov/provider-data/api/1/datastore/query/xubh-q36u/0?conditions[0][property]=zip_code&conditions[0][operator]=%3D&conditions[0][value]=${zip}&limit=10`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const rows = data?.results ?? data?.data ?? [];
+    if (!rows.length) return null;
+    const preferred = rows.find(r => {
+      const t = (r.hospital_type || '').toLowerCase();
+      return t.includes('acute') || t.includes('critical access');
+    }) || rows[0];
+    return mapCMSHospitalType(preferred.hospital_type || preferred.hospitalType || null);
+  } catch {
+    return null;
+  }
+}
+
+async function getPrimaryCareCount(city, state) {
+  if (!city || !state) return null;
+  try {
+    const cityEnc  = encodeURIComponent(city);
+    const stateEnc = encodeURIComponent(state);
+    const base = `https://npiregistry.cms.hhs.gov/api/?version=2.1&enumeration_type=NPI-1&city=${cityEnc}&state=${stateEnc}&limit=1`;
+    const [famRes, intRes] = await Promise.allSettled([
+      fetch(`${base}&taxonomy_description=Family+Medicine`,  { signal: AbortSignal.timeout(10000) }),
+      fetch(`${base}&taxonomy_description=Internal+Medicine`, { signal: AbortSignal.timeout(10000) }),
+    ]);
+    let total = 0;
+    for (const r of [famRes, intRes]) {
+      if (r.status !== 'fulfilled' || !r.value.ok) continue;
+      const json = await r.value.json();
+      total += (json.result_count ?? 0);
+    }
+    return total;
+  } catch {
+    return null;
+  }
+}
+
+async function getHealthcareDepth(hospital, locationInfo) {
+  if (!hospital) return null;
+  const [desigRes, pcRes] = await Promise.allSettled([
+    getCMSHospitalType(hospital.address),
+    getPrimaryCareCount(locationInfo?.city, locationInfo?.state),
+  ]);
+  return {
+    designation:      desigRes.status === 'fulfilled' ? desigRes.value : null,
+    primaryCareCount: pcRes.status    === 'fulfilled' ? pcRes.value    : null,
+  };
+}
+
+module.exports = { findNearestHospital, findNearestUrgentCare, getCMSHospitalType, getPrimaryCareCount, getHealthcareDepth };
