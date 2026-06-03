@@ -157,7 +157,7 @@ function buildReachGlanceHTML(grocery, hospital, highwayRamp) {
   return `<div class="chapter-glance">${items}</div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, customDestinations, trafficData, origin, reportId, chapters }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, library, recCenter, postOffice, customDestinations, trafficData, origin, reportId, chapters }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -172,7 +172,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   ].join('\n');
 
   const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
-  const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop);
+  const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop, library, recCenter, postOffice);
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
   const chapterSectionsHTML = buildChaptersHTML(chapters || null);

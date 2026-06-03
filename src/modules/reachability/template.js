@@ -306,8 +306,14 @@ function buildCustomDestinationsCardHTML(customDestinations) {
   <div class="chapter-rule"></div>`;
 }
 
-function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
-  if (!elementarySchool && !park && !coffeeShop) return '';
+function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop, library, recCenter, postOffice) {
+  const civicItems = [
+    library    ? { label: 'Public Library',    name: library.name,    driveTimeMinutes: library.driveTimeMinutes    } : null,
+    recCenter  ? { label: 'Recreation Center', name: recCenter.name,  driveTimeMinutes: recCenter.driveTimeMinutes  } : null,
+    postOffice ? { label: 'Post Office',        name: postOffice.name, driveTimeMinutes: postOffice.driveTimeMinutes } : null,
+  ].filter(Boolean);
+
+  if (!elementarySchool && !park && !coffeeShop && !civicItems.length) return '';
 
   const narrativeParts = [];
   if (coffeeShop) {
@@ -329,6 +335,17 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
     ? `<p class="services-intro">${escapeHtml(narrativeParts.join(' '))}</p>`
     : '';
 
+  const civicHTML = civicItems.length ? `
+    <div class="civic-section">
+      <div class="civic-section-label">Civic Infrastructure</div>
+      ${civicItems.map((c) => `
+        <div class="civic-item">
+          <span class="civic-item-label">${escapeHtml(c.label)}</span>
+          <span class="civic-item-name">${escapeHtml(c.name)}</span>
+          <span class="civic-item-time">${c.driveTimeMinutes} min</span>
+        </div>`).join('')}
+    </div>` : '';
+
   return `
   <div class="chapter-inner chapter-inner--addon">
     ${narrativeHTML}
@@ -337,6 +354,7 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop) {
       ${park ? `<div class="services-grid-item">${buildDestSection('Park', park)}</div>` : ''}
       ${coffeeShop ? `<div class="services-grid-item">${buildDestSection('Coffee Shop', coffeeShop)}</div>` : ''}
     </div>
+    ${civicHTML}
   </div>`;
 }
 

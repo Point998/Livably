@@ -80,4 +80,61 @@ async function findNearestCoffeeShop(originLatLng) {
   return result;
 }
 
-module.exports = { findNearestPark, findNearestCoffeeShop };
+async function findNearestLibrary(originLatLng) {
+  const cacheKey = `library:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+  const placesResponse = await googleMapsClient.placesNearby({
+    params: { key: googleMapsApiKey, location: originLatLng, rankby: 'distance', type: 'library' },
+  });
+  const place = (placesResponse.data.results || [])[0];
+  if (!place) throw new Error('No library found near that address.');
+  const result = {
+    name: place.name,
+    address: place.vicinity || place.formatted_address || place.name,
+    location: place.geometry.location,
+    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
+  };
+  placesCache.set(cacheKey, result);
+  return result;
+}
+
+async function findNearestRecreationCenter(originLatLng) {
+  const cacheKey = `reccenter:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+  const placesResponse = await googleMapsClient.placesNearby({
+    params: { key: googleMapsApiKey, location: originLatLng, rankby: 'distance', type: 'community_center' },
+  });
+  const place = (placesResponse.data.results || [])[0];
+  if (!place) throw new Error('No recreation center found near that address.');
+  const result = {
+    name: place.name,
+    address: place.vicinity || place.formatted_address || place.name,
+    location: place.geometry.location,
+    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
+  };
+  placesCache.set(cacheKey, result);
+  return result;
+}
+
+async function findNearestPostOffice(originLatLng) {
+  const cacheKey = `postoffice:${originLatLng}`;
+  const cached = placesCache.get(cacheKey);
+  if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
+  const placesResponse = await googleMapsClient.placesNearby({
+    params: { key: googleMapsApiKey, location: originLatLng, rankby: 'distance', type: 'post_office' },
+  });
+  const place = (placesResponse.data.results || [])[0];
+  if (!place) throw new Error('No post office found near that address.');
+  const result = {
+    name: place.name,
+    address: place.vicinity || place.formatted_address || place.name,
+    location: place.geometry.location,
+    driveTimeMinutes: await getDriveTime(originLatLng, place.geometry.location),
+  };
+  placesCache.set(cacheKey, result);
+  return result;
+}
+
+module.exports = { findNearestPark, findNearestCoffeeShop, findNearestLibrary, findNearestRecreationCenter, findNearestPostOffice };

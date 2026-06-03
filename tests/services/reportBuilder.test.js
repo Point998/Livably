@@ -14,6 +14,9 @@ const mockFindNearestSchool = jest.fn();
 const mockFindNearestElementarySchool = jest.fn();
 const mockFindNearestPark = jest.fn();
 const mockFindNearestCoffeeShop = jest.fn();
+const mockFindNearestLibrary = jest.fn();
+const mockFindNearestRecreationCenter = jest.fn();
+const mockFindNearestPostOffice = jest.fn();
 const mockGetChapterData = jest.fn();
 const mockSaveReport = jest.fn();
 const mockLogRequest = jest.fn();
@@ -32,7 +35,7 @@ jest.mock('../../src/modules/reachability/data', () => ({ findNearestGrocery: mo
 jest.mock('../../src/modules/access/data', () => ({ findNearestHighwayOnRamp: mockFindNearestHighwayOnRamp }));
 jest.mock('../../src/modules/health/data', () => ({ findNearestHospital: mockFindNearestHospital, findNearestUrgentCare: mockFindNearestUrgentCare }));
 jest.mock('../../src/modules/schools/data', () => ({ findNearestSchool: mockFindNearestSchool, findNearestElementarySchool: mockFindNearestElementarySchool }));
-jest.mock('../../src/modules/recreation/data', () => ({ findNearestPark: mockFindNearestPark, findNearestCoffeeShop: mockFindNearestCoffeeShop }));
+jest.mock('../../src/modules/recreation/data', () => ({ findNearestPark: mockFindNearestPark, findNearestCoffeeShop: mockFindNearestCoffeeShop, findNearestLibrary: mockFindNearestLibrary, findNearestRecreationCenter: mockFindNearestRecreationCenter, findNearestPostOffice: mockFindNearestPostOffice }));
 jest.mock('../../src/chapters', () => ({ getChapterData: mockGetChapterData, buildChaptersHTML: mockBuildChaptersHTML }));
 jest.mock('../../src/services/reportStore', () => ({ saveReport: mockSaveReport }));
 jest.mock('../../src/logger', () => ({ logRequest: mockLogRequest, logError: mockLogError, logAnalysis: mockLogAnalysis }));
@@ -61,6 +64,9 @@ beforeEach(() => {
   mockFindNearestPark.mockResolvedValue(null);
   mockFindNearestCoffeeShop.mockResolvedValue(null);
   mockFindNearestElementarySchool.mockResolvedValue(null);
+  mockFindNearestLibrary.mockResolvedValue(null);
+  mockFindNearestRecreationCenter.mockResolvedValue(null);
+  mockFindNearestPostOffice.mockResolvedValue(null);
   mockGetChapterData.mockResolvedValue(null);
   mockGetTrafficVariations.mockResolvedValue(null);
   mockSaveReport.mockReturnValue('abc12345');

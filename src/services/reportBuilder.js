@@ -8,7 +8,7 @@ const { findNearestGrocery, findNearestPharmacy, findNearestGasStation } = requi
 const { findNearestHighwayOnRamp } = require('../modules/access/data');
 const { findNearestHospital, findNearestUrgentCare } = require('../modules/health/data');
 const { findNearestSchool, findNearestElementarySchool } = require('../modules/schools/data');
-const { findNearestPark, findNearestCoffeeShop } = require('../modules/recreation/data');
+const { findNearestPark, findNearestCoffeeShop, findNearestLibrary, findNearestRecreationCenter, findNearestPostOffice } = require('../modules/recreation/data');
 const { getChapterData } = require('../chapters');
 const { saveReport } = require('./reportStore');
 const { logRequest, logError, logAnalysis } = require('../logger');
@@ -74,9 +74,12 @@ async function buildReport(address, options = {}) {
     findNearestPark(originLatLng),
     findNearestCoffeeShop(originLatLng),
     findNearestElementarySchool(originLatLng, originState), // CONSTRAINT-006: cross-state filter
+    findNearestLibrary(originLatLng),
+    findNearestRecreationCenter(originLatLng),
+    findNearestPostOffice(originLatLng),
   ]);
 
-  const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool] =
+  const [grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, library, recCenter, postOffice] =
     results.map((r) => (r.status === 'fulfilled' ? r.value : null));
 
   const rawNames     = [].concat(options.customDestName    || []);
@@ -141,8 +144,8 @@ async function buildReport(address, options = {}) {
 
   const html = buildReportHTML(address, {
     grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation,
-    park, coffeeShop, elementarySchool, customDestinations, trafficData,
-    origin, reportId, chapters,
+    park, coffeeShop, elementarySchool, library, recCenter, postOffice,
+    customDestinations, trafficData, origin, reportId, chapters,
   });
 
   return { html, reportId, address };
