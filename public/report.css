@@ -2470,6 +2470,13 @@ body.report-page {
 .growth-permit-trend-down { color: var(--badge-red-color); }
 .growth-permit-trend-flat { color: var(--ink-60); }
 
+/* ── Growth — 10-Year Horizon ──────────────────────────────── */
+.prem-growth-horizon {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--ink-10);
+}
+
 /* ── Sensory Chapter L3/L4 ─────────────────────────────────────── */
 
 .sensory-deep-dive { margin-top: var(--space-4); }

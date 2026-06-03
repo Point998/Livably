@@ -163,3 +163,47 @@ describe('buildGrowthAndDevelopmentHTML — L4 research', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildGrowthAndDevelopmentHTML — 10-Year Horizon', () => {
+  test('horizon section rendered when rising permits', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/prem-growth-horizon/);
+    expect(html).toMatch(/10-Year Outlook/);
+  });
+
+  test('horizon includes rising permit percentage', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/15%/);
+  });
+
+  test('horizon includes named project when under construction', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/Maplewood Subdivision Phase 2/);
+  });
+
+  test('horizon absent when no permits and no newConstruction and no namedProjects', () => {
+    const g = { ...baseGrowth, namedProjects: [], permits: null, newConstruction: null };
+    const html = buildGrowthAndDevelopmentHTML(g);
+    expect(html).not.toMatch(/prem-growth-horizon/);
+  });
+
+  test('horizon present when only newConstruction available', () => {
+    const g = { ...baseGrowth, namedProjects: [], permits: null, newConstruction: { newConstructionPct: 22 } };
+    const html = buildGrowthAndDevelopmentHTML(g);
+    expect(html).toMatch(/prem-growth-horizon/);
+    expect(html).toMatch(/22%/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+
+  test('declining permits produce cooling framing', () => {
+    const g = { ...fullGrowth, permits: { current: 900, currentYear: 2023, priorYear: 2022, trend: 'declining', percentChange: -20 } };
+    const html = buildGrowthAndDevelopmentHTML(g);
+    expect(html).toMatch(/prem-growth-horizon/);
+    expect(html).toMatch(/20%/);
+  });
+});

@@ -177,6 +177,71 @@ function buildGrowthDeepDiveHTML(growth) {
     </div>`;
 }
 
+function buildTenYearHorizonHTML(growth) {
+  if (!growth) return '';
+  const { permits, newConstruction, namedProjects = [], locationInfo } = growth;
+  const county = locationInfo?.county || 'this area';
+
+  // Require at least one real signal
+  if (!permits && !newConstruction && !namedProjects.length) return '';
+
+  // Signal 1: development pace
+  let paceSignal, paceSentence;
+  if (permits) {
+    if (permits.trend === 'rising' && permits.percentChange >= 10) {
+      paceSignal = 'growth';
+      paceSentence = `Building permits in ${escapeHtml(county)} are up ${Math.abs(permits.percentChange)}% year-over-year — an active construction pace that typically signals continued investment in the area.`;
+    } else if (permits.trend === 'declining' && permits.percentChange !== null && permits.percentChange <= -10) {
+      paceSignal = 'cooling';
+      paceSentence = `Building permits in ${escapeHtml(county)} are down ${Math.abs(permits.percentChange)}% from the prior year. That can reflect a maturing market or broader economic conditions — established neighborhoods with stable demand often hold value well even as permit activity cools.`;
+    } else {
+      paceSignal = 'stable';
+      paceSentence = `Building activity in ${escapeHtml(county)} is holding steady — neither a boom nor a significant slowdown.`;
+    }
+  } else if (newConstruction) {
+    const pct = newConstruction.newConstructionPct;
+    paceSignal = pct >= 20 ? 'growth' : 'stable';
+    paceSentence = pct >= 20
+      ? `${pct}% of housing in this Census tract was built after 2010, indicating an area that has seen significant recent development.`
+      : pct < 10
+      ? `Only ${pct}% of housing in this Census tract was built after 2010 — an established neighborhood with limited recent new construction.`
+      : `About ${pct}% of housing in this Census tract was built after 2010, reflecting moderate new construction activity.`;
+  } else {
+    return '';
+  }
+
+  // Signal 2: confirmed pipeline
+  const underConstruction = namedProjects.filter(p => p.status === 'Under Construction');
+  const approved          = namedProjects.filter(p => p.status === 'Approved');
+  let pipelineSentence = '';
+  if (underConstruction.length) {
+    pipelineSentence = ` ${escapeHtml(underConstruction[0].name)} is currently under construction nearby — a confirmed change coming to this area.`;
+  } else if (approved.length) {
+    pipelineSentence = ` ${escapeHtml(approved[0].name)} has been approved and is on the way.`;
+  } else if (!namedProjects.length) {
+    pipelineSentence = ' No major development projects were confirmed in the immediate area.';
+  }
+
+  // Signal 3: closing framing
+  let closingSentence;
+  if (paceSignal === 'growth') {
+    closingSentence = "The 10-year signals here point toward continued expansion rather than contraction. That's generally positive for property values, but also means the neighborhood will likely change in character over time.";
+  } else if (paceSignal === 'cooling') {
+    closingSentence = "Slower growth isn't necessarily negative — ask your agent whether this reflects local conditions or broader trends, and how similar neighborhoods in the area have fared.";
+  } else {
+    closingSentence = "Stability suggests a neighborhood that has found its equilibrium. The question is whether nearby infrastructure investment will create new momentum or keep things largely as they are.";
+  }
+
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  return `
+    <div class="prem-growth-horizon">
+      <div class="prem-growth-label">10-Year Outlook</div>
+      <p class="prem-narrative-body">${paceSentence}${pipelineSentence} ${closingSentence}</p>
+      <p class="prem-disclaimer">Development signals based on Census permit data, ACS housing data, and confirmed project reports. These are documented trends — not predictions. Research date: ${today}.</p>
+    </div>`;
+}
+
 function buildGrowthAndDevelopmentHTML(growth) {
   if (!growth) return '';
   const { permits, newConstruction, establishments, namedProjects = [], locationInfo } = growth;
@@ -309,6 +374,8 @@ function buildGrowthAndDevelopmentHTML(growth) {
     takeaway = `For the most current picture of planned development near this address, contact ${escapeHtml(county)} Planning and Zoning — their records show pending applications and approved projects that don't yet appear in any public data feed.`;
   }
 
+  const horizonHTML = buildTenYearHorizonHTML(growth);
+
   const sources = [];
   if (namedProjects.length) sources.push('Livably Development Intelligence (manually verified)');
   if (permits) sources.push('U.S. Census Bureau Building Permits Survey');
@@ -324,6 +391,7 @@ function buildGrowthAndDevelopmentHTML(growth) {
       <p class="prem-narrative-body">${planningPara}</p>
     </div>
     ${placesHTML}
+    ${horizonHTML}
     <div class="key-takeaway">
       <span class="kt-icon">🔑</span>
       <div class="kt-body"><strong>Key Takeaway:</strong> ${takeaway}</div>
