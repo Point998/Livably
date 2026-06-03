@@ -194,3 +194,67 @@ describe('buildWhatWillGrowHTML — FR-045 depth system', () => {
     expect(violations).toBeNull();
   });
 });
+
+const microclimateLat38 = { lat: 38, elevationFt: 855, solarSummerDeg: 76, solarWinterDeg: 29 };
+const microclimateLat46 = { lat: 46, elevationFt: 4820, solarSummerDeg: 68, solarWinterDeg: 21 };
+
+describe('buildWhatWillGrowHTML — microclimate subsection', () => {
+  test('renders microclimate section when present', () => {
+    const gd = { ...gardenData, microclimate: microclimateLat38 };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    expect(html).toMatch(/Your Microclimate/);
+  });
+
+  test('shows solar angles in narrative', () => {
+    const gd = { ...gardenData, microclimate: microclimateLat38 };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    expect(html).toMatch(/76°/);
+    expect(html).toMatch(/29°/);
+  });
+
+  test('shows elevation rounded to nearest 10 feet', () => {
+    // 855 → Math.round(855/10)*10 = 860; verifies the rounding path is exercised
+    const gd = { ...gardenData, microclimate: microclimateLat38 };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    expect(html).toMatch(/860 feet/);
+    expect(html).not.toMatch(/855 feet/);
+  });
+
+  test('omits elevation text when elevationFt is null', () => {
+    const gd = { ...gardenData, microclimate: { lat: 38, elevationFt: null, solarSummerDeg: 76, solarWinterDeg: 29 } };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    expect(html).toMatch(/Your Microclimate/);
+    expect(html).not.toMatch(/feet in elevation/);
+  });
+
+  test('microclimate absent when microclimate is null', () => {
+    const gd = { ...gardenData, microclimate: null };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    expect(html).not.toMatch(/Your Microclimate/);
+  });
+
+  test('shadow length shown for lat 38 (11-foot)', () => {
+    const gd = { ...gardenData, microclimate: microclimateLat38 };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    expect(html).toMatch(/11-foot/);
+  });
+
+  test('shadow length shown for lat 46 (16-foot)', () => {
+    const gd = { ...gardenData, microclimate: microclimateLat46 };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    expect(html).toMatch(/16-foot/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const gd = { ...gardenData, microclimate: microclimateLat38 };
+    const html = buildWhatWillGrowHTML(gd, soil, locationInfo);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+
+  test('microclimate absent when gardenData has no microclimate key', () => {
+    // existing gardenData fixture has no microclimate key
+    const html = buildWhatWillGrowHTML(gardenData, soil, locationInfo);
+    expect(html).not.toMatch(/Your Microclimate/);
+  });
+});

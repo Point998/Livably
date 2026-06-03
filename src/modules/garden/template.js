@@ -18,6 +18,28 @@ function buildGardenGlanceHTML(gardenData) {
   return items ? `<div class="chapter-glance">${items}</div>` : '';
 }
 
+function buildMicroclimateHTML(microclimate) {
+  if (!microclimate) return '';
+  const { lat, elevationFt, solarSummerDeg, solarWinterDeg } = microclimate;
+
+  const elevNote = elevationFt !== null
+    ? `This address sits at approximately ${Math.round(elevationFt / 10) * 10} feet in elevation. `
+    : '';
+
+  const shadowFt = Math.round(6 / Math.tan(solarWinterDeg * Math.PI / 180));
+  const latRound = Math.round(lat);
+
+  const sunNote = `At latitude ${latRound}°, the noon sun reaches about ${solarSummerDeg}° above the horizon in late June — near-overhead, flooding the yard with light. By late December that drops to ${solarWinterDeg}°, meaning a 6-foot fence or hedge on the south side of a garden casts about a ${shadowFt}-foot shadow at midday.`;
+
+  const practical = `South-facing beds and cold frames capture the most winter light — orient them toward the south for the best yield in early spring and late fall.`;
+
+  return `
+    <div class="grow-subsection">
+      <div class="grow-subsection-label">☀️ Your Microclimate</div>
+      <p class="prem-narrative-body">${elevNote}${sunNote} ${practical}</p>
+    </div>`;
+}
+
 function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
   if (!gardenData) return '';
 
@@ -150,6 +172,7 @@ function buildWhatWillGrowHTML(gardenData, soil, locationInfo) {
 
   const gardenBody = `
     <p class="prem-narrative-lead">${conditionsPara}</p>
+    ${buildMicroclimateHTML(gardenData?.microclimate)}
     ${soilPara ? `
     <div class="grow-subsection">
       <div class="grow-subsection-label">🪱 Your Soil</div>
