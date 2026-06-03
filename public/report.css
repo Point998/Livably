@@ -2604,6 +2604,43 @@ body.report-page {
 
 .prem-intel-caution-list li { margin-bottom: 4px; }
 
+/* ── Property — Era Health Risks ──────────────────────────── */
+.prem-intel-era-risks {
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--ink-10);
+  padding-top: var(--space-3);
+}
+
+.prem-intel-era-risks-label {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-60);
+  margin-bottom: var(--space-3);
+}
+
+.prem-intel-era-risk-item {
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.prem-intel-era-risk-item:last-of-type { border-bottom: none; }
+
+.prem-intel-era-risk-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--space-1);
+}
+
+.prem-intel-era-risk-body {
+  font-size: var(--text-sm);
+  color: var(--ink-60);
+  margin: 0;
+}
+
 .prem-intel-bb-providers {
   margin-top: 12px;
   display: flex;

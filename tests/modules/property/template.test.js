@@ -174,7 +174,11 @@ describe('buildPropertyIntelligenceHTML — L3 deep dive', () => {
       },
     };
     const html = buildPropertyIntelligenceHTML(lowThreshold);
-    expect(html).not.toMatch(/Polybutylene/);
+    // The old band-threshold era note (prem-intel-era-note class) should not contain the 1980s
+    // band risk text when the 1980s band is below the 5% threshold.
+    // Note: the new era health risks section (prem-intel-era-risk-item) may still mention
+    // Polybutylene based on medianYearBuilt — this test is scoped to the band-threshold note only.
+    expect(html).not.toMatch(/recalled for failure risk/);
   });
 
   test('shows median year note when era.medianYearBuilt is set', () => {
@@ -256,5 +260,52 @@ describe('buildPropertyIntelligenceHTML — L4 research', () => {
   test('renders Total row in housing age table', () => {
     const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
     expect(html).toMatch(/<strong>Total<\/strong>/);
+  });
+});
+
+describe('buildPropertyIntelligenceHTML — era health risks', () => {
+  test('era risk section absent for modern home (2010)', () => {
+    const p = { ...basePropIntel, era: { medianYearBuilt: 2010, newConstructionPct: 40, context: { era: 'Modern', cautions: [] } } };
+    const html = buildPropertyIntelligenceHTML(p);
+    expect(html).not.toMatch(/prem-intel-era-risks/);
+  });
+
+  test('era risk section present for 1970s home', () => {
+    const p = { ...basePropIntel, era: { medianYearBuilt: 1972, newConstructionPct: 0, context: { era: '1960s–70s', cautions: [] } } };
+    const html = buildPropertyIntelligenceHTML(p);
+    expect(html).toMatch(/prem-intel-era-risks/);
+  });
+
+  test('lead paint risk shown for pre-1978 home', () => {
+    const p = { ...basePropIntel, era: { medianYearBuilt: 1965, newConstructionPct: 0, context: { era: '1960s–70s', cautions: [] } } };
+    const html = buildPropertyIntelligenceHTML(p);
+    expect(html).toMatch(/[Ll]ead paint/);
+  });
+
+  test('polybutylene risk shown for 1985 home', () => {
+    const p = { ...basePropIntel, era: { medianYearBuilt: 1985, newConstructionPct: 0, context: { era: '1980s', cautions: [] } } };
+    const html = buildPropertyIntelligenceHTML(p);
+    expect(html).toMatch(/[Pp]olybutylene/);
+  });
+
+  test('pre-1940 home shows lead paint and asbestos and plumbing risks', () => {
+    const p = { ...basePropIntel, era: { medianYearBuilt: 1935, newConstructionPct: 0, context: { era: 'Pre-1940', cautions: [] } } };
+    const html = buildPropertyIntelligenceHTML(p);
+    expect(html).toMatch(/[Ll]ead paint/);
+    expect(html).toMatch(/[Aa]sbestos/);
+    expect(html).toMatch(/[Pp]lumbing/);
+  });
+
+  test('era risk absent when era is null', () => {
+    const p = { ...basePropIntel, era: null };
+    const html = buildPropertyIntelligenceHTML(p);
+    expect(html).not.toMatch(/prem-intel-era-risks/);
+  });
+
+  test('no inline styles (CONSTRAINT-008)', () => {
+    const p = { ...basePropIntel, era: { medianYearBuilt: 1965, newConstructionPct: 0, context: { era: '1960s–70s', cautions: [] } } };
+    const html = buildPropertyIntelligenceHTML(p);
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
   });
 });

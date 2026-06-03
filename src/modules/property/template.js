@@ -66,9 +66,102 @@ function buildSoilTab(soil) {
     <p class="prem-disclaimer">Source: USDA Web Soil Survey (SDA). Soil data is mapped at the map unit level, not parcel-specific. Site conditions may vary.</p>`;
 }
 
+function buildEraHealthRisks(medianYear) {
+  if (medianYear == null || isNaN(medianYear) || medianYear >= 2000) return '';
+
+  let items;
+  if (medianYear < 1940) {
+    items = [
+      {
+        title: 'Lead paint',
+        body: 'Assumed present in original surfaces. Any renovation disturbing painted surfaces requires lead-safe practices. Full abatement costs $10,000–$30,000.',
+      },
+      {
+        title: 'Plumbing',
+        body: 'Galvanized or cast iron plumbing may be near end of life. Full replacement runs $4,000–$15,000.',
+      },
+      {
+        title: 'Electrical',
+        body: 'Knob-and-tube wiring possible if not updated. An electrician\'s assessment before closing is worth the cost — full rewire is $8,000–$15,000.',
+      },
+      {
+        title: 'Asbestos',
+        body: 'Common in insulation, floor tiles, and siding from this era. Testing costs $250–$800; abatement if required is $1,500–$30,000+.',
+      },
+    ];
+  } else if (medianYear < 1960) {
+    items = [
+      {
+        title: 'Lead paint',
+        body: 'Pre-1978 construction — lead paint is likely in original finishes. Testing costs $20–$50 per room.',
+      },
+      {
+        title: 'Asbestos',
+        body: 'Common in popcorn ceilings, floor tiles, and pipe insulation from this era. Undisturbed asbestos isn\'t a health risk; disturbed during renovation is.',
+      },
+      {
+        title: 'Plumbing',
+        body: 'Original galvanized plumbing may be aging toward end of life. Ask the inspector to assess pipe condition specifically.',
+      },
+    ];
+  } else if (medianYear < 1978) {
+    items = [
+      {
+        title: 'Lead paint',
+        body: 'Pre-1978 construction — lead paint in original finishes is federally presumed. Sellers are required to disclose known hazards, but testing is the only way to confirm presence.',
+      },
+      {
+        title: 'Aluminum wiring',
+        body: 'Homes built 1965–1973 often used aluminum branch circuit wiring, which has higher fire risk than copper if connections weren\'t properly maintained. Ask your electrician to inspect specifically for aluminum wiring.',
+      },
+      {
+        title: 'Asbestos',
+        body: 'Common in floor tiles, textured ceilings, and pipe insulation. Testing before any renovation is the right call.',
+      },
+    ];
+  } else if (medianYear < 1990) {
+    items = [
+      {
+        title: 'Polybutylene plumbing',
+        body: 'Polybutylene plumbing was commonly installed 1978–1995 and was recalled for high failure risk. Ask directly whether it has been replaced — full replacement costs $4,000–$15,000.',
+      },
+      {
+        title: 'Asbestos',
+        body: 'Possible in textured surfaces or floor tiles if not previously remediated. Ask the inspector to check.',
+      },
+    ];
+  } else {
+    // medianYear >= 1990 and < 2000
+    items = [
+      {
+        title: 'Polybutylene plumbing',
+        body: 'If built before 1995, check whether polybutylene plumbing was installed and replaced.',
+      },
+      {
+        title: 'HVAC',
+        body: 'Homes of this era may have original HVAC systems approaching end of life (15–20 year lifespan). Ask the inspector to note system age and condition.',
+      },
+    ];
+  }
+
+  const itemsHTML = items.map(item => `
+  <div class="prem-intel-era-risk-item">
+    <div class="prem-intel-era-risk-title">${escapeHtml(item.title)}</div>
+    <p class="prem-intel-era-risk-body">${escapeHtml(item.body)}</p>
+  </div>`).join('');
+
+  return `
+<div class="prem-intel-era-risks">
+  <div class="prem-intel-era-risks-label">What to Watch For in Homes from This Era</div>
+  ${itemsHTML}
+</div>`;
+}
+
 function buildHousingAgeTab(housingAgeBands, era) {
   if (!housingAgeBands?.bands?.length) {
-    return `<p class="prem-narrative-body">Housing age distribution data was not available for this Census tract.</p>`;
+    const eraRisksHTML = buildEraHealthRisks(era?.medianYearBuilt);
+    return `<p class="prem-narrative-body">Housing age distribution data was not available for this Census tract.</p>
+    ${eraRisksHTML}`;
   }
 
   const ERA_RISK = [
@@ -97,10 +190,12 @@ function buildHousingAgeTab(housingAgeBands, era) {
     .map(r => `<div class="prem-intel-era-note">${escapeHtml(r.note)}</div>`)
     .join('');
 
+  const eraRisksHTML = buildEraHealthRisks(era?.medianYearBuilt);
   return `
     ${medianNote}
     ${bars}
     ${riskNotes}
+    ${eraRisksHTML}
     <p class="prem-disclaimer">Source: U.S. Census Bureau ACS 5-year estimates, Table B25034. Tract-level data — not specific to this parcel.</p>`;
 }
 
