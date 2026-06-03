@@ -3770,12 +3770,25 @@ body.report-page {
 
 .depth-l3 {
   border-top: 2px solid var(--ch);
+  max-width: var(--inner-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--inner-pad);
+  padding-right: var(--inner-pad);
 }
 
 .depth-l4 {
   border-top: 2px solid var(--ch);
   background: var(--ink-04);
-  padding-bottom: var(--space-6);
+  padding: 0 var(--inner-pad) var(--space-6);
+}
+
+/* Climate: flood banner handles its own centering — neutralize double padding */
+.depth-l3 .prem-flood-zone-banner {
+  padding-left: 0;
+  padding-right: 0;
+  max-width: 100%;
+  margin: 0;
 }
 
 /* ── Glance Bar ─────────────────────────────────────────────────────── */
