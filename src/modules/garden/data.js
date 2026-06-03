@@ -9,6 +9,7 @@ const {
   INAT_REPTILES_RADIUS_KM, INAT_REPTILES_PER_PAGE,
   INAT_INSECTS_RADIUS_KM, INAT_INSECTS_PER_PAGE,
   INAT_BUTTERFLIES_RADIUS_KM, INAT_BUTTERFLIES_PER_PAGE,
+  USGS_ELEVATION_URL,
 } = require('../../utils/constants');
 
 const {
@@ -88,6 +89,26 @@ async function iNatSeasonalBirds(lat, lng, months) {
   }
 }
 
+async function getMicroclimateData(lat, lng) {
+  const summerDeg = Math.round(90 - Math.abs(lat - 23.5));
+  const winterDeg = Math.round(90 - Math.abs(lat + 23.5));
+
+  let elevationFt = null;
+  try {
+    const url = `${USGS_ELEVATION_URL}?x=${lng.toFixed(6)}&y=${lat.toFixed(6)}&units=Feet&wkid=4326&includeDate=false`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      const v = data?.value ?? null;
+      if (v !== null && v > -1000) elevationFt = Math.round(v);
+    }
+  } catch {
+    // elevation is optional — solar angles are always returned
+  }
+
+  return { lat, elevationFt, solarSummerDeg: summerDeg, solarWinterDeg: winterDeg };
+}
+
 async function getGardenData(lat, lng, locationInfo) {
   const zip = locationInfo?.zip || '';
   const state = locationInfo?.state || null;
@@ -96,6 +117,7 @@ async function getGardenData(lat, lng, locationInfo) {
     zoneRes, nativePlantsRes, invasivePlantsRes, wildlifeRes, birdsRes,
     reptilesRes, insectsRes, butterfliesRes,
     birdSpringRes, birdSummerRes, birdFallRes, birdWinterRes,
+    microclimateRes,
   ] = await Promise.allSettled([
     getHardinessZone(zip),
     iNatSpeciesCounts(lat, lng, INAT_NATIVE_PLANTS_RADIUS_KM,    47126, { native: true },     INAT_NATIVE_PLANTS_PER_PAGE),
@@ -109,6 +131,7 @@ async function getGardenData(lat, lng, locationInfo) {
     iNatSeasonalBirds(lat, lng, '6,7,8'),
     iNatSeasonalBirds(lat, lng, '9,10,11'),
     iNatSeasonalBirds(lat, lng, '12,1,2'),
+    getMicroclimateData(lat, lng),
   ]);
 
   const val = (r, fallback) => r.status === 'fulfilled' ? r.value : fallback;
@@ -133,6 +156,7 @@ async function getGardenData(lat, lng, locationInfo) {
     }),
     monarchCorridor: getMonarchCorridorInfo(state),
     fireflyHabitat:  getFireflyHabitat(state),
+    microclimate:    val(microclimateRes, null),
   };
 }
 
@@ -141,6 +165,7 @@ module.exports = {
   getHardinessZone,
   iNatSpeciesCounts,
   iNatSeasonalBirds,
+  getMicroclimateData,
   // Re-exported for backward compatibility (chapters.js imports these)
   filterNativePlants,
   filterInvasivePlants,

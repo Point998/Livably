@@ -225,3 +225,68 @@ describe('filterNativePlants', () => {
     expect(filterNativePlants(results).length).toBeLessThanOrEqual(6);
   });
 });
+
+const { getMicroclimateData } = require('../../../src/modules/garden/data');
+
+describe('getMicroclimateData', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('returns solar angles and elevation when USGS succeeds', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: 900.5 }),
+    });
+    const result = await getMicroclimateData(38, -84.5);
+    expect(result.solarSummerDeg).toBe(76);
+    expect(result.solarWinterDeg).toBe(29);
+    expect(result.elevationFt).toBe(901);
+    expect(result.lat).toBe(38);
+  });
+
+  test('returns null elevationFt when USGS fails, solar angles still computed', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+    const result = await getMicroclimateData(38, -84.5);
+    expect(result.elevationFt).toBeNull();
+    expect(result.solarSummerDeg).toBe(76);
+    expect(result.solarWinterDeg).toBe(29);
+    expect(result.lat).toBe(38);
+  });
+
+  test('returns null elevationFt when USGS returns ok:false', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503 });
+    const result = await getMicroclimateData(38, -84.5);
+    expect(result.elevationFt).toBeNull();
+    expect(result.solarSummerDeg).toBe(76);
+  });
+
+  test('solar angles at Bozeman MT latitude (46°)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: 4820 }),
+    });
+    const result = await getMicroclimateData(46, -111.0);
+    expect(result.solarSummerDeg).toBe(68);
+    expect(result.solarWinterDeg).toBe(21);
+    expect(result.elevationFt).toBe(4820);
+  });
+
+  test('returns null elevationFt when USGS value is null', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: null }),
+    });
+    const result = await getMicroclimateData(38, -84.5);
+    expect(result.elevationFt).toBeNull();
+  });
+
+  test('returns null elevationFt when USGS value is -9999 (no-data sentinel)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: -9999 }),
+    });
+    const result = await getMicroclimateData(38, -84.5);
+    expect(result.elevationFt).toBeNull();
+  });
+});
