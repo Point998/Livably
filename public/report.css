@@ -3761,6 +3761,23 @@ body.report-page {
 
 /* research: all layers visible — no additional rules needed */
 
+/* ── Depth Level Visual Distinction ────────────────────────────────── */
+/*
+ * L3 (Deep Read): chapter-colored top border signals entry into deeper content.
+ * L4 (Research): same border + tinted background marks the data reference zone.
+ * Both use var(--ch) so every chapter's depth sections match its color identity.
+ */
+
+.depth-l3 {
+  border-top: 2px solid var(--ch);
+}
+
+.depth-l4 {
+  border-top: 2px solid var(--ch);
+  background: var(--ink-04);
+  padding-bottom: var(--space-6);
+}
+
 /* ── Glance Bar ─────────────────────────────────────────────────────── */
 .chapter-glance {
   display: flex;
