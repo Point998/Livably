@@ -10,9 +10,10 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - All 14 chapters rendering with real data
 - Modular architecture: each chapter owns data.js / logic.js / template.js
 - Depth slider system (FR-045): Glance / Overview / Deep Read / Research — all 14 chapters wired
-- L3/L4 content shipped for 12 of 14 chapters (Walkability and Costs remaining)
+- L3/L4 content complete for all 12 data chapters (Daily and Reach are structure only)
+- L3/L4 visual distinction: chapter-colored border + research tint, content aligned with inner-pad
 - Design system: Fraunces + DM Sans, design-tokens.css, report.css
-- 1049 tests across 61 suites
+- 1,084 tests across 61 suites
 - Error memory/logging layer
 - Feature request workflow established with 4-phase process
 - GitHub: https://github.com/Point998/Livably
@@ -59,6 +60,8 @@ All 14 chapters wired. L3/L4 content shipped for 12 chapters.
 
 **Next: Phase 5** — New chapters (FR-032 Utilities Intelligence, FR-033 Life at This Address Calculator, FR-034 Chapter Enhancements).
 
+**Parallel infrastructure track — FR-058 (specced, implementation pending).** Spatial cache keys + drive-time banding. Discovery/spec/plan complete; Phase 4 build is the next step, gated on the `h3-js` dependency decision. See Cost Architecture below.
+
 ## Next Phases
 
 ### Phase 5 — New Chapters
@@ -72,6 +75,13 @@ See: LIVABLY-SKETCH-SPEC.md
 ### Phase 7 — Monetization & Launch
 Agent subscriptions, API licensing, white label.
 See: FR-022 (deferred until product is solid)
+
+## Cost Architecture — Spatial Intelligence (enables enterprise scale)
+NR-002 forecast Google API cost at ~$0.65/report; fine for consumer pricing, but a margin concern in B2B/licensing (Phase 7) at volume. NR-003 diagnosed the root cause — every cache key is the exact origin coordinate, so neighboring addresses share nothing — and specced the fix: **H3 cell-based cache keys** (neighbors reuse one fetch) + **drive-time banding** (honest shared values, computed once per cell, with the safety tier kept exact). Expected: warm-cell marginal cost ~$0.65 → ~$0.03–0.04, no accuracy regression, no provider change.
+
+Phased: **Phase 1** (FR-058, pure Google — specced, build pending) → Phase 2 (OSRM self-hosted routing, when contract volume justifies) → Phase 3 (precomputed regional warehouse, on demand only). Google stays the POI source of truth throughout (rural accuracy is the differentiation).
+
+See: NR-002, NR-003, FR-058
 
 ## Module Map
 ```
