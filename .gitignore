@@ -1,6 +1,7 @@
 node_modules/
 .env
 .cache/
+coverage/
 data/logs/
 data/error-patterns.json
 data/mitigations.json
