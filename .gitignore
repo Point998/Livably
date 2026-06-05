@@ -5,6 +5,7 @@ coverage/
 data/logs/
 data/error-patterns.json
 data/mitigations.json
+data/report-*.html
 .claude/settings.local.json
 *.log
 npm-debug.log*
