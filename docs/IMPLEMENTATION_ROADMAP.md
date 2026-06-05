@@ -33,12 +33,12 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - Design system: Fraunces + DM Sans, design-tokens.css, report.css
 - Error memory/logging layer
 - Feature request workflow established with 4-phase process
-- **Tests: 1,214 across 65 suites** (on `fr-058-spatial-cache-banding`; main is at 1,206 until FR-058 merges)
+- **Tests: 1,214 across 65 suites** (on `main`)
 
 ## Active Work
-- **Active branch:** `fr-058-spatial-cache-banding` — PR open against `main`.
-- **Active FR:** FR-058 (Spatial cache keys + drive-time banding) — **built, in review.** See Cost Architecture below.
-- **Recent chain:** NR-002 (API cost forecast) → NR-003 (spatial cost diagnosis) → FR-058 (Phase 1 build).
+- **Active branch:** `main` — no feature branch open.
+- **Most recent:** FR-058 (Spatial cache keys + drive-time banding) — **merged to `main` (PR #10).** See Cost Architecture below.
+- **Recent chain:** NR-002 (API cost forecast) → NR-003 (spatial cost diagnosis) → FR-058 (Phase 1, shipped).
 - **Next:** Phase 5 new chapters (FR-032 Utilities, FR-033 Life-at-Address calculator, FR-034 chapter enhancements).
 
 ---
@@ -82,7 +82,7 @@ Automated tests for every business rule. All new features shipped with tests.
 ## Cost Architecture — Spatial Intelligence (enables enterprise scale)
 NR-002 forecast Google API cost at ~$0.65/report; fine for consumer pricing, but a margin concern in B2B/licensing (Phase 7) at volume. NR-003 diagnosed the root cause — every cache key was the exact origin coordinate, so neighboring addresses shared nothing — and specced the fix: **H3 cell-based cache keys** (neighbors reuse one fetch) + **drive-time banding** (honest shared values, computed once per cell, with the safety tier kept exact). Expected: warm-cell marginal cost ~$0.65 → ~$0.03–0.04, no accuracy regression, no provider change.
 
-Phased: **Phase 1 — FR-058 (pure Google) ✅ built, in review** → Phase 2 (OSRM self-hosted routing, when contract volume justifies) → Phase 3 (precomputed regional warehouse, on demand only). Google stays the POI source of truth throughout (rural accuracy is the differentiation).
+Phased: **Phase 1 — FR-058 (pure Google) ✅ merged (PR #10)** → Phase 2 (OSRM self-hosted routing, when contract volume justifies) → Phase 3 (precomputed regional warehouse, on demand only). Google stays the POI source of truth throughout (rural accuracy is the differentiation).
 
 **FR-058 delivered:** `src/shared/spatial.js` (`snapToCell`, H3), `classifyBand` in validate.js, a 14-day cell cache, centroid-based lifestyle search/drive-times, and a per-address-exact safety tier (hospital/urgent care). Dependency: `h3-js`. See `feature-requests/FR-058-spatial-cache-banding/` and NR-002/NR-003.
 
