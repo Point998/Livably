@@ -1,6 +1,6 @@
 # CLAUDE.md — Livably
 *Read this file completely before making any changes to any file.*
-*Last updated: May 2026*
+*Last updated: June 2026*
 
 ---
 
@@ -13,7 +13,8 @@ Livably is a residential address intelligence report for US homebuyers. Delivere
 **GitHub:** https://github.com/Point998/Livably
 **Design reference:** LIVABLY-DESIGN-BRIEF.md
 **Architecture reference:** docs/plans/module-restructure.md
-**Roadmap:** docs/IMPLEMENTATION_ROADMAP.md
+**Project state, roadmap & backlog (single source of truth):** docs/IMPLEMENTATION_ROADMAP.md
+*(This one doc replaces the former SESSION-STATE.md and BACKLOG.md — read it first when starting a session.)*
 
 ---
 
