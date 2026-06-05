@@ -1,6 +1,6 @@
 # CLAUDE.md — Livably
 *Read this file completely before making any changes to any file.*
-*Last updated: May 2026*
+*Last updated: June 2026*
 
 ---
 
@@ -13,7 +13,8 @@ Livably is a residential address intelligence report for US homebuyers. Delivere
 **GitHub:** https://github.com/Point998/Livably
 **Design reference:** LIVABLY-DESIGN-BRIEF.md
 **Architecture reference:** docs/plans/module-restructure.md
-**Roadmap:** docs/IMPLEMENTATION_ROADMAP.md
+**Project state, roadmap & backlog (single source of truth):** docs/IMPLEMENTATION_ROADMAP.md
+*(This one doc replaces the former SESSION-STATE.md and BACKLOG.md — read it first when starting a session.)*
 
 ---
 
@@ -177,8 +178,8 @@ Cause: NOAA CDO station passed the datatype filter but had no actual TMAX/TMIN r
 
 ## Data Standards
 
-- **Drive times:** Google Maps Distance Matrix, 8am Tuesday departure, door-to-door from specific address
-- **Hospital:** Verified by drive time across top 5 candidates — never search rank
+- **Drive times:** Google Maps Distance Matrix, 8am Tuesday departure. Lifestyle destinations (grocery/pharmacy/gas) are measured from the address's spatial-cell centroid and surfaced as bands (FR-058 / NR-003 Phase 1); the safety tier is recomputed exact per-address (`exactDriveMinutes`), never banded.
+- **Hospital:** Selected by drive time across top 5 candidates — never search rank (CONSTRAINT-003). The candidate selection is cell-shared; the displayed ER drive time is exact, door-to-door from the specific address.
 - **School:** Nearest by distance with disclaimer. Must be same state as origin address.
 - **Flood zone:** Parcel-level from FEMA MSC — never neighborhood-level
 - **Every finding:** Named source + research date
