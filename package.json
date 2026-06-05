@@ -11,12 +11,15 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/tests/**/*.test.js"]
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   },
   "dependencies": {
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "dotenv": "^17.4.2",
     "express": "^4.18.2",
+    "h3-js": "^4.4.0",
     "puppeteer": "^25.0.4"
   },
   "devDependencies": {

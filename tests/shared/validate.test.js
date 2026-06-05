@@ -271,3 +271,78 @@ describe('getRoadPriority', () => {
     expect(getRoadPriority(null)).toBeNull();
   });
 });
+
+// ── classifyBand (FR-058) ─────────────────────────────────────────────────────
+
+const { classifyBand } = require('../../src/shared/validate');
+
+describe('classifyBand', () => {
+  // Ladders (upper bounds, minutes): urban [2,5,10,15,25], suburban [5,10,15,25,40],
+  // rural [15,25,40,60,90], remote [25,40,60,90]. Returns integer rung (0 = closest).
+
+  test('urban ladder maps drives to rungs 0–5', () => {
+    expect(classifyBand(0.5, 'urban')).toBe(0);
+    expect(classifyBand(3, 'urban')).toBe(1);
+    expect(classifyBand(7, 'urban')).toBe(2);
+    expect(classifyBand(12, 'urban')).toBe(3);
+    expect(classifyBand(20, 'urban')).toBe(4);
+    expect(classifyBand(30, 'urban')).toBe(5);
+  });
+
+  test('suburban ladder maps drives to rungs 0–5', () => {
+    expect(classifyBand(2, 'suburban')).toBe(0);
+    expect(classifyBand(7, 'suburban')).toBe(1);
+    expect(classifyBand(12, 'suburban')).toBe(2);
+    expect(classifyBand(20, 'suburban')).toBe(3);
+    expect(classifyBand(30, 'suburban')).toBe(4);
+    expect(classifyBand(50, 'suburban')).toBe(5);
+  });
+
+  test('rural ladder maps drives to rungs 0–5', () => {
+    expect(classifyBand(10, 'rural')).toBe(0);
+    expect(classifyBand(20, 'rural')).toBe(1);
+    expect(classifyBand(30, 'rural')).toBe(2);
+    expect(classifyBand(50, 'rural')).toBe(3);
+    expect(classifyBand(80, 'rural')).toBe(4);
+    expect(classifyBand(95, 'rural')).toBe(5);
+  });
+
+  test('remote ladder maps drives to rungs 0–4 (no rung 5)', () => {
+    expect(classifyBand(20, 'remote')).toBe(0);
+    expect(classifyBand(35, 'remote')).toBe(1);
+    expect(classifyBand(50, 'remote')).toBe(2);
+    expect(classifyBand(80, 'remote')).toBe(3);
+    expect(classifyBand(95, 'remote')).toBe(4);
+  });
+
+  // Straddle rule: within 1 min below a rung's upper bound → the HIGHER rung
+  // (never undersell a drive). Spec R2 + acceptance criteria.
+  test('straddle: 9.7-min suburban → rung 2, not rung 1', () => {
+    expect(classifyBand(9.7, 'suburban')).toBe(2);
+  });
+
+  test('straddle: conservative rung for boundary-adjacent suburban drives', () => {
+    expect(classifyBand(4.6, 'suburban')).toBe(1); // within 1 of 5
+    expect(classifyBand(5.0, 'suburban')).toBe(1);
+    expect(classifyBand(10.2, 'suburban')).toBe(2); // just over 10
+  });
+
+  test('a drive comfortably inside a band is not straddled up', () => {
+    expect(classifyBand(7.0, 'suburban')).toBe(1); // 7 is >1 below 10
+  });
+
+  // Missing drive time → no band emitted (edge case: never fabricate a rung).
+  test('null / undefined / NaN drive minutes → null (no rung)', () => {
+    expect(classifyBand(null, 'suburban')).toBeNull();
+    expect(classifyBand(undefined, 'suburban')).toBeNull();
+    expect(classifyBand(NaN, 'suburban')).toBeNull();
+  });
+
+  test('unknown mode → null (defensive; mode comes from detectRuralMode)', () => {
+    expect(classifyBand(10, 'metropolis')).toBeNull();
+  });
+
+  test('returns a number, never a string label (CONSTRAINT-009)', () => {
+    expect(typeof classifyBand(12, 'suburban')).toBe('number');
+  });
+});

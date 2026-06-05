@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { DRIVETIME_CELL_TTL_DAYS } = require('./utils/constants');
 
 const CACHE_DIR = path.join(__dirname, '../.cache');
 
@@ -41,17 +42,26 @@ class Cache {
     } catch {}
   }
 
+  // A file belongs to this namespace only if it matches `<namespace>_<hash>.json`
+  // exactly — the suffix must be a pure md5 hash. Guards against prefix collisions
+  // (e.g. `drivetime` must not own `drivetime_cell_<hash>.json`).
+  _ownsFile(filename) {
+    const prefix = `${this.namespace}_`;
+    if (!filename.startsWith(prefix)) return false;
+    return /^[0-9a-f]+\.json$/.test(filename.slice(prefix.length));
+  }
+
   clear() {
     try {
       fs.readdirSync(CACHE_DIR)
-        .filter((f) => f.startsWith(`${this.namespace}_`))
+        .filter((f) => this._ownsFile(f))
         .forEach((f) => { try { fs.unlinkSync(path.join(CACHE_DIR, f)); } catch {} });
     } catch {}
   }
 
   stats() {
     try {
-      return fs.readdirSync(CACHE_DIR).filter((f) => f.startsWith(`${this.namespace}_`)).length;
+      return fs.readdirSync(CACHE_DIR).filter((f) => this._ownsFile(f)).length;
     } catch {
       return 0;
     }
@@ -61,6 +71,10 @@ class Cache {
 const geocodeCache  = new Cache('geocode',   60 * 60 * 24 * 90); // 90 days
 const placesCache   = new Cache('places',    60 * 60 * 24 * 7);  // 7 days
 const driveTimeCache = new Cache('drivetime', 60 * 60 * 24);     // 24 hours
+// FR-058: cell-keyed lifestyle drive times surface as stable rungs, so they
+// cache far longer than per-address exact times. Safety exactDriveMinutes uses
+// driveTimeCache (24h) and is never cell-cached.
+const driveTimeCellCache = new Cache('drivetime_cell', 60 * 60 * 24 * DRIVETIME_CELL_TTL_DAYS); // 14 days
 
 function cacheStats() {
   try {
@@ -72,9 +86,10 @@ function cacheStats() {
       files: files.length,
       totalSize: `${(totalSize / 1024).toFixed(2)} KB`,
       breakdown: {
-        geocode:   files.filter((f) => f.startsWith('geocode_')).length,
-        places:    files.filter((f) => f.startsWith('places_')).length,
-        drivetime: files.filter((f) => f.startsWith('drivetime_')).length,
+        geocode:       files.filter((f) => geocodeCache._ownsFile(f)).length,
+        places:        files.filter((f) => placesCache._ownsFile(f)).length,
+        drivetime:     files.filter((f) => driveTimeCache._ownsFile(f)).length,
+        drivetimeCell: files.filter((f) => driveTimeCellCache._ownsFile(f)).length,
       },
     };
   } catch {
@@ -82,4 +97,4 @@ function cacheStats() {
   }
 }
 
-module.exports = { geocodeCache, placesCache, driveTimeCache, cacheStats, CACHE_DIR };
+module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, cacheStats, CACHE_DIR };

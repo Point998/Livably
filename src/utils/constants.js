@@ -55,6 +55,37 @@ const RURAL_MODE_REMOTE_POP_MAX             = 200;
 const RURAL_MODE_SUBURBAN_MAX_DRIVE_MINUTES = 20;
 const DRIVE_TIME_COHERENCE_THRESHOLD_MINUTES = 45;
 
+// ── FR-058 Spatial Cache + Drive-Time Banding ────────────────────────────────
+// Mode drives both the H3 cell resolution (how wide a cache cell is) and the
+// band ladder (how drive minutes collapse into honest rungs). Single source so
+// CONSTRAINT-007's mode classification governs both (NR-003 Phase 1).
+
+// H3 resolution by mode. Higher res = smaller cell. Edge length approximations:
+// res 9 ~150 m, res 8 ~450 m, res 6 ~3 km, res 5 ~8 km.
+const CELL_RESOLUTION_BY_MODE = {
+  urban: 9, suburban: 8, rural: 6, remote: 5,
+};
+
+// Band ladder: ascending upper bounds (minutes) per mode. rung = index of the
+// first bound the drive is below; a drive at or above the last bound takes the
+// final rung (= array length). The ladder shifts finer near zero, coarser far
+// out. Spec R2 baseline; tunable here without touching logic.
+const BAND_LADDER_BY_MODE = {
+  urban:    [2, 5, 10, 15, 25],
+  suburban: [5, 10, 15, 25, 40],
+  rural:    [15, 25, 40, 60, 90],
+  remote:   [25, 40, 60, 90],
+};
+
+// Straddle guard (minutes): a drive within this distance below a rung's upper
+// bound is assigned the HIGHER rung — never undersell a drive (spec R2).
+const BAND_STRADDLE_MINUTES = 1;
+
+// Centroid lifestyle drive times surface as rungs (not raw minutes), so the
+// underlying minute value is stable enough to cache for far longer than the
+// per-address 24h default. Safety exactDriveMinutes is never cell-cached.
+const DRIVETIME_CELL_TTL_DAYS = 14;
+
 // ── Report UI ─────────────────────────────────────────────────────────────────
 
 const MAX_CONCURRENT_PDFS = 3;
@@ -741,6 +772,11 @@ module.exports = {
   RURAL_MODE_REMOTE_POP_MAX,
   RURAL_MODE_SUBURBAN_MAX_DRIVE_MINUTES,
   DRIVE_TIME_COHERENCE_THRESHOLD_MINUTES,
+  // FR-058 spatial cache + banding
+  CELL_RESOLUTION_BY_MODE,
+  BAND_LADDER_BY_MODE,
+  BAND_STRADDLE_MINUTES,
+  DRIVETIME_CELL_TTL_DAYS,
   // Climate chapter
   NOAA_CDO_BASE_URL,
   NOAA_CDO_NORMALS_DATASET,

@@ -87,14 +87,18 @@ describe('buildReport', () => {
     expect(mockFindNearestSchool).toHaveBeenCalledWith(expect.any(String), 'KY');
   });
 
-  test('passes originState to findNearestHospital (CONSTRAINT-006)', async () => {
+  test('passes originState and the spatial cell to findNearestHospital (CONSTRAINT-006, FR-058)', async () => {
     await buildReport('100 Main St, Georgetown, KY');
-    expect(mockFindNearestHospital).toHaveBeenCalledWith(expect.any(String), 'KY');
+    expect(mockFindNearestHospital).toHaveBeenCalledWith(
+      expect.any(String), 'KY', expect.objectContaining({ cellId: expect.any(String) }),
+    );
   });
 
-  test('passes originState to findNearestUrgentCare (CONSTRAINT-006)', async () => {
+  test('passes originState and the spatial cell to findNearestUrgentCare (CONSTRAINT-006, FR-058)', async () => {
     await buildReport('100 Main St, Georgetown, KY');
-    expect(mockFindNearestUrgentCare).toHaveBeenCalledWith(expect.any(String), 'KY');
+    expect(mockFindNearestUrgentCare).toHaveBeenCalledWith(
+      expect.any(String), 'KY', expect.objectContaining({ cellId: expect.any(String) }),
+    );
   });
 
   test('passes originState to findNearestElementarySchool (CONSTRAINT-006)', async () => {
@@ -139,7 +143,8 @@ describe('buildReport', () => {
     await buildReport('100 Main St, Georgetown, KY');
     expect(mockFindNearestGrocery).toHaveBeenCalledWith(
       expect.any(String),
-      'urban'
+      'urban',
+      expect.objectContaining({ cellId: expect.any(String) }),
     );
   });
 
@@ -148,7 +153,8 @@ describe('buildReport', () => {
     await buildReport('456 Rural Route 1, Harlan, KY');
     expect(mockFindNearestGrocery).toHaveBeenCalledWith(
       expect.any(String),
-      'rural'
+      'rural',
+      expect.objectContaining({ cellId: expect.any(String) }),
     );
   });
 
@@ -157,7 +163,8 @@ describe('buildReport', () => {
     await buildReport('100 Main St, Georgetown, KY');
     expect(mockFindNearestGrocery).toHaveBeenCalledWith(
       expect.any(String),
-      'suburban'
+      'suburban',
+      expect.objectContaining({ cellId: expect.any(String) }),
     );
   });
 
@@ -166,7 +173,8 @@ describe('buildReport', () => {
     await buildReport('100 Main St, Georgetown, KY');
     expect(mockFindNearestGrocery).toHaveBeenCalledWith(
       expect.any(String),
-      'suburban'
+      'suburban',
+      expect.objectContaining({ cellId: expect.any(String) }),
     );
   });
 
@@ -175,7 +183,8 @@ describe('buildReport', () => {
     await buildReport('100 Main St, Georgetown, KY');
     expect(mockFindNearestGrocery).toHaveBeenCalledWith(
       expect.any(String),
-      'suburban'
+      'suburban',
+      expect.objectContaining({ cellId: expect.any(String) }),
     );
   });
 });

@@ -1,13 +1,21 @@
 'use strict';
-const { driveTimeCache } = require('../../cache');
+const { driveTimeCache, driveTimeCellCache } = require('../../cache');
 const { googleMapsClient, googleMapsApiKey } = require('./client');
 const { getNextTuesday8am, getNextDayAt } = require('../../utils/time');
 const { TRAFFIC_VARIATION_SLOTS } = require('../../utils/constants');
 
-async function getDriveTime(originLatLng, destinationLatLng) {
+// FR-058: when a `cellId` is supplied (options.cellId), the result is keyed by
+// cell and stored in the long-TTL cell cache, so every address in the cell
+// shares one fetch. Callers pass the cell centroid as `originLatLng` in that
+// case. Without a cellId, behavior is unchanged: per-address key, 24h cache.
+async function getDriveTime(originLatLng, destinationLatLng, options = {}) {
   const destStr = `${destinationLatLng.lat},${destinationLatLng.lng}`;
-  const cacheKey = `${originLatLng}:${destStr}`;
-  const cached = driveTimeCache.get(cacheKey);
+  const { cellId } = options;
+  const useCell = Boolean(cellId);
+  const cache = useCell ? driveTimeCellCache : driveTimeCache;
+  const cacheKey = useCell ? `${cellId}:${destStr}` : `${originLatLng}:${destStr}`;
+
+  const cached = cache.get(cacheKey);
   if (cached !== null) { console.log('[CACHE HIT] drivetime:', cacheKey); return cached; }
 
   const distanceResponse = await googleMapsClient.distancematrix({
@@ -26,20 +34,34 @@ async function getDriveTime(originLatLng, destinationLatLng) {
   }
 
   const minutes = Math.round((element.duration_in_traffic?.value ?? element.duration?.value) / 60);
-  driveTimeCache.set(cacheKey, minutes);
+  cache.set(cacheKey, minutes);
   return minutes;
 }
 
-async function getTrafficVariations(originLatLng, destLocation) {
+// FR-058 safety tier (CONSTRAINT-003): the drive time a buyer reads for the
+// selected hospital / urgent care is recomputed from the ACTUAL address — never
+// banded, never cell-shared. Per-address key in the 24h cache (not the long-TTL
+// cell cache). This is the ~1–2 Distance Matrix calls/report we accept to keep
+// the safety number genuinely exact for each house.
+async function getExactDriveTime(actualOrigin, destinationLatLng) {
+  return getDriveTime(actualOrigin, destinationLatLng);
+}
+
+async function getTrafficVariations(originLatLng, destLocation, options = {}) {
   const destLatLng = `${destLocation.lat},${destLocation.lng}`;
+  const { cellId } = options;
+  const useCell = Boolean(cellId);
+  const cache = useCell ? driveTimeCellCache : driveTimeCache;
+  const keyOrigin = useCell ? cellId : originLatLng;
+
   const slots = TRAFFIC_VARIATION_SLOTS.map(({ label, display, targetDay, hour }) => ({
     label, display, ts: getNextDayAt(targetDay, hour),
   }));
 
   const results = await Promise.allSettled(
     slots.map(async ({ label, display, ts }) => {
-      const cacheKey = `traffic:${originLatLng}:${destLatLng}:${label}`;
-      const cached = driveTimeCache.get(cacheKey);
+      const cacheKey = `traffic:${keyOrigin}:${destLatLng}:${label}`;
+      const cached = cache.get(cacheKey);
       if (cached !== null) { console.log('[CACHE HIT] traffic slot:', cacheKey); return cached; }
 
       const resp = await googleMapsClient.distancematrix({
@@ -58,7 +80,7 @@ async function getTrafficVariations(originLatLng, destLocation) {
         display,
         minutes: Math.round((el.duration_in_traffic?.value ?? el.duration?.value) / 60),
       };
-      driveTimeCache.set(cacheKey, result);
+      cache.set(cacheKey, result);
       return result;
     }),
   );
@@ -74,4 +96,4 @@ async function getTrafficVariations(originLatLng, destLocation) {
   return { variations, stats: { min, max, avg, range: max - min } };
 }
 
-module.exports = { getDriveTime, getTrafficVariations };
+module.exports = { getDriveTime, getExactDriveTime, getTrafficVariations };
