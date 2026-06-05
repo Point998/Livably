@@ -178,8 +178,8 @@ Cause: NOAA CDO station passed the datatype filter but had no actual TMAX/TMIN r
 
 ## Data Standards
 
-- **Drive times:** Google Maps Distance Matrix, 8am Tuesday departure, door-to-door from specific address
-- **Hospital:** Verified by drive time across top 5 candidates — never search rank
+- **Drive times:** Google Maps Distance Matrix, 8am Tuesday departure. Lifestyle destinations (grocery/pharmacy/gas) are measured from the address's spatial-cell centroid and surfaced as bands (FR-058 / NR-003 Phase 1); the safety tier is recomputed exact per-address (`exactDriveMinutes`), never banded.
+- **Hospital:** Selected by drive time across top 5 candidates — never search rank (CONSTRAINT-003). The candidate selection is cell-shared; the displayed ER drive time is exact, door-to-door from the specific address.
 - **School:** Nearest by distance with disclaimer. Must be same state as origin address.
 - **Flood zone:** Parcel-level from FEMA MSC — never neighborhood-level
 - **Every finding:** Named source + research date
