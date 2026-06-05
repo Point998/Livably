@@ -9,6 +9,8 @@ const {
   RURAL_MODE_REMOTE_POP_MAX,
   RURAL_MODE_SUBURBAN_MAX_DRIVE_MINUTES,
   DRIVE_TIME_COHERENCE_THRESHOLD_MINUTES,
+  BAND_LADDER_BY_MODE,
+  BAND_STRADDLE_MINUTES,
 } = require('../utils/constants');
 
 // CONSTRAINT-007: Classify address as urban/suburban/rural/remote before narrative generation.
@@ -68,6 +70,26 @@ function checkDriveTimeCoherence(driveTimeMinutes, destinationLabel, ruralMode) 
   return { ok: true, reason: '' };
 }
 
+// FR-058 (CONSTRAINT-009/014): Drive-time band classifier. Collapses a drive in
+// minutes into an honest integer rung (0 = closest) using the mode's ladder.
+// Returns ONLY an integer — no words, no labels; the template maps rung → language
+// later. Straddle rule: a drive within BAND_STRADDLE_MINUTES below a rung's upper
+// bound takes the HIGHER rung (never undersell a drive). Missing/invalid input or
+// unknown mode → null (never fabricate a rung).
+// driveMinutes: number | null | undefined
+// mode: 'urban' | 'suburban' | 'rural' | 'remote'
+function classifyBand(driveMinutes, mode) {
+  if (driveMinutes === null || driveMinutes === undefined || Number.isNaN(driveMinutes)) {
+    return null;
+  }
+  const ladder = BAND_LADDER_BY_MODE[mode];
+  if (!ladder) return null;
+  for (let i = 0; i < ladder.length; i++) {
+    if (driveMinutes < ladder[i] - BAND_STRADDLE_MINUTES) return i;
+  }
+  return ladder.length;
+}
+
 // CONSTRAINT-007 + CONSTRAINT-014: Basement detection — region-aware, rural mode checked first.
 // Rural construction patterns can run opposite to suburban patterns — never apply suburban
 // era-based rules to rural addresses without checking region first.
@@ -124,4 +146,4 @@ function getRoadPriority(addressComponents) {
   return 'residential';
 }
 
-module.exports = { detectRuralMode, checkCrossState, checkDriveTimeCoherence, getBasementContext, getRoadPriority };
+module.exports = { detectRuralMode, checkCrossState, checkDriveTimeCoherence, classifyBand, getBasementContext, getRoadPriority };

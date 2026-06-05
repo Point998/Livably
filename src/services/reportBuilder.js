@@ -16,6 +16,7 @@ const { buildReportHTML } = require('../templates/pages/reportPage');
 const { QuotaExceededError, RateLimitError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
+const { snapToCell } = require('../shared/spatial');
 
 function classifyError(error) {
   if (error instanceof QuotaExceededError) {
@@ -63,14 +64,24 @@ async function buildReport(address, options = {}) {
     // Census pre-fetch failed — ruralMode stays 'suburban'
   }
 
+  // FR-058: snap origin to a mode-sized spatial cell once. POI fetchers below
+  // search from the cell centroid and cache by cellId so neighboring addresses
+  // share fetches; safety tier (hospital/urgent care) recomputes the displayed
+  // drive time per actual address. centroidLatLng is the shared origin for
+  // cell-keyed drive-time + traffic computations.
+  // snapToCell stays pure-spatial; we augment with `mode` so the data layer can
+  // band centroid drive times from the same single source that sized the cell.
+  const cell = { ...snapToCell({ lat: origin.lat, lng: origin.lng }, ruralMode), mode: ruralMode };
+  const centroidLatLng = `${cell.centroid.lat},${cell.centroid.lng}`;
+
   const results = await Promise.allSettled([
-    findNearestGrocery(originLatLng, ruralMode),
-    findNearestPharmacy(originLatLng),
-    findNearestHospital(originLatLng, originState),       // CONSTRAINT-006: cross-state filter
-    findNearestUrgentCare(originLatLng, originState),     // CONSTRAINT-006: cross-state filter
+    findNearestGrocery(originLatLng, ruralMode, cell),
+    findNearestPharmacy(originLatLng, cell),
+    findNearestHospital(originLatLng, originState, cell),       // CONSTRAINT-006: cross-state filter
+    findNearestUrgentCare(originLatLng, originState, cell),     // CONSTRAINT-006: cross-state filter
     findNearestHighwayOnRamp(originLatLng),
     findNearestSchool(originLatLng, originState),         // CONSTRAINT-006: cross-state filter
-    findNearestGasStation(originLatLng),
+    findNearestGasStation(originLatLng, cell),
     findNearestPark(originLatLng),
     findNearestCoffeeShop(originLatLng),
     findNearestElementarySchool(originLatLng, originState), // CONSTRAINT-006: cross-state filter
@@ -119,8 +130,10 @@ async function buildReport(address, options = {}) {
     .filter((d) => d.type === 'work' && d.location)
     .forEach((d) => trafficTargets.push({ name: d.name, location: d.location }));
 
+  // FR-058: traffic curves are a stable cell→destination shape — compute from the
+  // centroid and cell-key them (14-day TTL) so neighbors share the 4-slot fetch.
   const trafficResults = await Promise.allSettled(
-    trafficTargets.map((t) => getTrafficVariations(originLatLng, t.location)),
+    trafficTargets.map((t) => getTrafficVariations(centroidLatLng, t.location, { cellId: cell.cellId })),
   );
   const trafficData = trafficTargets
     .map((t, i) => ({ ...t, traffic: trafficResults[i].status === 'fulfilled' ? trafficResults[i].value : null }))

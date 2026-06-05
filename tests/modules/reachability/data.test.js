@@ -2,6 +2,7 @@
 const mockClient = { textSearch: jest.fn(), placesNearby: jest.fn() };
 const mockGetDriveTime = jest.fn();
 const mockCheckDriveTimeCoherence = jest.fn();
+const mockClassifyBand = jest.fn();
 
 const makeMockCache = () => {
   const store = new Map();
@@ -22,6 +23,7 @@ jest.mock('../../../src/shared/google/distanceMatrix', () => ({
 }));
 jest.mock('../../../src/shared/validate', () => ({
   checkDriveTimeCoherence: mockCheckDriveTimeCoherence,
+  classifyBand: mockClassifyBand,
 }));
 jest.mock('../../../src/cache', () => ({ placesCache: mockPlacesCache }));
 jest.mock('../../../src/errorMemory', () => ({ getMitigation: (_fn, _key, def) => def }));
@@ -47,6 +49,9 @@ beforeEach(() => {
   mockPlacesCache.clear();
   // Default: coherent result. Overridden in coherence-warning tests.
   mockCheckDriveTimeCoherence.mockReturnValue({ ok: true, reason: '' });
+  // Sentinel rung — band classification is unit-tested in validate.test.js; here
+  // we only verify the data layer wires centroidDriveMinutes + mode → bandRung.
+  mockClassifyBand.mockReturnValue(2);
 });
 
 describe('findNearestGrocery', () => {
@@ -113,5 +118,58 @@ describe('findNearestGasStation', () => {
     mockGetDriveTime.mockResolvedValue(3);
     const result = await findNearestGasStation('38.2,-84.3');
     expect(result).toMatchObject({ name: 'Shell', driveTimeMinutes: 3 });
+  });
+});
+
+// ── FR-058: cell-based keying + centroid search ───────────────────────────────
+
+const CELL = { cellId: 'CELL_SUB', resolution: 8, centroid: { lat: 38.21, lng: -84.54 }, mode: 'suburban' };
+const CENTROID_STR = '38.21,-84.54';
+
+describe('cell-based keying (FR-058)', () => {
+  test('grocery searches from the centroid, not the raw address', async () => {
+    mockClient.textSearch.mockResolvedValue({ data: { results: [makePlace('Cell Grocer', ['supermarket'])] } });
+    mockGetDriveTime.mockResolvedValue(7);
+    await findNearestGrocery('38.2101,-84.5447', 'suburban', CELL);
+    expect(mockClient.textSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ location: CENTROID_STR }) }),
+    );
+  });
+
+  test('grocery computes drive time from centroid with the cellId cache option', async () => {
+    mockClient.textSearch.mockResolvedValue({ data: { results: [makePlace('Cell Grocer', ['supermarket'])] } });
+    mockGetDriveTime.mockResolvedValue(7);
+    await findNearestGrocery('38.2101,-84.5447', 'suburban', CELL);
+    expect(mockGetDriveTime).toHaveBeenCalledWith(CENTROID_STR, expect.anything(), { cellId: 'CELL_SUB' });
+  });
+
+  test('grocery records carry cellId, resolution, centroidDriveMinutes, bandRung, and mode', async () => {
+    mockClient.textSearch.mockResolvedValue({ data: { results: [makePlace('Cell Grocer', ['supermarket'])] } });
+    mockGetDriveTime.mockResolvedValue(7);
+    const result = await findNearestGrocery('38.2101,-84.5447', 'suburban', CELL);
+    expect(result[0]).toMatchObject({
+      cellId: 'CELL_SUB', resolution: 8, centroidDriveMinutes: 7, driveTimeMinutes: 7,
+      bandRung: 2, mode: 'suburban',
+    });
+    // R7: band is classified from the centroid drive minutes + mode (single source).
+    expect(mockClassifyBand).toHaveBeenCalledWith(7, 'suburban');
+  });
+
+  test('pharmacy keys the cache by cellId (two addresses in a cell share one fetch)', async () => {
+    mockClient.placesNearby.mockResolvedValue({ data: { results: [makePlace('Cell Rx', ['pharmacy'])] } });
+    mockGetDriveTime.mockResolvedValue(6);
+    await findNearestPharmacy('38.2101,-84.5447', CELL);
+    await findNearestPharmacy('38.2110,-84.5447', CELL); // different address, same cell
+    expect(mockClient.placesNearby).toHaveBeenCalledTimes(1);
+  });
+
+  test('gas station attaches cell fields and searches from centroid', async () => {
+    mockClient.placesNearby.mockResolvedValue({ data: { results: [makePlace('Cell Gas', ['gas_station'])] } });
+    mockGetDriveTime.mockResolvedValue(4);
+    const result = await findNearestGasStation('38.2101,-84.5447', CELL);
+    expect(result).toMatchObject({ cellId: 'CELL_SUB', resolution: 8, centroidDriveMinutes: 4, bandRung: 2, mode: 'suburban' });
+    expect(mockClient.placesNearby).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ location: CENTROID_STR }) }),
+    );
   });
 });

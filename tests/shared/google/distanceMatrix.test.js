@@ -11,6 +11,7 @@ const makeMockCache = () => {
   };
 };
 const mockDriveTimeCache = makeMockCache();
+const mockDriveTimeCellCache = makeMockCache();
 
 jest.mock('../../../src/shared/google/client', () => ({
   googleMapsClient: mockClient,
@@ -18,6 +19,7 @@ jest.mock('../../../src/shared/google/client', () => ({
 }));
 jest.mock('../../../src/cache', () => ({
   driveTimeCache: mockDriveTimeCache,
+  driveTimeCellCache: mockDriveTimeCellCache,
 }));
 jest.mock('../../../src/utils/time', () => ({
   getNextTuesday8am: jest.fn().mockReturnValue(1748000000),
@@ -32,7 +34,7 @@ jest.mock('../../../src/utils/constants', () => ({
   ],
 }));
 
-const { getDriveTime, getTrafficVariations } = require('../../../src/shared/google/distanceMatrix');
+const { getDriveTime, getTrafficVariations, getExactDriveTime } = require('../../../src/shared/google/distanceMatrix');
 
 const makeMatrixResponse = (seconds) => ({
   data: {
@@ -89,5 +91,82 @@ describe('getTrafficVariations', () => {
     expect(result).not.toBeNull();
     expect(result.stats.min).toBe(10);
     expect(result.stats.max).toBe(20);
+  });
+});
+
+// ── FR-058: cell-based keying + safety-tier exact path ────────────────────────
+
+const DEST = { lat: 38.3, lng: -84.4 };
+const DEST_STR = '38.3,-84.4';
+
+describe('getDriveTime — cell keying (FR-058)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDriveTimeCache.clear();
+    mockDriveTimeCellCache.clear();
+  });
+
+  test('two distinct origins in the same cell share one API call', async () => {
+    mockClient.distancematrix.mockResolvedValue(makeMatrixResponse(720));
+    // Different raw address strings, same cellId — the core cache-sharing win.
+    await getDriveTime('38.2101,-84.5447', DEST, { cellId: 'CELL_X' });
+    await getDriveTime('38.2110,-84.5447', DEST, { cellId: 'CELL_X' });
+    expect(mockClient.distancematrix).toHaveBeenCalledTimes(1);
+  });
+
+  test('cell-keyed value is stored in the cell cache under the cellId, not the per-address cache', async () => {
+    mockClient.distancematrix.mockResolvedValue(makeMatrixResponse(720));
+    await getDriveTime('38.2101,-84.5447', DEST, { cellId: 'CELL_X' });
+    expect(mockDriveTimeCellCache.get(`CELL_X:${DEST_STR}`)).toBe(12);
+    expect(mockDriveTimeCache.get(`38.2101,-84.5447:${DEST_STR}`)).toBeNull();
+  });
+
+  test('without a cellId, keeps backward-compatible per-address keying in the short cache', async () => {
+    mockClient.distancematrix.mockResolvedValue(makeMatrixResponse(720));
+    await getDriveTime('38.2,-84.5', DEST);
+    expect(mockDriveTimeCache.get(`38.2,-84.5:${DEST_STR}`)).toBe(12);
+    expect(mockDriveTimeCellCache.get(`38.2,-84.5:${DEST_STR}`)).toBeNull();
+  });
+});
+
+describe('getExactDriveTime — safety tier (FR-058)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDriveTimeCache.clear();
+    mockDriveTimeCellCache.clear();
+  });
+
+  test('computes per-address: two different addresses do NOT share (exact for each house)', async () => {
+    mockClient.distancematrix.mockResolvedValue(makeMatrixResponse(720));
+    await getExactDriveTime('38.2101,-84.5447', DEST);
+    await getExactDriveTime('38.2110,-84.5447', DEST);
+    expect(mockClient.distancematrix).toHaveBeenCalledTimes(2);
+  });
+
+  test('never writes to the long-TTL cell cache', async () => {
+    mockClient.distancematrix.mockResolvedValue(makeMatrixResponse(720));
+    await getExactDriveTime('38.2101,-84.5447', DEST);
+    expect(mockDriveTimeCellCache.get(`38.2101,-84.5447:${DEST_STR}`)).toBeNull();
+  });
+
+  test('returns integer minutes', async () => {
+    mockClient.distancematrix.mockResolvedValue(makeMatrixResponse(900));
+    expect(await getExactDriveTime('38.2,-84.5', DEST)).toBe(15);
+  });
+});
+
+describe('getTrafficVariations — cell keying (FR-058)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockDriveTimeCache.clear();
+    mockDriveTimeCellCache.clear();
+  });
+
+  test('cell-keyed traffic slots are shared across addresses in the same cell', async () => {
+    mockClient.distancematrix.mockResolvedValue(makeMatrixResponse(600));
+    // 4 slots → 4 calls on first address; second same-cell address adds none.
+    await getTrafficVariations('38.2101,-84.5447', DEST, { cellId: 'CELL_T' });
+    await getTrafficVariations('38.2110,-84.5447', DEST, { cellId: 'CELL_T' });
+    expect(mockClient.distancematrix).toHaveBeenCalledTimes(4);
   });
 });
