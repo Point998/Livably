@@ -21,15 +21,20 @@ function parseLatLng(latLng) {
   return { lat: latLng.lat, lng: latLng.lng };
 }
 
+// snapToCellAtResolution(latLng, resolution) -> { cellId, resolution, centroid }
+// Resolution-parameterized tiling. snapToCell layers mode-driven resolution on top.
+function snapToCellAtResolution(latLng, resolution) {
+  const { lat, lng } = parseLatLng(latLng);
+  const cellId = h3.latLngToCell(lat, lng, resolution);
+  const [cLat, cLng] = h3.cellToLatLng(cellId);
+  return { cellId, resolution, centroid: { lat: cLat, lng: cLng } };
+}
+
 // snapToCell(latLng, mode) -> { cellId, resolution, centroid: { lat, lng } }
 // resolution is mode-driven (CONSTRAINT-007 single source). cellId is the H3
 // index string at that resolution; centroid is its center point.
 function snapToCell(latLng, mode) {
-  const { lat, lng } = parseLatLng(latLng);
-  const resolution = CELL_RESOLUTION_BY_MODE[mode];
-  const cellId = h3.latLngToCell(lat, lng, resolution);
-  const [cLat, cLng] = h3.cellToLatLng(cellId);
-  return { cellId, resolution, centroid: { lat: cLat, lng: cLng } };
+  return snapToCellAtResolution(latLng, CELL_RESOLUTION_BY_MODE[mode]);
 }
 
 // FR-058 fetch helpers shared by cell-aware data modules. With a cell, POI
@@ -42,4 +47,4 @@ function cellDriveOpts(cell) {
   return cell ? { cellId: cell.cellId } : undefined;
 }
 
-module.exports = { snapToCell, cellSearchOrigin, cellDriveOpts };
+module.exports = { snapToCell, snapToCellAtResolution, cellSearchOrigin, cellDriveOpts };

@@ -4,7 +4,7 @@
 // whose resolution is chosen by rural mode, plus that cell's centroid (the point
 // all addresses in the cell share for POI search + drive-time computation).
 
-const { snapToCell } = require('../../src/shared/spatial');
+const { snapToCell, snapToCellAtResolution } = require('../../src/shared/spatial');
 
 // Georgetown KY suburban cell (res 8). These two points are exactly 100 m apart
 // and verified to share one H3 res-8 cell — the core cache-sharing guarantee.
@@ -65,5 +65,28 @@ describe('snapToCell', () => {
       expect(typeof cell.centroid.lat).toBe('number');
       expect(typeof cell.centroid.lng).toBe('number');
     }
+  });
+});
+
+describe('snapToCellAtResolution', () => {
+  test('returns a cellId, the resolution, and a centroid for a fixed resolution', () => {
+    const out = snapToCellAtResolution({ lat: 38.2098, lng: -84.5588 }, 7);
+    expect(typeof out.cellId).toBe('string');
+    expect(out.cellId.length).toBeGreaterThan(0);
+    expect(out.resolution).toBe(7);
+    expect(out.centroid.lat).toBeCloseTo(38.2, 1);
+    expect(out.centroid.lng).toBeCloseTo(-84.56, 1);
+  });
+
+  test('neighboring coordinates within the same cell share a cellId', () => {
+    const a = snapToCellAtResolution({ lat: 38.2098, lng: -84.5588 }, 7);
+    const b = snapToCellAtResolution({ lat: 38.2099, lng: -84.5589 }, 7);
+    expect(a.cellId).toBe(b.cellId);
+    expect(a.centroid).toEqual(b.centroid);
+  });
+
+  test('accepts a "lat,lng" string', () => {
+    const out = snapToCellAtResolution('38.2098,-84.5588', 7);
+    expect(out.resolution).toBe(7);
   });
 });
