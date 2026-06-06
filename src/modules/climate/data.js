@@ -8,7 +8,10 @@ const {
   NOAA_STATION_SEARCH_RADII,
   FEMA_DECLARATIONS_URL, USGS_ELEVATION_URL,
   CLIMATE_STORM_LOOKBACK_YEARS, CLIMATE_FEMA_LOOKBACK_YEARS,
+  WATERSHED_CELL_RESOLUTION,
 } = require('../../utils/constants');
+const { snapToCellAtResolution } = require('../../shared/spatial');
+const { watershedCache } = require('../../cache');
 const {
   getEmergencySystem,
   getLastSignificantEvent,
@@ -156,6 +159,52 @@ async function fetchElevationWithRetry(url, maxRetries = 2) {
   }
 }
 
+const WBD_BASE = 'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer';
+
+// Query one WBD layer at a point; return the watershed unit's `name` or null.
+async function queryWBDName(layer, lat, lng) {
+  const params = new URLSearchParams({
+    geometry: `${lng},${lat}`,
+    geometryType: 'esriGeometryPoint',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: 'name',
+    returnGeometry: 'false',
+    f: 'json',
+  });
+  const resp = await fetch(`${WBD_BASE}/${layer}/query?${params}`, { signal: AbortSignal.timeout(8000) });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data?.features?.[0]?.attributes?.name ?? null;
+}
+
+// getNamedWatershed(lat, lng) -> { huc12Name, basinName } | null
+// Cell-cached (neighbors share one fetch). Queries WBD at the cell centroid so
+// every address in the cell resolves to the same watershed. Layer 6 = HUC-12,
+// layer 4 = HUC-8 basin.
+async function getNamedWatershed(lat, lng) {
+  const { cellId, centroid } = snapToCellAtResolution({ lat, lng }, WATERSHED_CELL_RESOLUTION);
+
+  const cached = watershedCache.get(cellId);
+  if (cached) return cached.huc12Name ? cached : null; // negatives cached as { huc12Name: null }
+
+  try {
+    const [huc12Name, basinName] = await Promise.all([
+      queryWBDName(6, centroid.lat, centroid.lng),
+      queryWBDName(4, centroid.lat, centroid.lng),
+    ]);
+    if (!huc12Name) {
+      watershedCache.set(cellId, { huc12Name: null, basinName: null });
+      return null;
+    }
+    const result = { huc12Name, basinName: basinName || null };
+    watershedCache.set(cellId, result);
+    return result;
+  } catch {
+    return null; // transient errors are not cached
+  }
+}
+
 async function getWatershedContext(lat, lng) {
   const offsets = [[0, 0], [0.0036, 0], [-0.0036, 0], [0, 0.0045], [0, -0.0045]];
   const urls = offsets.map(([dlat, dlng]) =>
@@ -278,6 +327,8 @@ module.exports = {
   getFEMADeclarations,
   getWatershedContext,
   fetchElevationWithRetry,
+  getNamedWatershed,
+  queryWBDName,
   getEmergencySystem,
   getLastSignificantEvent,
   computeRarityStatement,
