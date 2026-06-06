@@ -39,8 +39,8 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - **Active branch:** `main` — no feature branch open.
 - **Most recent:** FR-058 (Spatial cache keys + drive-time banding) — **merged to `main` (PR #10).** See Cost Architecture below.
 - **Recent chain:** NR-002 (API cost forecast) → NR-003 (spatial cost diagnosis) → FR-058 (Phase 1, shipped).
-- **FR-034 (Chapter Enhancements):** 6 of 7 enhancements merged to `main` (enh 1–5, 7). Only enhancement 6 (Climate watershed/upstream context) remains, and it is partially present (topographic-position drainage signal shipped; named-HUC + upstream tracing not built). See FR-034 detail below.
-- **Next:** Finish FR-034 enh 6, or start the remaining Phase 5 chapters (FR-032 Utilities, FR-033 Life-at-Address calculator).
+- **FR-034 (Chapter Enhancements): ✅ COMPLETE — all 7 enhancements merged to `main`** (enh 6 named watershed context shipped via PR #15). See FR-034 detail below.
+- **Next:** Start the remaining Phase 5 chapters — FR-032 Utilities, FR-033 Life-at-Address calculator (neither started).
 
 ---
 
@@ -93,7 +93,7 @@ Phased: **Phase 1 — FR-058 (pure Google) ✅ merged (PR #10)** → Phase 2 (OS
 
 ### Phase 5 — New Chapters
 Utilities Intelligence (FR-032), Life at This Address Calculator (FR-033), Chapter Enhancements (FR-034).
-- **FR-034 — ✅ 6/7 merged** (enh 1–5, 7). Remaining: enhancement 6 (Climate watershed/upstream), partial.
+- **FR-034 — ✅ COMPLETE (7/7 merged).**
 - **FR-032, FR-033 — not started.**
 
 ### Phase 6 — The Livably Sketch
@@ -118,13 +118,13 @@ Interactive calculator at the end of the Daily Reachability chapter.
 Electric provider name + type (municipal/co-op/IOU); avg residential rate vs state avg; outage frequency + duration (NERC SAIDI/SAIFI); natural gas vs propane/electric-only; municipal water vs well; municipal sewer vs septic; recycling availability; all ISPs + tech + actual vs advertised speeds; EV charging monthly cost at local rate.
 
 ### Chapter Enhancements (FR-034 detail)
-*Status as of June 2026: enhancements 1–5 and 7 are merged to `main`. Enhancement 6 (Climate watershed/upstream) is the only remaining slot, and is partially present.*
+*Status as of June 2026: ✅ ALL 7 enhancements merged to `main`. FR-034 is complete.*
 - **Property (enh 1) — ✅ shipped:** construction-era health risks (lead paint pre-1978, asbestos pre-1980, polybutylene 1978–1995) in the L3 Building Age tab. *Not shipped: deed restrictions/HOA CC&Rs; seasonal road access.*
 - **Daily Reachability (enh 2) — ✅ shipped:** civic infrastructure (library, community/rec center, post office) in Additional Services.
 - **Growth (enh 3) — ✅ shipped:** 10-year horizon synthesis (permit trend + pipeline + commercial), documented signals, not speculation.
 - **Health & Safety (enh 4) — ✅ shipped:** CMS hospital type/designation + NPI primary-care count in a new Healthcare Ecosystem L3 tab. *Not shipped: specialist availability within 30 min.*
 - **Sensory (enh 5) — ✅ shipped:** airport direction ("to the north") via bearing math. *Deferred: FAA approach/departure-corridor detection (runway/ICAO mapping).*
-- **Climate (enh 6) — ⚠️ partial:** topographic-position drainage signal shipped (`buildWatershedHTML`: low-point vs uphill). *Not built: named watershed (USGS HUC) + upstream land-use/hydrology tracing (NHD) — the "what's upstream" layer.*
+- **Climate (enh 6) — ✅ shipped:** named HUC-12 watershed + HUC-8 basin (USGS WBD, cell-cached) at L3/L4, augmenting the existing topographic-position signal (`buildWatershedHTML`). *Deferred: named draining stream (no verified NLDI `gnis_name` source); upstream land-use/hydrology tracing.*
 - **What Will Grow Here (enh 7) — ✅ shipped:** microclimate (USGS elevation + Dec vs June solar angle + shadow-length reference) in the Garden Overview. *Plan: `docs/superpowers/plans/2026-06-03-fr034-enhancement7-microclimate.md`.*
 
 ### Design ideas captured
