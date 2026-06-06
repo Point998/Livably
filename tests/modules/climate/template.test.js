@@ -149,9 +149,47 @@ describe('buildClimateChapterHTML — Level 4 Research', () => {
     expect(html).toMatch(/climate-research-section/);
   });
 
-  test('Research section absent when allEvents is empty', () => {
-    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+  test('Research section absent when allEvents is empty and no normals and no watershed', () => {
+    const h = {
+      ...baseHistory,
+      climateNormals: null,
+      watershed: null,
+    };
+    const html = buildClimateChapterHTML(baseEnv, h, locationInfo);
     expect(html).not.toMatch(/climate-research-section/);
+  });
+
+  test('Research normals section renders when allEvents is empty but normals are present', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).toMatch(/climate-research-section/);
+    expect(html).toMatch(/30-Year Monthly Climate Normals/);
+  });
+});
+
+function climateHistoryWith(named) {
+  return {
+    stormEvents: { tornadoes: [], floods: [], winterStorms: [], heatEvents: [], allEvents: [] },
+    femaDeclarations: { weatherRelated: [], all: [], count: 0 },
+    climateNormals: null,
+    glance: { lastSignificantEvent: null },
+    preparedness: { emergencySystem: null, roadPriority: null },
+    watershed: named ? { topographicPosition: 'lowpoint', elevations: null, named } : null,
+    basementContext: null,
+  };
+}
+
+describe('L3 Your Watershed group', () => {
+  const env = { floodRisk: { zone: 'X', risk: 'Minimal' } };
+
+  test('renders the watershed name in the deep dive when named is present', () => {
+    const html = buildClimateChapterHTML(env, climateHistoryWith({ huc12Name: 'Dry Run-North Elkhorn Creek', basinName: 'North Fork Elkhorn Creek' }), { state: 'KY', county: 'Scott County' });
+    expect(html).toContain('Your Watershed');
+    expect(html).toContain('Dry Run');
+  });
+
+  test('omits the Your Watershed group when named is absent', () => {
+    const html = buildClimateChapterHTML(env, climateHistoryWith(null), { state: 'KY', county: 'Scott County' });
+    expect(html).not.toContain('Your Watershed');
   });
 });
 
@@ -199,5 +237,52 @@ describe('buildClimateChapterHTML — FR-045 depth system', () => {
   test('depth selector rendered (chapter-depth-control)', () => {
     const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
     expect(html).toMatch(/chapter-depth-control/);
+  });
+});
+
+describe('L4 Watershed Context block', () => {
+  const env = { floodRisk: { zone: 'X', risk: 'Minimal' } };
+  const named = { huc12Name: 'Dry Run-North Elkhorn Creek', basinName: 'North Fork Elkhorn Creek' };
+
+  function historyWith(named, position) {
+    const h = climateHistoryWith(named);
+    if (h.watershed) h.watershed.topographicPosition = position;
+    return h;
+  }
+
+  test('renders watershed meaning, basin, and lowpoint tie-back', () => {
+    const html = buildClimateChapterHTML(env, historyWith(named, 'lowpoint'), { state: 'KY', county: 'Scott County' });
+    expect(html).toContain('Watershed Context');
+    expect(html).toContain('North Fork Elkhorn Creek'); // basin
+    expect(html).toMatch(/drainage|drains|runoff/i);    // tie-back present
+  });
+
+  test('omits the basin clause when basinName is null', () => {
+    const html = buildClimateChapterHTML(env, historyWith({ huc12Name: 'Dry Run-North Elkhorn Creek', basinName: null }, 'lowpoint'), { state: 'KY', county: 'Scott County' });
+    expect(html).toContain('Watershed Context');
+    expect(html).not.toContain('part of the larger');
+  });
+
+  test('uses uphill wording for an uphill parcel, not low-point language', () => {
+    const html = buildClimateChapterHTML(env, historyWith(named, 'uphill'), { state: 'KY', county: 'Scott County' });
+    expect(html).toMatch(/above the surrounding terrain|away from/i);
+    expect(html).not.toMatch(/low-lying position/i);
+  });
+
+  test('renders the watershed block even with no storm events', () => {
+    // climateHistoryWith already has empty allEvents; the block must still appear.
+    const html = buildClimateChapterHTML(env, historyWith(named, 'neutral'), { state: 'KY', county: 'Scott County' });
+    expect(html).toContain('Watershed Context');
+  });
+
+  test('omits the watershed block when named is absent', () => {
+    const html = buildClimateChapterHTML(env, climateHistoryWith(null), { state: 'KY', county: 'Scott County' });
+    expect(html).not.toContain('Watershed Context');
+  });
+
+  test('the watershed block contains no inline styles', () => {
+    const html = buildClimateChapterHTML(env, historyWith(named, 'lowpoint'), { state: 'KY', county: 'Scott County' });
+    const block = html.slice(html.indexOf('Watershed Context'));
+    expect(block).not.toMatch(/style="/);
   });
 });

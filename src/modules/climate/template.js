@@ -187,11 +187,11 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
 
 function buildClimateDeepDiveHTML(climateHistory, locationInfo) {
   if (!climateHistory) return '';
-  const { stormEvents, femaDeclarations, climateNormals, preparedness, basementContext } = climateHistory;
+  const { stormEvents, femaDeclarations, climateNormals, preparedness, basementContext, watershed } = climateHistory;
   const county = locationInfo?.county || 'this county';
 
   const tabs = [
-    { id: 'flood',    label: 'Flood History',         content: buildFloodTab(stormEvents.floods, femaDeclarations, county) },
+    { id: 'flood',    label: 'Flood History',         content: buildFloodTab(stormEvents.floods, femaDeclarations, county, watershed?.named) },
     { id: 'tornado',  label: 'Tornado History',        content: buildTornadoTab(stormEvents.tornadoes, basementContext, preparedness?.emergencySystem) },
     { id: 'winter',   label: 'Winter Weather',         content: buildWinterTab(stormEvents.winterStorms, climateNormals, preparedness?.roadPriority) },
     { id: 'heat',     label: 'Heat &amp; Drought',     content: buildHeatTab(stormEvents.heatEvents, climateNormals) },
@@ -219,7 +219,7 @@ function buildClimateDeepDiveHTML(climateHistory, locationInfo) {
     </div>`;
 }
 
-function buildFloodTab(floods, femaDeclarations, county) {
+function buildFloodTab(floods, femaDeclarations, county, namedWatershed) {
   const rarityStmt = _computeRarityStatement(floods.length, CLIMATE_STORM_LOOKBACK_YEARS, 'flood');
   const femaItems = (femaDeclarations?.weatherRelated || []).slice(0, 10).map((d) => {
     const year = d.declarationDate ? new Date(d.declarationDate).getFullYear() : '?';
@@ -232,8 +232,16 @@ function buildFloodTab(floods, femaDeclarations, county) {
     return `<div class="climate-event-row"><span class="climate-event-year">${year}</span><span class="climate-event-desc">${escapeHtml(e.event_type || 'Flood')}${dmg}</span></div>`;
   }).join('');
 
+  const watershedGroup = namedWatershed?.huc12Name
+    ? `<div class="climate-event-group">
+        <div class="climate-event-group-label">Your Watershed</div>
+        <p class="prem-narrative-body">This home sits in the <strong>${escapeHtml(namedWatershed.huc12Name).replace(/-/g, '&ndash;')}</strong> watershed.</p>
+      </div>`
+    : '';
+
   return `
     <p class="prem-narrative-body">${escapeHtml(rarityStmt)} The question isn't whether it will happen — it's whether this specific property drains well enough to avoid it.</p>
+    ${watershedGroup}
     ${femaItems ? `<div class="climate-event-group"><div class="climate-event-group-label">Federal Disaster Declarations</div>${femaItems}</div>` : ''}
     ${floodItems ? `<div class="climate-event-group"><div class="climate-event-group-label">Significant Flood Events</div>${floodItems}</div>` : ''}
     <div class="climate-event-group">
@@ -378,14 +386,40 @@ function buildClimateCalendarTab(normals, stormEvents) {
     <p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>`;
 }
 
+// ── Level 4: Watershed Context ────────────────────────────────────────────────
+
+function buildWatershedContextHTML(watershed) {
+  const named = watershed?.named;
+  if (!named?.huc12Name) return '';
+  const name = escapeHtml(named.huc12Name).replace(/-/g, '&ndash;');
+  const basinClause = named.basinName
+    ? ` This home's watershed — <strong>${name}</strong> — is part of the larger <strong>${escapeHtml(named.basinName).replace(/-/g, '&ndash;')}</strong> basin.`
+    : ` This home's watershed is <strong>${name}</strong>.`;
+
+  let tieBack = '';
+  if (watershed.topographicPosition === 'lowpoint') {
+    tieBack = ' Combined with the parcel\'s low-lying position noted above, runoff from uphill in this same basin moves toward and past this property — which is why local drainage, not just the FEMA zone, governs how this lot handles heavy rain.';
+  } else if (watershed.topographicPosition === 'uphill') {
+    tieBack = ' With the parcel sitting above the surrounding terrain, runoff tends to drain away from the home rather than toward it.';
+  }
+
+  return `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Watershed Context</div>
+      <p class="prem-narrative-body">A watershed is the area of land where all rainfall drains to a common point.${basinClause}${tieBack}</p>
+      <p class="prem-disclaimer">Source: USGS Watershed Boundary Dataset (HUC-12 / HUC-8).</p>
+    </div>`;
+}
+
 // ── Level 4: Research — full data tables ──────────────────────────────────────
 
 function buildClimateResearchHTML(climateHistory) {
   if (!climateHistory) return '';
-  const { stormEvents, climateNormals } = climateHistory;
-  if (!stormEvents?.allEvents?.length) return '';
+  const { stormEvents, climateNormals, watershed } = climateHistory;
 
-  const eventRows = (stormEvents.allEvents || [])
+  const watershedHTML = buildWatershedContextHTML(watershed);
+
+  const eventRows = (stormEvents?.allEvents || [])
     .sort((a, b) => new Date(b.begin_date) - new Date(a.begin_date))
     .map((e) => {
       const dmg = e.damage_property ? `$${Number(e.damage_property).toLocaleString()}` : '—';
@@ -411,7 +445,10 @@ function buildClimateResearchHTML(climateHistory) {
     </tr>`
   ).join('');
 
+  if (!eventRows && !normalRows && !watershedHTML) return '';
+
   return `
+    ${watershedHTML}
     ${eventRows ? `
     <div class="climate-research-section">
       <div class="climate-research-section-label">Complete Storm Event Log (${CLIMATE_STORM_LOOKBACK_YEARS} years)</div>
@@ -432,7 +469,7 @@ function buildClimateResearchHTML(climateHistory) {
         </table>
       </div>
     </div>` : ''}
-    <p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>`;
+    ${(eventRows || normalRows) ? '<p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>' : ''}`;
 }
 
 // getTornadoTier is needed here — imported from chapters.js indirectly via the caller.
