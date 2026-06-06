@@ -425,4 +425,17 @@ describe('getClimateHistoryData — named watershed wiring', () => {
     const out = await getClimateHistoryData(38.2098, -84.5588, { state: 'KY', county: 'Scott County' }, {});
     expect(out.watershed.named).toEqual({ huc12Name: 'Dry Run-North Elkhorn Creek', basinName: 'North Fork Elkhorn Creek' });
   });
+
+  test('attaches named watershed even when topographic elevation fails', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation((url) => {
+      if (/MapServer\/6\//.test(url)) return Promise.resolve({ ok: true, json: async () => ({ features: [{ attributes: { name: 'Dry Run-North Elkhorn Creek' } }] }) });
+      if (/MapServer\/4\//.test(url)) return Promise.resolve({ ok: true, json: async () => ({ features: [{ attributes: { name: 'North Fork Elkhorn Creek' } }] }) });
+      // EPQS elevation calls fail -> getWatershedContext returns null
+      return Promise.resolve({ ok: false });
+    });
+    const out = await getClimateHistoryData(38.2098, -84.5588, { state: 'KY', county: 'Scott County' }, {});
+    expect(out.watershed).not.toBeNull();
+    expect(out.watershed.named).toEqual({ huc12Name: 'Dry Run-North Elkhorn Creek', basinName: 'North Fork Elkhorn Creek' });
+    expect(out.watershed.topographicPosition).toBeNull();
+  }, 15000);
 });

@@ -166,20 +166,20 @@ describe('buildClimateChapterHTML — Level 4 Research', () => {
   });
 });
 
+function climateHistoryWith(named) {
+  return {
+    stormEvents: { tornadoes: [], floods: [], winterStorms: [], heatEvents: [], allEvents: [] },
+    femaDeclarations: { weatherRelated: [], all: [], count: 0 },
+    climateNormals: null,
+    glance: { lastSignificantEvent: null },
+    preparedness: { emergencySystem: null, roadPriority: null },
+    watershed: named ? { topographicPosition: 'lowpoint', elevations: null, named } : null,
+    basementContext: null,
+  };
+}
+
 describe('L3 Your Watershed group', () => {
   const env = { floodRisk: { zone: 'X', risk: 'Minimal' } };
-
-  function climateHistoryWith(named) {
-    return {
-      stormEvents: { tornadoes: [], floods: [], winterStorms: [], heatEvents: [], allEvents: [] },
-      femaDeclarations: { weatherRelated: [], all: [], count: 0 },
-      climateNormals: null,
-      glance: { lastSignificantEvent: null },
-      preparedness: { emergencySystem: null, roadPriority: null },
-      watershed: named ? { topographicPosition: 'lowpoint', elevations: null, named } : null,
-      basementContext: null,
-    };
-  }
 
   test('renders the watershed name in the deep dive when named is present', () => {
     const html = buildClimateChapterHTML(env, climateHistoryWith({ huc12Name: 'Dry Run-North Elkhorn Creek', basinName: 'North Fork Elkhorn Creek' }), { state: 'KY', county: 'Scott County' });
@@ -243,18 +243,6 @@ describe('buildClimateChapterHTML — FR-045 depth system', () => {
 describe('L4 Watershed Context block', () => {
   const env = { floodRisk: { zone: 'X', risk: 'Minimal' } };
   const named = { huc12Name: 'Dry Run-North Elkhorn Creek', basinName: 'North Fork Elkhorn Creek' };
-
-  function climateHistoryWith(named) {
-    return {
-      stormEvents: { tornadoes: [], floods: [], winterStorms: [], heatEvents: [], allEvents: [] },
-      femaDeclarations: { weatherRelated: [], all: [], count: 0 },
-      climateNormals: null,
-      glance: { lastSignificantEvent: null },
-      preparedness: { emergencySystem: null, roadPriority: null },
-      watershed: named ? { topographicPosition: 'lowpoint', elevations: null, named } : null,
-      basementContext: null,
-    };
-  }
 
   function historyWith(named, position) {
     const h = climateHistoryWith(named);

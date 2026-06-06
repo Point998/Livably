@@ -92,6 +92,7 @@ function cacheStats() {
         places:        files.filter((f) => placesCache._ownsFile(f)).length,
         drivetime:     files.filter((f) => driveTimeCache._ownsFile(f)).length,
         drivetimeCell: files.filter((f) => driveTimeCellCache._ownsFile(f)).length,
+        watershed:     files.filter((f) => watershedCache._ownsFile(f)).length,
       },
     };
   } catch {
