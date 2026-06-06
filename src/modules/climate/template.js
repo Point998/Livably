@@ -187,11 +187,11 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
 
 function buildClimateDeepDiveHTML(climateHistory, locationInfo) {
   if (!climateHistory) return '';
-  const { stormEvents, femaDeclarations, climateNormals, preparedness, basementContext } = climateHistory;
+  const { stormEvents, femaDeclarations, climateNormals, preparedness, basementContext, watershed } = climateHistory;
   const county = locationInfo?.county || 'this county';
 
   const tabs = [
-    { id: 'flood',    label: 'Flood History',         content: buildFloodTab(stormEvents.floods, femaDeclarations, county) },
+    { id: 'flood',    label: 'Flood History',         content: buildFloodTab(stormEvents.floods, femaDeclarations, county, watershed?.named) },
     { id: 'tornado',  label: 'Tornado History',        content: buildTornadoTab(stormEvents.tornadoes, basementContext, preparedness?.emergencySystem) },
     { id: 'winter',   label: 'Winter Weather',         content: buildWinterTab(stormEvents.winterStorms, climateNormals, preparedness?.roadPriority) },
     { id: 'heat',     label: 'Heat &amp; Drought',     content: buildHeatTab(stormEvents.heatEvents, climateNormals) },
@@ -219,7 +219,7 @@ function buildClimateDeepDiveHTML(climateHistory, locationInfo) {
     </div>`;
 }
 
-function buildFloodTab(floods, femaDeclarations, county) {
+function buildFloodTab(floods, femaDeclarations, county, namedWatershed) {
   const rarityStmt = _computeRarityStatement(floods.length, CLIMATE_STORM_LOOKBACK_YEARS, 'flood');
   const femaItems = (femaDeclarations?.weatherRelated || []).slice(0, 10).map((d) => {
     const year = d.declarationDate ? new Date(d.declarationDate).getFullYear() : '?';
@@ -232,8 +232,16 @@ function buildFloodTab(floods, femaDeclarations, county) {
     return `<div class="climate-event-row"><span class="climate-event-year">${year}</span><span class="climate-event-desc">${escapeHtml(e.event_type || 'Flood')}${dmg}</span></div>`;
   }).join('');
 
+  const watershedGroup = namedWatershed?.huc12Name
+    ? `<div class="climate-event-group">
+        <div class="climate-event-group-label">Your Watershed</div>
+        <p class="prem-narrative-body">This home sits in the <strong>${escapeHtml(namedWatershed.huc12Name).replace(/-/g, '&ndash;')}</strong> watershed.</p>
+      </div>`
+    : '';
+
   return `
     <p class="prem-narrative-body">${escapeHtml(rarityStmt)} The question isn't whether it will happen — it's whether this specific property drains well enough to avoid it.</p>
+    ${watershedGroup}
     ${femaItems ? `<div class="climate-event-group"><div class="climate-event-group-label">Federal Disaster Declarations</div>${femaItems}</div>` : ''}
     ${floodItems ? `<div class="climate-event-group"><div class="climate-event-group-label">Significant Flood Events</div>${floodItems}</div>` : ''}
     <div class="climate-event-group">

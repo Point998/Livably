@@ -155,6 +155,33 @@ describe('buildClimateChapterHTML — Level 4 Research', () => {
   });
 });
 
+describe('L3 Your Watershed group', () => {
+  const env = { floodRisk: { zone: 'X', risk: 'Minimal' } };
+
+  function climateHistoryWith(named) {
+    return {
+      stormEvents: { tornadoes: [], floods: [], winterStorms: [], heatEvents: [], allEvents: [] },
+      femaDeclarations: { weatherRelated: [], all: [], count: 0 },
+      climateNormals: null,
+      glance: { lastSignificantEvent: null },
+      preparedness: { emergencySystem: null, roadPriority: null },
+      watershed: named ? { topographicPosition: 'lowpoint', elevations: null, named } : null,
+      basementContext: null,
+    };
+  }
+
+  test('renders the watershed name in the deep dive when named is present', () => {
+    const html = buildClimateChapterHTML(env, climateHistoryWith({ huc12Name: 'Dry Run-North Elkhorn Creek', basinName: 'North Fork Elkhorn Creek' }), { state: 'KY', county: 'Scott County' });
+    expect(html).toContain('Your Watershed');
+    expect(html).toContain('Dry Run');
+  });
+
+  test('omits the Your Watershed group when named is absent', () => {
+    const html = buildClimateChapterHTML(env, climateHistoryWith(null), { state: 'KY', county: 'Scott County' });
+    expect(html).not.toContain('Your Watershed');
+  });
+});
+
 describe('buildClimateChapterHTML — FR-045 depth system', () => {
   test('renders depth-l1 glance bar', () => {
     const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
