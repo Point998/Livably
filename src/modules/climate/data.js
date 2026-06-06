@@ -272,12 +272,13 @@ async function getClimateHistoryData(lat, lng, locationInfo, fips) {
   const stateFips  = fips?.state          || '';
   const countyFips = fips?.county         || '';
 
-  const [stormResult, femaResult, normalsResult, watershedResult] =
+  const [stormResult, femaResult, normalsResult, watershedResult, namedResult] =
     await Promise.allSettled([
       getNOAAStormEvents(stateFips, countyFips),
       getFEMADeclarations(state, county),
       getNOAAClimateNormals(lat, lng),
       getWatershedContext(lat, lng),
+      getNamedWatershed(lat, lng),
     ]);
 
   const val = (r, fallback) => r.status === 'fulfilled' ? r.value : fallback;
@@ -285,6 +286,7 @@ async function getClimateHistoryData(lat, lng, locationInfo, fips) {
   const femaAll    = val(femaResult, []);
   const normals    = val(normalsResult, null);
   const watershed  = val(watershedResult, null);
+  const named      = val(namedResult, null);
 
   const tornadoes    = allEvents.filter((e) => /tornado/i.test(e.event_type || ''));
   const floods       = allEvents.filter((e) => /flood/i.test(e.event_type || ''));
@@ -313,8 +315,12 @@ async function getClimateHistoryData(lat, lng, locationInfo, fips) {
       emergencySystem: getEmergencySystem(state, county),
       roadPriority: null,
     },
-    watershed: watershed
-      ? { topographicPosition: watershed.position, elevations: watershed.elevations }
+    watershed: (watershed || named)
+      ? {
+          topographicPosition: watershed ? watershed.position : null,
+          elevations: watershed ? watershed.elevations : null,
+          named: named,
+        }
       : null,
     basementContext: null, // populated post-resolution in getChapterData using propIntel.constructionEra
   };
