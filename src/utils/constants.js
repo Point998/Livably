@@ -86,6 +86,11 @@ const BAND_STRADDLE_MINUTES = 1;
 // per-address 24h default. Safety exactDriveMinutes is never cell-cached.
 const DRIVETIME_CELL_TTL_DAYS = 14;
 
+// FR-034 enh 6: fixed H3 resolution for watershed caching. HUC-12 watersheds
+// (~100+ km2) far exceed a res-7 cell (~5 km2), so neighbors reliably share one
+// WBD fetch. Watershed is mode-independent, so this is fixed (not mode-driven).
+const WATERSHED_CELL_RESOLUTION = 7;
+
 // ── Report UI ─────────────────────────────────────────────────────────────────
 
 const MAX_CONCURRENT_PDFS = 3;
@@ -777,6 +782,8 @@ module.exports = {
   BAND_LADDER_BY_MODE,
   BAND_STRADDLE_MINUTES,
   DRIVETIME_CELL_TTL_DAYS,
+  // FR-034 enh 6: watershed caching
+  WATERSHED_CELL_RESOLUTION,
   // Climate chapter
   NOAA_CDO_BASE_URL,
   NOAA_CDO_NORMALS_DATASET,

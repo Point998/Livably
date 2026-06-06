@@ -75,6 +75,8 @@ const driveTimeCache = new Cache('drivetime', 60 * 60 * 24);     // 24 hours
 // cache far longer than per-address exact times. Safety exactDriveMinutes uses
 // driveTimeCache (24h) and is never cell-cached.
 const driveTimeCellCache = new Cache('drivetime_cell', 60 * 60 * 24 * DRIVETIME_CELL_TTL_DAYS); // 14 days
+// FR-034 enh 6: USGS Watershed Boundary Dataset is effectively static — cache long.
+const watershedCache = new Cache('watershed', 60 * 60 * 24 * 90); // 90 days
 
 function cacheStats() {
   try {
@@ -97,4 +99,4 @@ function cacheStats() {
   }
 }
 
-module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, cacheStats, CACHE_DIR };
+module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, cacheStats, CACHE_DIR };
