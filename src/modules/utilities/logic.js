@@ -39,7 +39,7 @@ function getUtilityType(utilityName) {
   let type;
   if (/co-?op|cooperative|rural electric|\bemc\b|\brec\b/.test(n)) {
     type = 'cooperative';
-  } else if (/city of|municipal|public (power|util)|board of public|plant board|\butilities?\b$/.test(n)) {
+  } else if (/city of|municipal|public (power|util)|board of public|plant board/.test(n)) {
     type = 'municipal';
   } else {
     type = 'investor-owned';
@@ -107,10 +107,28 @@ function getEvChargingCost(residentialRate) {
   return { batteryKwh: EV_BATTERY_KWH_REF, fullChargeCost, homeNote };
 }
 
+function assembleUtilities(raw, ruralMode, locationInfo) {
+  if (!raw) return null;
+  const electric = raw.electric || null;
+  const state = locationInfo?.state || '';
+  const rate = electric?.residentialRate ?? null;
+  return {
+    electric,
+    evCharging:  raw.evCharging || null,
+    rateContext: getElectricRateContext(rate, state),
+    utilityType: electric ? getUtilityType(electric.utilityName) : null,
+    outage:      getOutageContext(state),
+    services:    getServiceInference(ruralMode),
+    evCost:      getEvChargingCost(rate),
+    locationInfo: locationInfo || null,
+  };
+}
+
 module.exports = {
   getElectricRateContext,
   getUtilityType,
   getOutageContext,
   getServiceInference,
   getEvChargingCost,
+  assembleUtilities,
 };

@@ -5,6 +5,7 @@ const {
   getOutageContext,
   getServiceInference,
   getEvChargingCost,
+  assembleUtilities,
 } = require('../../../src/modules/utilities/logic');
 
 describe('getElectricRateContext', () => {
@@ -125,5 +126,34 @@ describe('getEvChargingCost', () => {
   test('returns null when rate missing', () => {
     expect(getEvChargingCost(null)).toBeNull();
     expect(getEvChargingCost(0)).toBeNull();
+  });
+});
+
+describe('assembleUtilities', () => {
+  const raw = { electric: { utilityName: 'Kentucky Utilities', residentialRate: 0.131 },
+                evCharging: { level2: null, dcFast: null } };
+  const loc = { state: 'KY', county: 'Scott', city: 'Georgetown' };
+
+  test('derives rateContext, utilityType, outage, services, evCost', () => {
+    const u = assembleUtilities(raw, 'suburban', loc);
+    expect(u.rateContext.deltaLabel).toMatch(/average/);
+    expect(u.utilityType.type).toBe('investor-owned');
+    expect(u.outage.saidiHours).toBe(2.4);
+    expect(u.services.water).toMatch(/municipal/i);
+    expect(u.evCost.batteryKwh).toBe(60);
+    expect(u.locationInfo).toBe(loc);
+  });
+
+  test('handles null electric (no rate) without throwing', () => {
+    const u = assembleUtilities({ electric: null, evCharging: null }, 'rural', loc);
+    expect(u.rateContext).toBeNull();
+    expect(u.utilityType).toBeNull();
+    expect(u.evCost).toBeNull();
+    expect(u.services.water).toMatch(/well/i); // rural inference still present
+    expect(u.outage).not.toBeNull();           // state-level, independent of electric
+  });
+
+  test('returns null when raw is null', () => {
+    expect(assembleUtilities(null, 'urban', loc)).toBeNull();
   });
 });
