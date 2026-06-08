@@ -57,3 +57,25 @@ describe('getUtilityType', () => {
     expect(getUtilityType(null)).toBeNull();
   });
 });
+
+const { getOutageContext } = require('../../../src/modules/utilities/logic');
+
+describe('getOutageContext', () => {
+  test('known state returns its values', () => {
+    const r = getOutageContext('MT'); // saidiHours 2.7, saifiEvents 1.3
+    expect(r.saidiHours).toBe(2.7);
+    expect(r.saifiEvents).toBe(1.3);
+    expect(r.narrative.toLowerCase()).toMatch(/state-level|statewide|state average/);
+  });
+  test('unknown state falls back to NATIONAL', () => {
+    const r = getOutageContext('ZZ');
+    expect(r.saidiHours).toBe(2.2);
+    expect(r.isNationalFallback).toBe(true);
+  });
+  test('returns null when no state given', () => {
+    expect(getOutageContext(null)).toBeNull();
+  });
+  test('narrative makes clear it is not parcel-specific', () => {
+    expect(getOutageContext('KY').narrative.toLowerCase()).toMatch(/not specific|state-level|statewide/);
+  });
+});

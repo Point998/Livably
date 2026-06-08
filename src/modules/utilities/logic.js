@@ -47,4 +47,20 @@ function getUtilityType(utilityName) {
   return { type, label: LABEL[type], hedge: true };
 }
 
-module.exports = { getElectricRateContext, getUtilityType };
+function getOutageContext(state) {
+  if (!state) return null;
+  const rec = STATE_AVG_RELIABILITY[state];
+  const isNationalFallback = !rec;
+  const { saidiHours, saifiEvents } = rec || STATE_AVG_RELIABILITY.NATIONAL;
+
+  const where = isNationalFallback ? 'Nationally' : `In ${state}`;
+  const narrative =
+    `${where}, utilities average about ${saifiEvents} power interruption(s) per ` +
+    `customer per year, totaling roughly ${saidiHours} hours, excluding major ` +
+    `storms. This is a state-level average — not specific to this parcel or its ` +
+    `feeder line. Actual reliability depends on local infrastructure and tree cover.`;
+
+  return { saidiHours, saifiEvents, isNationalFallback, narrative };
+}
+
+module.exports = { getElectricRateContext, getUtilityType, getOutageContext };
