@@ -36,11 +36,12 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - **Tests: 1,214 across 65 suites** (on `main`)
 
 ## Active Work
-- **Active branch:** `main` — no feature branch open.
-- **Most recent:** FR-058 (Spatial cache keys + drive-time banding) — **merged to `main` (PR #10).** See Cost Architecture below.
+- **Active branch:** `FR-032-utilities-intelligence` — Utilities & Power chapter built (PR pending).
+- **FR-032 (Utilities & Power): ✅ BUILT on branch** — new chapter (electric provider + rate-vs-state, state-level reliability, well/septic-vs-municipal inference, EV charging), cell-cached (FR-058 parity), placed after Costs. Full suite green (1,289 / 68). ⏳ **Populated live-data acceptance (Georgetown→Kentucky Utilities, Bozeman→NorthWestern Energy) deferred** — NREL was unreachable from the build sandbox; verify where NREL resolves. See `feature-requests/FR-032-utilities-intelligence/`.
+- **Most recent (main):** FR-058 (Spatial cache keys + drive-time banding) — **merged to `main` (PR #10).** See Cost Architecture below.
 - **Recent chain:** NR-002 (API cost forecast) → NR-003 (spatial cost diagnosis) → FR-058 (Phase 1, shipped).
 - **FR-034 (Chapter Enhancements): ✅ COMPLETE — all 7 enhancements merged to `main`** (enh 6 named watershed context shipped via PR #15). See FR-034 detail below.
-- **Next:** Start the remaining Phase 5 chapters — FR-032 Utilities, FR-033 Life-at-Address calculator (neither started).
+- **Next:** FR-033 Life-at-Address calculator (the remaining Phase 5 chapter; will consume FR-032's local electric rate).
 
 ---
 
@@ -94,7 +95,8 @@ Phased: **Phase 1 — FR-058 (pure Google) ✅ merged (PR #10)** → Phase 2 (OS
 ### Phase 5 — New Chapters
 Utilities Intelligence (FR-032), Life at This Address Calculator (FR-033), Chapter Enhancements (FR-034).
 - **FR-034 — ✅ COMPLETE (7/7 merged).**
-- **FR-032, FR-033 — not started.**
+- **FR-032 Utilities — ✅ built on branch `FR-032-utilities-intelligence`** (PR pending; populated live-data verification deferred until NREL is reachable).
+- **FR-033 — not started.**
 
 ### Phase 6 — The Livably Sketch
 Hand-drawn house that comes to life as the buyer scrolls. See LIVABLY-SKETCH-SPEC.md.
