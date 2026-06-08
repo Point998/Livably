@@ -25,4 +25,26 @@ function getElectricRateContext(residentialRate, state) {
   return { rate, stateAvg, delta, deltaLabel, color, narrative };
 }
 
-module.exports = { getElectricRateContext };
+function getUtilityType(utilityName) {
+  const name = String(utilityName || '').trim();
+  if (!name) return null;
+  const n = name.toLowerCase();
+
+  let type;
+  if (/co-?op|cooperative|rural electric|\bemc\b|\brec\b/.test(n)) {
+    type = 'cooperative';
+  } else if (/city of|municipal|public (power|util)|board of public|plant board|\butilities?\b$/.test(n)) {
+    type = 'municipal';
+  } else {
+    type = 'investor-owned';
+  }
+
+  const LABEL = {
+    cooperative:      'Appears to be a member-owned electric cooperative',
+    municipal:        'Appears to be a municipal (city/public) utility',
+    'investor-owned': 'Appears to be an investor-owned utility',
+  };
+  return { type, label: LABEL[type], hedge: true };
+}
+
+module.exports = { getElectricRateContext, getUtilityType };

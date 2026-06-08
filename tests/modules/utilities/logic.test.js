@@ -32,3 +32,28 @@ describe('getElectricRateContext', () => {
     expect(r.narrative.toLowerCase()).not.toMatch(/score|grade|rating|out of/);
   });
 });
+
+const { getUtilityType } = require('../../../src/modules/utilities/logic');
+
+describe('getUtilityType', () => {
+  test('cooperative names', () => {
+    expect(getUtilityType('Blue Grass Energy Cooperative').type).toBe('cooperative');
+    expect(getUtilityType('Owen Electric Co-op').type).toBe('cooperative');
+    expect(getUtilityType('Jackson Energy EMC').type).toBe('cooperative');
+  });
+  test('municipal names', () => {
+    expect(getUtilityType('City of Tallahassee Utilities').type).toBe('municipal');
+    expect(getUtilityType('Frankfort Plant Board').type).toBe('municipal');
+  });
+  test('investor-owned fallback', () => {
+    expect(getUtilityType('Kentucky Utilities Company').type).toBe('investor-owned');
+    expect(getUtilityType('NorthWestern Energy').type).toBe('investor-owned');
+  });
+  test('label is hedged (inference, not authoritative)', () => {
+    expect(getUtilityType('Kentucky Utilities Company').label.toLowerCase()).toMatch(/appears to be/);
+  });
+  test('returns null for empty name', () => {
+    expect(getUtilityType('')).toBeNull();
+    expect(getUtilityType(null)).toBeNull();
+  });
+});
