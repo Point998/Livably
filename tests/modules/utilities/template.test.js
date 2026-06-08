@@ -58,4 +58,19 @@ describe('buildUtilitiesHTML', () => {
     const html = buildUtilitiesHTML({ ...full, evCharging: null });
     expect(html.toLowerCase()).toMatch(/charging|afdc|alternative fuel/);
   });
+  test('takeaway prioritizes above-average electric rate', () => {
+    const html = buildUtilitiesHTML({
+      ...full,
+      rateContext: { ...full.rateContext, deltaLabel: 'above state average', color: 'orange' },
+    });
+    expect(html).toMatch(/Key Takeaway:[\s\S]*above the state average/);
+  });
+  test('takeaway calls out well/septic for rural service inference', () => {
+    const html = buildUtilitiesHTML({
+      ...full,
+      rateContext: { ...full.rateContext, deltaLabel: 'near state average' },
+      services: { water: 'Likely a private well', sewer: 'Likely a septic system', gas: 'Likely propane or electric-only', verify: true, verifyAction: 'Confirm with the county.' },
+    });
+    expect(html).toMatch(/Key Takeaway:[\s\S]*well and septic/);
+  });
 });

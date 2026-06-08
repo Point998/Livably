@@ -5,7 +5,7 @@ const { badgeClass, renderChapterCard } = require('../../templates/components');
 const ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
 
 function evFallback() {
-  return `<p class="prem-narrative-body">No public charging stations were returned for this area through the U.S. DOE Alternative Fuel Data Center. Search current stations at <a href="https://afdc.energy.gov/stations" target="_blank" rel="noopener">afdc.energy.gov/stations</a>.</p>`;
+  return `<p class="prem-narrative-body">No public charging stations were returned for this area through the U.S. DOE Alternative Fuel Data Center. Search current stations at <a href="https://afdc.energy.gov/stations" target="_blank" rel="noopener noreferrer">afdc.energy.gov/stations</a>.</p>`;
 }
 
 function buildElectricSection(u) {
@@ -14,7 +14,7 @@ function buildElectricSection(u) {
     return `
       <div class="prem-intel-section">
         <div class="prem-intel-label">Electric Service</div>
-        <p class="prem-narrative-body">The electric provider and rate for this address weren't returned by NREL. Look up your provider and residential rate at the <a href="https://apps.openei.org/USURDB/" target="_blank" rel="noopener">OpenEI Utility Rate Database</a>, or check the ${escapeHtml(state)} Public Service Commission site.</p>
+        <p class="prem-narrative-body">The electric provider and rate for this address weren't returned by NREL. Look up your provider and residential rate at the <a href="https://apps.openei.org/USURDB/" target="_blank" rel="noopener noreferrer">OpenEI Utility Rate Database</a>, or check the ${escapeHtml(state)} Public Service Commission site.</p>
       </div>`;
   }
   const { utilityName } = u.electric;
@@ -74,7 +74,10 @@ function buildBody(u) {
 }
 
 function buildElectricTab(u) {
-  if (!u.electric || !u.rateContext) return buildElectricSection(u);
+  if (!u.electric || !u.rateContext) {
+    const state = u.locationInfo?.state || 'your state';
+    return `<p class="prem-narrative-body">Electric provider data wasn't returned by NREL for this address. Look up your provider and residential rate at the <a href="https://apps.openei.org/USURDB/" target="_blank" rel="noopener noreferrer">OpenEI Utility Rate Database</a>, or the ${escapeHtml(state)} Public Service Commission site.</p>`;
+  }
   const centsRate = Math.round(u.rateContext.rate * 100);
   const centsAvg  = Math.round(u.rateContext.stateAvg * 100);
   return `
@@ -119,7 +122,7 @@ function buildDeepDive(u) {
     { id: 'ev',          label: 'EV Charging',  content: buildEvTab(u) },
   ];
   const buttons = tabs.map((t, i) =>
-    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0}" aria-controls="utiltab-${t.id}" id="utilbtn-${t.id}">${t.label}</button>`).join('');
+    `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="utiltab-${t.id}" id="utilbtn-${t.id}">${t.label}</button>`).join('');
   const panels = tabs.map((t, i) =>
     `<div class="climate-tab-panel${i === 0 ? ' climate-tab-panel--active' : ''}" id="utiltab-${t.id}" role="tabpanel" aria-labelledby="utilbtn-${t.id}">${t.content}</div>`).join('');
   return `
