@@ -54,7 +54,12 @@ describe('getUtilityType', () => {
     expect(getUtilityType('Kentucky Utilities Company').type).toBe('investor-owned');
     expect(getUtilityType('NorthWestern Energy').type).toBe('investor-owned');
   });
-  test('"utilities" mid-string does not trigger municipal (anchor is end-of-string)', () => {
+  test('bare "Kentucky Utilities" (no Company suffix) is investor-owned, not municipal', () => {
+    // Regression: an "...Utilities" suffix must not by itself imply municipal —
+    // Kentucky Utilities (the real EIA name, Georgetown KY) is an IOU.
+    expect(getUtilityType('Kentucky Utilities').type).toBe('investor-owned');
+  });
+  test('a name containing "utilities" without a municipal keyword is investor-owned', () => {
     expect(getUtilityType('Midwest Utilities and Services').type).toBe('investor-owned');
   });
   test('label is hedged (inference, not authoritative)', () => {
