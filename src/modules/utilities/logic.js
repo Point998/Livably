@@ -63,4 +63,30 @@ function getOutageContext(state) {
   return { saidiHours, saifiEvents, isNationalFallback, narrative };
 }
 
-module.exports = { getElectricRateContext, getUtilityType, getOutageContext };
+// Inference only (no parcel-level source exists for water/sewer/gas). CONSTRAINT-007
+// classification (ruralMode) is computed upstream and passed in (CONSTRAINT-014).
+function getServiceInference(ruralMode) {
+  const isRural = ruralMode === 'rural' || ruralMode === 'remote';
+  const verifyAction =
+    "Confirm on the seller's property disclosure or with the county — water, sewer, " +
+    'and gas service can vary lot by lot and this is an inference from area density.';
+
+  if (isRural) {
+    return {
+      water: 'Likely a private well',
+      sewer: 'Likely a septic system',
+      gas:   'Likely propane or electric-only (natural gas mains are uncommon here)',
+      verify: true,
+      verifyAction,
+    };
+  }
+  return {
+    water: 'Likely municipal water',
+    sewer: 'Likely municipal sewer',
+    gas:   'Likely natural gas is available',
+    verify: true,
+    verifyAction,
+  };
+}
+
+module.exports = { getElectricRateContext, getUtilityType, getOutageContext, getServiceInference };

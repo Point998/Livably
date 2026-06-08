@@ -79,3 +79,33 @@ describe('getOutageContext', () => {
     expect(getOutageContext('KY').narrative.toLowerCase()).toMatch(/not specific|state-level|statewide/);
   });
 });
+
+const { getServiceInference } = require('../../../src/modules/utilities/logic');
+
+describe('getServiceInference', () => {
+  test('rural -> well/septic/propane', () => {
+    const r = getServiceInference('rural');
+    expect(r.water).toMatch(/well/i);
+    expect(r.sewer).toMatch(/septic/i);
+    expect(r.gas).toMatch(/propane|electric/i);
+    expect(r.verify).toBe(true);
+  });
+  test('remote behaves like rural', () => {
+    expect(getServiceInference('remote').water).toMatch(/well/i);
+  });
+  test('suburban -> municipal', () => {
+    const r = getServiceInference('suburban');
+    expect(r.water).toMatch(/municipal/i);
+    expect(r.sewer).toMatch(/municipal/i);
+    expect(r.verify).toBe(true);
+  });
+  test('urban -> municipal', () => {
+    expect(getServiceInference('urban').water).toMatch(/municipal/i);
+  });
+  test('always carries a verify action string', () => {
+    expect(getServiceInference('urban').verifyAction).toMatch(/seller|county|disclosure/i);
+  });
+  test('unknown mode defaults to suburban/municipal framing', () => {
+    expect(getServiceInference(undefined).water).toMatch(/municipal/i);
+  });
+});
