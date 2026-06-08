@@ -1,5 +1,11 @@
 'use strict';
-const { getElectricRateContext } = require('../../../src/modules/utilities/logic');
+const {
+  getElectricRateContext,
+  getUtilityType,
+  getOutageContext,
+  getServiceInference,
+  getEvChargingCost,
+} = require('../../../src/modules/utilities/logic');
 
 describe('getElectricRateContext', () => {
   test('rate well below state avg -> below', () => {
@@ -33,8 +39,6 @@ describe('getElectricRateContext', () => {
   });
 });
 
-const { getUtilityType } = require('../../../src/modules/utilities/logic');
-
 describe('getUtilityType', () => {
   test('cooperative names', () => {
     expect(getUtilityType('Blue Grass Energy Cooperative').type).toBe('cooperative');
@@ -49,6 +53,9 @@ describe('getUtilityType', () => {
     expect(getUtilityType('Kentucky Utilities Company').type).toBe('investor-owned');
     expect(getUtilityType('NorthWestern Energy').type).toBe('investor-owned');
   });
+  test('"utilities" mid-string does not trigger municipal (anchor is end-of-string)', () => {
+    expect(getUtilityType('Midwest Utilities and Services').type).toBe('investor-owned');
+  });
   test('label is hedged (inference, not authoritative)', () => {
     expect(getUtilityType('Kentucky Utilities Company').label.toLowerCase()).toMatch(/appears to be/);
   });
@@ -57,8 +64,6 @@ describe('getUtilityType', () => {
     expect(getUtilityType(null)).toBeNull();
   });
 });
-
-const { getOutageContext } = require('../../../src/modules/utilities/logic');
 
 describe('getOutageContext', () => {
   test('known state returns its values', () => {
@@ -79,8 +84,6 @@ describe('getOutageContext', () => {
     expect(getOutageContext('KY').narrative.toLowerCase()).toMatch(/not specific|state-level|statewide/);
   });
 });
-
-const { getServiceInference } = require('../../../src/modules/utilities/logic');
 
 describe('getServiceInference', () => {
   test('rural -> well/septic/propane', () => {
@@ -110,12 +113,10 @@ describe('getServiceInference', () => {
   });
 });
 
-const { getEvChargingCost } = require('../../../src/modules/utilities/logic');
-
 describe('getEvChargingCost', () => {
   test('cost = 60 kWh * rate, rounded to cents', () => {
     const r = getEvChargingCost(0.128);
-    expect(r.fullChargeCost).toBeCloseTo(7.68, 2); // 60 * 0.128
+    expect(r.fullChargeCost).toBe(7.68); // 60 * 0.128, already rounded to cents
     expect(r.batteryKwh).toBe(60);
   });
   test('includes a home-charging note', () => {

@@ -2,6 +2,9 @@
 
 const { STATE_AVG_ELECTRIC_RATE, STATE_AVG_RELIABILITY, EV_BATTERY_KWH_REF } = require('../../utils/constants');
 
+// A rate within ±7% of the state average reads as "near" — outside it, below/above.
+const RATE_DELTA_THRESHOLD = 0.07;
+
 // CONSTRAINT-001: factual delta vs state average — never a score or grade.
 function getElectricRateContext(residentialRate, state) {
   const rate = Number(residentialRate);
@@ -11,9 +14,9 @@ function getElectricRateContext(residentialRate, state) {
 
   const delta = (rate - stateAvg) / stateAvg; // signed fraction
   let deltaLabel, color;
-  if (delta < -0.07)      { deltaLabel = 'below state average'; color = 'green'; }
-  else if (delta > 0.07)  { deltaLabel = 'above state average'; color = 'orange'; }
-  else                    { deltaLabel = 'near state average';  color = 'gold'; }
+  if (delta < -RATE_DELTA_THRESHOLD)      { deltaLabel = 'below state average'; color = 'green'; }
+  else if (delta > RATE_DELTA_THRESHOLD)  { deltaLabel = 'above state average'; color = 'orange'; }
+  else                                    { deltaLabel = 'near state average';  color = 'gold'; }
 
   const centsRate = Math.round(rate * 100);
   const centsAvg  = Math.round(stateAvg * 100);
@@ -30,6 +33,9 @@ function getUtilityType(utilityName) {
   if (!name) return null;
   const n = name.toLowerCase();
 
+  // Name heuristics. Assumes EIA/OpenEI-sourced utility names (where `emc`/`rec`
+  // reliably denote electric-membership-corp / rural-electric-coop); not robust
+  // to arbitrary free text.
   let type;
   if (/co-?op|cooperative|rural electric|\bemc\b|\brec\b/.test(n)) {
     type = 'cooperative';
