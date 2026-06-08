@@ -109,3 +109,20 @@ describe('getServiceInference', () => {
     expect(getServiceInference(undefined).water).toMatch(/municipal/i);
   });
 });
+
+const { getEvChargingCost } = require('../../../src/modules/utilities/logic');
+
+describe('getEvChargingCost', () => {
+  test('cost = 60 kWh * rate, rounded to cents', () => {
+    const r = getEvChargingCost(0.128);
+    expect(r.fullChargeCost).toBeCloseTo(7.68, 2); // 60 * 0.128
+    expect(r.batteryKwh).toBe(60);
+  });
+  test('includes a home-charging note', () => {
+    expect(getEvChargingCost(0.128).homeNote.length).toBeGreaterThan(0);
+  });
+  test('returns null when rate missing', () => {
+    expect(getEvChargingCost(null)).toBeNull();
+    expect(getEvChargingCost(0)).toBeNull();
+  });
+});

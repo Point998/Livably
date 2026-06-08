@@ -89,4 +89,22 @@ function getServiceInference(ruralMode) {
   };
 }
 
-module.exports = { getElectricRateContext, getUtilityType, getOutageContext, getServiceInference };
+function getEvChargingCost(residentialRate) {
+  const rate = Number(residentialRate);
+  if (!rate || rate <= 0) return null;
+  const fullChargeCost = Math.round(EV_BATTERY_KWH_REF * rate * 100) / 100;
+  const homeNote =
+    `At the local residential rate, a full charge of a typical ${EV_BATTERY_KWH_REF} ` +
+    `kWh battery costs about $${fullChargeCost.toFixed(2)} at home — far cheaper than ` +
+    `public DC-fast charging. Home charging needs a 240V Level 2 circuit; most garages ` +
+    `can add one for $500–$2,000.`;
+  return { batteryKwh: EV_BATTERY_KWH_REF, fullChargeCost, homeNote };
+}
+
+module.exports = {
+  getElectricRateContext,
+  getUtilityType,
+  getOutageContext,
+  getServiceInference,
+  getEvChargingCost,
+};
