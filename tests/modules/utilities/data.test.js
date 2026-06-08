@@ -95,7 +95,18 @@ describe('getUtilitiesData', () => {
     global.fetch = jest.fn((url) => { seen.push(url); return Promise.resolve({ ok: true, json: async () => ({ outputs: { utility_name: 'KU', residential: 0.13 }, fuel_stations: [] }) }); });
     const cell = { cellId: 'TESTCELL-CENTROID', centroid: { lat: 39.99, lng: -83.99 } };
     await getUtilitiesData(38.2, -84.5, '38.2,-84.5', async () => 5, cell);
+    expect(seen.length).toBe(2); // both NREL endpoints fired (no vacuous pass)
     expect(seen.join('|')).toContain('39.99'); // centroid lat used in NREL URL
     expect(seen.join('|')).not.toContain('38.2');
+  });
+
+  test('does not cache a total miss (both null) — re-fetches next call', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false }); // electric + ev both fail
+    const cell = { cellId: 'TESTCELL-MISS', centroid: { lat: 38.2, lng: -84.5 } };
+    const r1 = await getUtilitiesData(38.2, -84.5, '38.2,-84.5', async () => 5, cell);
+    expect(r1).toEqual({ electric: null, evCharging: null });
+    const callsAfterFirst = global.fetch.mock.calls.length;
+    await getUtilitiesData(38.2, -84.5, '38.2,-84.5', async () => 5, cell);
+    expect(global.fetch.mock.calls.length).toBeGreaterThan(callsAfterFirst); // not served from cache
   });
 });

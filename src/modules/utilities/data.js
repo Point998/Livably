@@ -46,7 +46,11 @@ async function getEvChargingData(lat, lng, driveOrigin, getDriveTime, cell = nul
     const shape = async (s) => {
       if (!s) return null;
       let driveTimeMinutes = null;
-      try { driveTimeMinutes = await getDriveTime(driveOrigin, { lat: s.latitude, lng: s.longitude }, cellDriveOpts(cell)); } catch {}
+      try {
+        driveTimeMinutes = await getDriveTime(driveOrigin, { lat: s.latitude, lng: s.longitude }, cellDriveOpts(cell));
+      } catch (err) {
+        console.warn('[NREL EV drive time]', err?.message); // non-safety dest: degrade to distance only
+      }
       const distanceMiles = s.distance != null
         ? Number(s.distance).toFixed(1)
         : haversineDistance(lat, lng, s.latitude, s.longitude).toFixed(1);
@@ -84,7 +88,12 @@ async function getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell = nul
     electric:   electricRes.status === 'fulfilled' ? electricRes.value : null,
     evCharging: evRes.status       === 'fulfilled' ? evRes.value       : null,
   };
-  utilitiesCache.set(cacheKey, result);
+  // Don't cache a total miss (both null) for the full 30-day TTL — a transient
+  // NREL outage on a cold call would otherwise blank this cell for a month.
+  // Re-fetch next request instead; a partial result (one side present) is cached.
+  if (result.electric !== null || result.evCharging !== null) {
+    utilitiesCache.set(cacheKey, result);
+  }
   return result;
 }
 
