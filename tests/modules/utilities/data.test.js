@@ -8,13 +8,13 @@ afterAll(() => utilitiesCache.clear());
 describe('getElectricData', () => {
   afterEach(() => { global.fetch = undefined; });
 
-  test('parses utility name + residential rate', async () => {
+  test('parses utility name + residential rate (ownership null when utility_info absent)', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ outputs: { utility_name: 'Kentucky Utilities Co', residential: 0.131 } }),
     });
     const r = await getElectricData(38.2, -84.5);
-    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: 0.131 });
+    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: 0.131, ownership: null });
   });
 
   test('returns null on non-ok response', async () => {

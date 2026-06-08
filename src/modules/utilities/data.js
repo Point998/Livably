@@ -14,10 +14,15 @@ async function getElectricData(lat, lng) {
     if (!resp.ok) return null;
     const data = await resp.json();
     const out = data?.outputs || {};
+    // NREL returns "no data" (string) for unserved areas — Number(...) -> NaN.
     const residentialRate = Number(out.residential);
     const utilityName = String(out.utility_name || '').trim();
+    // Authoritative ownership classification from utility_info, when present
+    // (e.g. "Investor Owned" / "Cooperative" / "Municipal"). Falls back to a
+    // name heuristic downstream when absent/unrecognized.
+    const ownership = String(out.utility_info?.[0]?.ownership || '').trim() || null;
     if (!residentialRate || residentialRate <= 0) return null;
-    return { utilityName: utilityName || 'Unknown provider', residentialRate };
+    return { utilityName: utilityName || 'Unknown provider', residentialRate, ownership };
   } catch (err) {
     console.error('[NREL Utility Rates]', err.message);
     return null;

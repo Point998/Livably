@@ -28,14 +28,46 @@ function getElectricRateContext(residentialRate, state) {
   return { rate, stateAvg, delta, deltaLabel, color, narrative };
 }
 
-function getUtilityType(utilityName) {
+// Confident labels for when NREL gives us the authoritative ownership field.
+const OWNERSHIP_LABEL = {
+  cooperative:      'Member-owned electric cooperative',
+  municipal:        'Municipal (city/public) utility',
+  'investor-owned': 'Investor-owned utility',
+};
+// Hedged labels for the name-only heuristic fallback.
+const NAME_LABEL = {
+  cooperative:      'Appears to be a member-owned electric cooperative',
+  municipal:        'Appears to be a municipal (city/public) utility',
+  'investor-owned': 'Appears to be an investor-owned utility',
+};
+
+// Map NREL/OpenEI `ownership` strings to our three buckets. Only the three
+// well-understood values are mapped; exotic ones (Federal, State, Political
+// Subdivision, Retail Power Marketer, …) return null so we fall back to the
+// name heuristic rather than mis-bucketing them.
+function ownershipToType(ownership) {
+  const o = String(ownership || '').toLowerCase();
+  if (!o) return null;
+  if (o.includes('cooperative')) return 'cooperative';
+  if (o.includes('investor'))    return 'investor-owned';
+  if (o.includes('municipal'))   return 'municipal';
+  return null;
+}
+
+// ownership (optional) is NREL's authoritative classification; when it maps to
+// one of our buckets we trust it (hedge:false). Otherwise we guess from the name
+// (hedge:true). Name heuristics assume EIA/OpenEI-sourced names where `emc`/`rec`
+// denote electric-membership-corp / rural-electric-coop; not robust to free text.
+function getUtilityType(utilityName, ownership) {
   const name = String(utilityName || '').trim();
   if (!name) return null;
-  const n = name.toLowerCase();
 
-  // Name heuristics. Assumes EIA/OpenEI-sourced utility names (where `emc`/`rec`
-  // reliably denote electric-membership-corp / rural-electric-coop); not robust
-  // to arbitrary free text.
+  const ownType = ownershipToType(ownership);
+  if (ownType) {
+    return { type: ownType, label: OWNERSHIP_LABEL[ownType], hedge: false };
+  }
+
+  const n = name.toLowerCase();
   let type;
   if (/co-?op|cooperative|rural electric|\bemc\b|\brec\b/.test(n)) {
     type = 'cooperative';
@@ -44,13 +76,7 @@ function getUtilityType(utilityName) {
   } else {
     type = 'investor-owned';
   }
-
-  const LABEL = {
-    cooperative:      'Appears to be a member-owned electric cooperative',
-    municipal:        'Appears to be a municipal (city/public) utility',
-    'investor-owned': 'Appears to be an investor-owned utility',
-  };
-  return { type, label: LABEL[type], hedge: true };
+  return { type, label: NAME_LABEL[type], hedge: true };
 }
 
 function getOutageContext(state) {
@@ -116,7 +142,7 @@ function assembleUtilities(raw, ruralMode, locationInfo) {
     electric,
     evCharging:  raw.evCharging || null,
     rateContext: getElectricRateContext(rate, state),
-    utilityType: electric ? getUtilityType(electric.utilityName) : null,
+    utilityType: electric ? getUtilityType(electric.utilityName, electric.ownership) : null,
     outage:      getOutageContext(state),
     services:    getServiceInference(ruralMode),
     evCost:      getEvChargingCost(rate),

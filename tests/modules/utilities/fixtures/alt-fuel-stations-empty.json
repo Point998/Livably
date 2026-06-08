@@ -1,0 +1,6 @@
+{
+  "station_locator_url": "https://www.afdc.energy.gov/locator/",
+  "total_results": 0,
+  "station_counts": { "total": 0, "fuels": { "ELEC": { "total": 0 } } },
+  "fuel_stations": []
+}
