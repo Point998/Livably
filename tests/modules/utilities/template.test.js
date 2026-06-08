@@ -24,6 +24,9 @@ describe('buildUtilitiesHTML', () => {
     expect(html).toContain('data-ch="utilities"');
     expect(html).toContain('Utilities &amp; Power');
   });
+  test('uses chapter number 15 (after Costs=14; no collision with Sensory=12)', () => {
+    expect(buildUtilitiesHTML(full)).toContain('<div class="chapter-num" aria-hidden="true">15</div>');
+  });
   test('shows provider name and rate label at L2', () => {
     const html = buildUtilitiesHTML(full);
     expect(html).toContain('Kentucky Utilities');

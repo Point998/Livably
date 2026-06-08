@@ -170,7 +170,7 @@ function buildUtilitiesHTML(utilities) {
     `<div class="depth-l4">${buildResearch(utilities)}</div>`,
   ].join('');
   return renderChapterCard(
-    'utilities', '12', ICON,
+    'utilities', '15', ICON,
     'Utilities & Power',
     'What you\'ll pay, who provides it, and how reliable it is.',
     null, body, null, fullHTML, null, glance || null,
