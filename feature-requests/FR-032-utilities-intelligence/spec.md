@@ -23,16 +23,24 @@ A new chapter module `src/modules/utilities/{data,logic,template}.js`, fetched i
 
 ## Data Layer — `data.js` (fetch only, no HTML, no business rules)
 
-### `getElectricData(lat, lng)`
+### `getElectricData(searchOrigin)`
 - **Source:** NREL Utility Rates API v3 — `https://developer.nrel.gov/api/utility_rates/v3.json?api_key=<key>&lat=<lat>&lon=<lng>`
+- **Origin:** the cell centroid (`searchOrigin`) when a cell is present, so all addresses in a cell hit the same NREL coordinate and share the cached result.
 - **Key:** `process.env.NREL_API_KEY` at call time; fall back to `DEMO_KEY`. `AbortSignal.timeout(12000)`.
 - **Returns:** `{ utilityName, residentialRate }` (residentialRate = `outputs.residential`, $/kWh) — or `null` on missing data / error / non-ok response.
 
-### `getEvChargingData(lat, lng, originLatLng, getDriveTime)`
-- **Source:** NREL Alternative Fuel Stations — `.../alt-fuel-stations/v1/nearest.json?api_key=<key>&latitude=<lat>&longitude=<lng>&fuel_type=ELEC&radius=infinite&limit=20&status=E&access=public`
-- **Returns:** `{ level2: {name, address, driveTimeMinutes, distanceMiles} | null, dcFast: {…} | null }` — nearest public L2 (connector includes J1772/L2) and nearest public DC-fast (DC_FAST count > 0). Drive time via injected `getDriveTime` (module never calls Google directly). `null` if no key/data.
+### `getEvChargingData(searchOrigin, getDriveTime, cell)`
+- **Source:** NREL Alternative Fuel Stations — `.../alt-fuel-stations/v1/nearest.json?api_key=<key>&latitude=<lat>&longitude=<lng>&fuel_type=ELEC&radius=infinite&limit=20&status=E&access=public` (searched from the cell centroid).
+- **Returns:** `{ level2: {name, address, driveTimeMinutes, distanceMiles} | null, dcFast: {…} | null }` — nearest public L2 and nearest public DC-fast. Drive time computed from the centroid via injected `getDriveTime` + `cellDriveOpts(cell)` (cell-shared, consistent with FR-058 lifestyle banding; module never calls Google directly). `null` if no key/data.
 
-> Both calls run under `Promise.allSettled` inside a single `getUtilitiesData(...)` exported entry, mirroring `getPropertyIntelligence`.
+### `getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell)` — cell-cached entry point
+- **Caching (FR-058 parity):** key = `cell ? 'utilities:' + cell.cellId : 'utilities:' + originLatLng`. On hit, return the cached `{ electric, evCharging }` with **zero** NREL calls. On miss, run `getElectricData` + `getEvChargingData` under `Promise.allSettled` (partial failure tolerated), then `set` the combined payload.
+- **Cache:** new `utilitiesCache` namespace in `src/cache.js`, TTL `UTILITIES_CELL_TTL_DAYS` (30 days — utility territory + residential rate are annual-stable; charger lists change slowly). `searchOrigin = cellSearchOrigin(originLatLng, cell)`.
+
+## Caching & Resilience (why this scales)
+- **Cell-shared, not per-address:** an H3 cell shares one electric utility, one residential rate, and effectively the same nearest chargers — the strongest caching candidate in the report. Warm cell → 0 NREL calls. This mirrors `reachability/data.js` (grocery/pharmacy/gas) and keeps marginal report cost near zero (NR-002/NR-003 cost architecture).
+- **Resilience:** `DEMO_KEY` is rate-limited (~1k/hr/IP); caching keeps cold-cell calls rare so the chapter stays healthy without a paid key. Every external failure path returns `null` → actionable fallback (CONSTRAINT-015), never an exception that breaks the report (the fetch sits in `getChapterData`'s `Promise.allSettled`).
+- **TTL rationale:** 30 days balances rate freshness (annual EIA refresh) against fetch volume; charger freshness is non-critical (directional context, not safety-tier).
 
 ## Logic Layer — `logic.js` (business rules, zero HTML, zero API)
 
@@ -72,10 +80,12 @@ A new chapter module `src/modules/utilities/{data,logic,template}.js`, fetched i
 - `STATE_AVG_ELECTRIC_RATE` — `{ [state]: $/kWh }`, all 50 + DC (EIA residential averages).
 - `STATE_AVG_RELIABILITY` — `{ [state]: { saidiHours, saifiEvents } }` (EIA-861, excl. major events).
 - `EV_BATTERY_KWH_REF = 60`.
+- `UTILITIES_CELL_TTL_DAYS = 30` — cell-cache TTL for the utilities payload.
 
 ## Wiring
-- `src/services/reportBuilder.js` already computes `ruralMode` early (before `getChapterData`, lines ~52–65) but doesn't forward it. Pass it into `getChapterData` as a param.
-- `src/chapters.js`: accept `ruralMode`; add `getUtilitiesData(...)` to `getChapterData`'s `Promise.allSettled`, passing `lat, lng, originLatLng, locationInfo, getDriveTime, ruralMode`; add `utilities: val(utilities)` to the return; add `buildUtilitiesHTML(chapters.utilities)` to `buildChaptersHTML`, placed **after** `buildPropertyDataHTML` (Costs). The late climate-path `ruralMode` recompute stays untouched (out of scope).
+- `src/services/reportBuilder.js` already computes `ruralMode` early (before `getChapterData`, lines ~52–65) and builds the `cell` object (line ~74) but forwards neither. Pass both `ruralMode` and `cell` into `getChapterData`.
+- `src/cache.js`: add a `utilitiesCache` namespace (TTL `UTILITIES_CELL_TTL_DAYS`) and include it in `cacheStats` breakdown.
+- `src/chapters.js`: accept `ruralMode` and `cell`; add `getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell)` to `getChapterData`'s `Promise.allSettled`; assemble via `assembleUtilities(raw, ruralMode, locationInfo)`; add `utilities` to the return; add `buildUtilitiesHTML(chapters.utilities)` to `buildChaptersHTML`, placed **after** `buildPropertyDataHTML` (Costs). The late climate-path `ruralMode` recompute stays untouched (out of scope).
 - `public/design-tokens.css`: add `--ch-utilities: #1a6b6b`.
 - `.env.example`: add `NREL_API_KEY=your_key_here`.
 
@@ -84,6 +94,7 @@ A new chapter module `src/modules/utilities/{data,logic,template}.js`, fetched i
 - `locationInfo` — `{ state, county, city }`.
 - `getDriveTime` — injected Google drive-time fn.
 - `ruralMode` — `'urban'|'suburban'|'rural'|'remote'` (computed upstream in reportBuilder, threaded through getChapterData).
+- `cell` — FR-058 H3 spatial cell `{ cellId, resolution, centroid, mode }` (built in reportBuilder, threaded through getChapterData) for cell-keyed caching + centroid search.
 
 ## Constraints
 - CONSTRAINT-001: no scores/grades — rate & reliability are factual deltas/context only.
@@ -102,6 +113,7 @@ A new chapter module `src/modules/utilities/{data,logic,template}.js`, fetched i
 - [ ] Service inference flips correctly: Harlan KY (rural) → well/septic; Georgetown/Louisville (suburban/urban) → municipal. Always shows a verify action.
 - [ ] L3 EV tab shows nearest L2 + DC-fast with drive time + cost-per-charge; graceful fallback if none.
 - [ ] L4 cross-links to Property Internet tab; no ISP data rebuilt here.
+- [ ] Utilities fetch is cell-cached: a second call with the same `cell.cellId` makes **zero** NREL calls (cache-hit test passes).
 - [ ] No scoring, no inline styles, no brand names in search/filter.
 - [ ] `tests/modules/utilities.test.js`: a test per logic rule + missing-data fallbacks.
 - [ ] All 5 test addresses render the chapter without error.
