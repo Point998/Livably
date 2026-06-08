@@ -9,7 +9,7 @@ const full = {
   },
   rateContext: { rate: 0.131, stateAvg: 0.128, delta: 0.02, deltaLabel: 'near state average', color: 'gold', narrative: 'about 13¢/kWh, near state average.' },
   utilityType: { type: 'investor-owned', label: 'Appears to be an investor-owned utility', hedge: true },
-  outage: { saidiHours: 2.4, saidiEvents: 1.2, isNationalFallback: false, narrative: 'In KY, utilities average about 1.2 interruptions, state-level — not specific to this parcel.' },
+  outage: { saidiHours: 2.4, saifiEvents: 1.2, isNationalFallback: false, narrative: 'In KY, utilities average about 1.2 interruptions, state-level — not specific to this parcel.' },
   services: { water: 'Likely municipal water', sewer: 'Likely municipal sewer', gas: 'Likely natural gas is available', verify: true, verifyAction: 'Confirm with the county.' },
   evCost: { batteryKwh: 60, fullChargeCost: 7.86, homeNote: 'A full charge costs about $7.86 at home.' },
   locationInfo: { state: 'KY', county: 'Scott', city: 'Georgetown' },
@@ -33,6 +33,11 @@ describe('buildUtilitiesHTML', () => {
     const html = buildUtilitiesHTML(full);
     expect(html).toContain('Library L2');
     expect(html).toContain('Pilot DCFC');
+  });
+  test('reliability tab renders the SAIDI and SAIFI values', () => {
+    const html = buildUtilitiesHTML(full);
+    expect(html).toContain('2.4'); // saidiHours
+    expect(html).toContain('1.2'); // saifiEvents — guards the key name (was a fixture typo)
   });
   test('cross-links to Property internet, does not invent ISP data', () => {
     const html = buildUtilitiesHTML(full).toLowerCase();
