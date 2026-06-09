@@ -40,7 +40,9 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - **Most recent:** FR-058 (Spatial cache keys + drive-time banding) — **merged to `main` (PR #10).** See Cost Architecture below.
 - **Recent chain:** NR-002 (API cost forecast) → NR-003 (spatial cost diagnosis) → FR-058 (Phase 1, shipped).
 - **FR-034 (Chapter Enhancements): ✅ COMPLETE — all 7 enhancements merged to `main`** (enh 6 named watershed context shipped via PR #15). See FR-034 detail below.
-- **Next:** Start the remaining Phase 5 chapters — FR-032 Utilities, FR-033 Life-at-Address calculator (neither started).
+- **In flight (branches/PRs, off `main`):** FR-032 Utilities (PR #17), FR-033 Life-at-Address (PR #18), FR-059 Seismic-risk-in-Climate (`FR-059-seismic-risk`). FR-033 + FR-059 live-data-verified; FR-032's NREL data awaits a network where NREL resolves.
+- **Phase 6 (The Livably Sketch): DEFERRED** — excluded for now (it prematurely sets the visual identity; design-setting work is deferred to a dedicated design phase). See LIVABLY-SKETCH-SPEC.md.
+- **Direction:** new data goes into the chapter where it fits (e.g. seismic → Climate), not new similar chapters. Most clean free data is already consumed by Climate/Sensory/Property/Utilities.
 
 ---
 
