@@ -315,6 +315,12 @@ describe('Climate seismic placement', () => {
     expect(html).toMatch(/Seismic Design Values/);
     expect(html.toLowerCase()).toContain('peak ground acceleration');
   });
+  test('low/non-promote address still gets L3 tab + L4 table (adaptive placement)', () => {
+    const html = buildCC(seisEnv, seisHistory('low', false, 'green'), seisLoc);
+    expect(html).not.toMatch(/Earthquake Risk/);   // no L2 row
+    expect(html).toMatch(/id="ctab-seismic"/);     // L3 tab present
+    expect(html).toMatch(/Seismic Design Values/);  // L4 table present
+  });
   test('no seismic -> no tab, no row, no table', () => {
     const noSeis = seisHistory('high', true, 'orange'); delete noSeis.seismic;
     const html = buildCC(seisEnv, noSeis, seisLoc);
