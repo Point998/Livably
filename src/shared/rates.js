@@ -61,11 +61,11 @@ function cachedFresh(key, ttlDays) {
 // Resolve one rate: fresh cache -> live fetch (cache on success) -> null.
 async function resolveRate(key, ttlDays, fetcher) {
   const hit = cachedFresh(key, ttlDays);
-  if (hit) return { value: hit.value, asOf: hit.asOf, source: 'cache' };
+  if (hit) return { value: hit.value, asOf: hit.asOf };
   const fetched = await fetcher();
   if (fetched && fetched.value > 0) {
     ratesCache.set(key, { value: fetched.value, asOf: fetched.asOf, fetchedAt: Date.now() });
-    return { value: fetched.value, asOf: fetched.asOf, source: 'live' };
+    return { value: fetched.value, asOf: fetched.asOf };
   }
   return null;
 }

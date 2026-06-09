@@ -27,6 +27,11 @@ describe('fetchGasPrice (EIA)', () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ response: { data: [] } }) });
     expect(await fetchGasPrice()).toBeNull();
   });
+  test('returns null when value is zero/negative', async () => {
+    process.env.EIA_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ response: { data: [{ value: '0', period: '2026-06-01' }] } }) });
+    expect(await fetchGasPrice()).toBeNull();
+  });
 });
 
 describe('fetchIrsMileageRate', () => {
