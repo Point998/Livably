@@ -407,6 +407,58 @@ describe('getNamedWatershed', () => {
   });
 });
 
+// ── getSeismicHazard ──────────────────────────────────────────────────────────
+
+const { getSeismicHazard } = require('../../../src/modules/climate/data');
+const { seismicCache } = require('../../../src/cache');
+
+const RESP = (data) => ({ ok: true, json: async () => ({ response: { data } }) });
+
+describe('getSeismicHazard', () => {
+  let _origFetch;
+  beforeEach(() => { _origFetch = global.fetch; seismicCache.clear(); });
+  afterEach(() => { global.fetch = _origFetch; });
+  afterAll(() => seismicCache.clear());
+
+  test('parses pga/ss/s1/sds from the USGS designmaps response', async () => {
+    global.fetch = jest.fn().mockResolvedValue(RESP({ pga: 0.3, ss: 0.68, s1: 0.213, sds: 0.569 }));
+    const r = await getSeismicHazard(45.68, -111.04);
+    expect(r).toEqual({ pga: 0.3, ss: 0.68, s1: 0.213, sds: 0.569 });
+  });
+
+  test('cell-caches: second call for the same cell makes no new fetch', async () => {
+    global.fetch = jest.fn().mockResolvedValue(RESP({ pga: 0.084, ss: 0.168, s1: 0.082, sds: 0.179 }));
+    await getSeismicHazard(38.2098, -84.5588);
+    const calls = global.fetch.mock.calls.length;
+    await getSeismicHazard(38.2098, -84.5588);
+    expect(global.fetch.mock.calls.length).toBe(calls);
+  });
+
+  test('caches a negative (ok response, no pga) and serves null without re-fetch', async () => {
+    global.fetch = jest.fn().mockResolvedValue(RESP({}));
+    expect(await getSeismicHazard(10, 10)).toBeNull();
+    const calls = global.fetch.mock.calls.length;
+    expect(await getSeismicHazard(10, 10)).toBeNull();
+    expect(global.fetch.mock.calls.length).toBe(calls);
+  });
+
+  test('non-ok response returns null and is NOT cached (transient)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    expect(await getSeismicHazard(20, 20)).toBeNull();
+    const calls = global.fetch.mock.calls.length;
+    await getSeismicHazard(20, 20);
+    expect(global.fetch.mock.calls.length).toBeGreaterThan(calls);
+  });
+
+  test('searches from the cell centroid and hits the USGS designmaps URL', async () => {
+    const seen = [];
+    global.fetch = jest.fn((url) => { seen.push(url); return Promise.resolve(RESP({ pga: 0.1 })); });
+    await getSeismicHazard(45.68, -111.04);
+    expect(seen[0]).toContain('earthquake.usgs.gov/ws/designmaps/asce7-16.json');
+    expect(seen[0]).toContain('latitude=');
+  });
+});
+
 // ── getClimateHistoryData — named watershed wiring ───────────────────────────
 
 const { getClimateHistoryData } = require('../../../src/modules/climate/data');
