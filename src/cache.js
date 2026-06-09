@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { DRIVETIME_CELL_TTL_DAYS } = require('./utils/constants');
+const { DRIVETIME_CELL_TTL_DAYS, RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS } = require('./utils/constants');
 
 const CACHE_DIR = path.join(__dirname, '../.cache');
 
@@ -78,6 +78,10 @@ const driveTimeCellCache = new Cache('drivetime_cell', 60 * 60 * 24 * DRIVETIME_
 // FR-034 enh 6: USGS Watershed Boundary Dataset is effectively static — cache long.
 const watershedCache = new Cache('watershed', 60 * 60 * 24 * 90); // 90 days
 
+// FR-033: national driving rates (gas/IRS) — global cache, "one report refreshes
+// for everyone". Gas TTL short (price moves); IRS TTL long (annual).
+const ratesCache = new Cache('rates', 60 * 60 * 24 * RATES_GAS_TTL_DAYS);
+
 function cacheStats() {
   try {
     const files = fs.readdirSync(CACHE_DIR);
@@ -93,6 +97,7 @@ function cacheStats() {
         drivetime:     files.filter((f) => driveTimeCache._ownsFile(f)).length,
         drivetimeCell: files.filter((f) => driveTimeCellCache._ownsFile(f)).length,
         watershed:     files.filter((f) => watershedCache._ownsFile(f)).length,
+        rates:         files.filter((f) => ratesCache._ownsFile(f)).length,
       },
     };
   } catch {
@@ -100,4 +105,4 @@ function cacheStats() {
   }
 }
 
-module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, cacheStats, CACHE_DIR };
+module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, ratesCache, cacheStats, CACHE_DIR };
