@@ -17,6 +17,8 @@ const { QuotaExceededError, RateLimitError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
 const { snapToCell } = require('../shared/spatial');
+const { getDrivingRates } = require('../shared/rates');
+const { DEFAULT_PROFILE, PROFILE_BOUNDS } = require('../utils/constants');
 
 function classifyError(error) {
   if (error instanceof QuotaExceededError) {
@@ -158,6 +160,12 @@ async function buildReport(address, options = {}) {
     logError('getChapterData', address, chapErr);
   }
 
+  let lifeCalc = null;
+  try {
+    const rates = await getDrivingRates();
+    lifeCalc = { profile: DEFAULT_PROFILE, rates, bounds: PROFILE_BOUNDS };
+  } catch (_) { /* calculator omitted on total failure */ }
+
   let reportId = null;
   try { reportId = saveReport(address); } catch {}
   logRequest(address, 'success', Date.now() - _reqStart);
@@ -166,7 +174,7 @@ async function buildReport(address, options = {}) {
   const html = buildReportHTML(address, {
     grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation,
     park, coffeeShop, elementarySchool, library, recCenter, postOffice,
-    healthcareDepth, customDestinations, trafficData, origin, reportId, chapters,
+    healthcareDepth, customDestinations, trafficData, origin, reportId, chapters, lifeCalc,
   });
 
   return { html, reportId, address };

@@ -157,7 +157,7 @@ function buildReachGlanceHTML(grocery, hospital, highwayRamp) {
   return `<div class="chapter-glance">${items}</div>`;
 }
 
-function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, library, recCenter, postOffice, healthcareDepth, customDestinations, trafficData, origin, reportId, chapters }) {
+function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, highwayRamp, school, gasStation, park, coffeeShop, elementarySchool, library, recCenter, postOffice, healthcareDepth, customDestinations, trafficData, origin, reportId, chapters, lifeCalc = null }) {
   const { street, cityState } = parseAddressParts(address);
   const researchDate = formatResearchDate();
 
@@ -171,7 +171,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
     buildSchoolSection(school),
   ].join('\n');
 
-  const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
+  const insightsCardHTML = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation, lifeCalc);
   const additionalServicesCardHTML = buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop, library, recCenter, postOffice);
   const customDestinationsCardHTML = buildCustomDestinationsCardHTML(customDestinations);
   const trafficCardHTML = buildTrafficCardHTML(trafficData);
@@ -326,6 +326,7 @@ function buildReportHTML(address, { grocery, pharmacy, hospital, urgentCare, hig
   <\/script>
   ${shareScriptHTML}${saveHistoryScriptHTML}
   <script src="/ui.js" defer><\/script>
+  <script src="/calculator.js" defer><\/script>
 </body>
 </html>`;
 }
