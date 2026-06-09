@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { DRIVETIME_CELL_TTL_DAYS, UTILITIES_CELL_TTL_DAYS, RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS } = require('./utils/constants');
+const { DRIVETIME_CELL_TTL_DAYS, UTILITIES_CELL_TTL_DAYS, RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS, SEISMIC_CACHE_TTL_DAYS } = require('./utils/constants');
 
 const CACHE_DIR = path.join(__dirname, '../.cache');
 
@@ -87,6 +87,9 @@ const utilitiesCache = new Cache('utilities', 60 * 60 * 24 * UTILITIES_CELL_TTL_
 // check (gas 14d / IRS 180d) can govern freshness. Use the max (IRS, 180d).
 const ratesCache = new Cache('rates', 60 * 60 * 24 * Math.max(RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS));
 
+// FR-059: USGS seismic hazard is effectively static — cache long, keyed by cell.
+const seismicCache = new Cache('seismic', 60 * 60 * 24 * SEISMIC_CACHE_TTL_DAYS); // 90 days
+
 function cacheStats() {
   try {
     const files = fs.readdirSync(CACHE_DIR);
@@ -104,6 +107,7 @@ function cacheStats() {
         watershed:     files.filter((f) => watershedCache._ownsFile(f)).length,
         utilities:     files.filter((f) => utilitiesCache._ownsFile(f)).length,
         rates:         files.filter((f) => ratesCache._ownsFile(f)).length,
+        seismic:       files.filter((f) => seismicCache._ownsFile(f)).length,
       },
     };
   } catch {
@@ -111,4 +115,4 @@ function cacheStats() {
   }
 }
 
-module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, utilitiesCache, ratesCache, cacheStats, CACHE_DIR };
+module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, utilitiesCache, ratesCache, seismicCache, cacheStats, CACHE_DIR };

@@ -87,6 +87,17 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
       <p class="prem-climate-row-body">${escapeHtml(tornado.note)}</p>
     </div>` : '';
 
+  // ── Seismic row (promoted to L2 only when moderate+) ──────────────────────
+  const seismic = climateHistory?.seismic || null;
+  const seismicRowHTML = (seismic && seismic.promote) ? `
+    <div class="prem-climate-row">
+      <div class="prem-climate-row-label">
+        🌐 Earthquake Risk
+        <span class="prem-badge ${badgeClass(seismic.color)}">${escapeHtml(seismic.label)}</span>
+      </div>
+      <p class="prem-climate-row-body">${escapeHtml(seismic.narrative)}</p>
+    </div>` : '';
+
   // ── Action checklist ──────────────────────────────────────────────────────
   const actions = [
     {
@@ -154,6 +165,7 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
 
   const leftHTML = `
     ${tornadoHTML}
+    ${seismicRowHTML}
     <div class="prem-narrative">
       <p class="prem-narrative-lead">${floodPara}</p>
       ${femaCountHTML}
@@ -187,7 +199,7 @@ function buildClimateChapterHTML(environment, climateHistory, locationInfo) {
 
 function buildClimateDeepDiveHTML(climateHistory, locationInfo) {
   if (!climateHistory) return '';
-  const { stormEvents, femaDeclarations, climateNormals, preparedness, basementContext, watershed } = climateHistory;
+  const { stormEvents, femaDeclarations, climateNormals, preparedness, basementContext, watershed, seismic } = climateHistory;
   const county = locationInfo?.county || 'this county';
 
   const tabs = [
@@ -198,6 +210,8 @@ function buildClimateDeepDiveHTML(climateHistory, locationInfo) {
     { id: 'prepared', label: 'Community Preparedness', content: buildPreparednessTab(preparedness, county) },
     { id: 'calendar', label: 'Month by Month',         content: buildClimateCalendarTab(climateNormals, stormEvents) },
   ];
+
+  if (seismic) tabs.push({ id: 'seismic', label: 'Earthquake', content: buildSeismicTab(seismic) });
 
   const tabButtons = tabs.map((t, i) =>
     `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0}" aria-controls="ctab-${t.id}" id="cbtn-${t.id}">${t.label}</button>`
@@ -386,6 +400,18 @@ function buildClimateCalendarTab(normals, stormEvents) {
     <p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>`;
 }
 
+function buildSeismicTab(seismic) {
+  const pgaG = seismic.pga.toFixed(2);
+  return `
+    <p class="prem-narrative-body"><span class="prem-badge ${badgeClass(seismic.color)}">${escapeHtml(seismic.label)}</span></p>
+    <p class="prem-narrative-body">${escapeHtml(seismic.narrative)}</p>
+    <div class="climate-event-group">
+      <div class="climate-event-group-label">What the numbers mean</div>
+      <p class="prem-narrative-body">Peak ground acceleration (PGA) of about <strong>${pgaG}g</strong> is the shaking intensity engineers design for — higher means stronger expected ground motion. S<sub>S</sub> and S<sub>1</sub> are the short- and long-period spectral accelerations used to design earthquake-resistant structures.</p>
+    </div>
+    <p class="prem-disclaimer">Source: USGS Seismic Design Maps (ASCE 7-16), risk category II, site class D (default stiff soil — a geotechnical test determines the actual site class). Modeled hazard, not a parcel inspection.</p>`;
+}
+
 // ── Level 4: Watershed Context ────────────────────────────────────────────────
 
 function buildWatershedContextHTML(watershed) {
@@ -415,9 +441,26 @@ function buildWatershedContextHTML(watershed) {
 
 function buildClimateResearchHTML(climateHistory) {
   if (!climateHistory) return '';
-  const { stormEvents, climateNormals, watershed } = climateHistory;
+  const { stormEvents, climateNormals, watershed, seismic } = climateHistory;
 
   const watershedHTML = buildWatershedContextHTML(watershed);
+
+  const seismicTableHTML = seismic ? `
+    <div class="climate-research-section">
+      <div class="climate-research-section-label">Seismic Design Values (ASCE 7-16)</div>
+      <div class="climate-table-scroll">
+        <table class="climate-data-table">
+          <thead><tr><th>Parameter</th><th>Value (g)</th></tr></thead>
+          <tbody>
+            <tr><td>PGA — peak ground acceleration</td><td>${seismic.pga.toFixed(3)}</td></tr>
+            <tr><td>S<sub>S</sub> — 0.2s spectral</td><td>${seismic.ss != null ? seismic.ss.toFixed(3) : '—'}</td></tr>
+            <tr><td>S<sub>1</sub> — 1.0s spectral</td><td>${seismic.s1 != null ? seismic.s1.toFixed(3) : '—'}</td></tr>
+            <tr><td>S<sub>DS</sub> — design short-period</td><td>${seismic.sds != null ? seismic.sds.toFixed(3) : '—'}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="prem-disclaimer">Source: <a href="https://www.usgs.gov/programs/earthquake-hazards/science/seismic-design-maps" target="_blank" rel="noopener noreferrer">USGS Seismic Design Maps</a> (ASCE 7-16, risk category II, site class D).</p>
+    </div>` : '';
 
   const eventRows = (stormEvents?.allEvents || [])
     .sort((a, b) => new Date(b.begin_date) - new Date(a.begin_date))
@@ -445,10 +488,11 @@ function buildClimateResearchHTML(climateHistory) {
     </tr>`
   ).join('');
 
-  if (!eventRows && !normalRows && !watershedHTML) return '';
+  if (!eventRows && !normalRows && !watershedHTML && !seismicTableHTML) return '';
 
   return `
     ${watershedHTML}
+    ${seismicTableHTML}
     ${eventRows ? `
     <div class="climate-research-section">
       <div class="climate-research-section-label">Complete Storm Event Log (${CLIMATE_STORM_LOOKBACK_YEARS} years)</div>

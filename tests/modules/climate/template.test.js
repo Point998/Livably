@@ -286,3 +286,50 @@ describe('L4 Watershed Context block', () => {
     expect(block).not.toMatch(/style="/);
   });
 });
+
+const { buildClimateChapterHTML: buildCC } = require('../../../src/modules/climate/template');
+
+const seisEnv = { floodRisk: { zone: 'X', risk: 'Minimal', insuranceRequired: false, description: 'x' } };
+const seisLoc = { state: 'MT', county: 'Gallatin' };
+const seisHistory = (band, promote, color) => ({
+  stormEvents: { tornadoes: [], floods: [], winterStorms: [], heatEvents: [], allEvents: [] },
+  femaDeclarations: { weatherRelated: [], all: [], count: 0 },
+  climateNormals: null, preparedness: {}, basementContext: null, watershed: null,
+  glance: { lastSignificantEvent: null },
+  seismic: { pga: 0.30, ss: 0.68, s1: 0.213, sds: 0.569, band, label: `${band} seismic hazard`, color, promote, narrative: `USGS models ${band} ground motion ~0.30g.` },
+});
+
+describe('Climate seismic placement', () => {
+  test('L2 promoted row appears when promote=true (moderate+)', () => {
+    const html = buildCC(seisEnv, seisHistory('high', true, 'orange'), seisLoc);
+    expect(html).toMatch(/Earthquake Risk/);
+    expect(html).toContain('prem-climate-row');
+  });
+  test('L2 row absent when promote=false (low), but L3 Earthquake tab still present', () => {
+    const html = buildCC(seisEnv, seisHistory('low', false, 'green'), seisLoc);
+    expect(html).not.toMatch(/Earthquake Risk/);
+    expect(html).toMatch(/id="ctab-seismic"/);
+  });
+  test('L4 design-values table present when seismic present', () => {
+    const html = buildCC(seisEnv, seisHistory('high', true, 'orange'), seisLoc);
+    expect(html).toMatch(/Seismic Design Values/);
+    expect(html.toLowerCase()).toContain('peak ground acceleration');
+  });
+  test('low/non-promote address still gets L3 tab + L4 table (adaptive placement)', () => {
+    const html = buildCC(seisEnv, seisHistory('low', false, 'green'), seisLoc);
+    expect(html).not.toMatch(/Earthquake Risk/);   // no L2 row
+    expect(html).toMatch(/id="ctab-seismic"/);     // L3 tab present
+    expect(html).toMatch(/Seismic Design Values/);  // L4 table present
+  });
+  test('no seismic -> no tab, no row, no table', () => {
+    const noSeis = seisHistory('high', true, 'orange'); delete noSeis.seismic;
+    const html = buildCC(seisEnv, noSeis, seisLoc);
+    expect(html).not.toMatch(/ctab-seismic/);
+    expect(html).not.toMatch(/Seismic Design Values/);
+  });
+  test('no scoring language; seismic row carries no inline style', () => {
+    const html = buildCC(seisEnv, seisHistory('high', true, 'orange'), seisLoc);
+    expect(html.toLowerCase()).not.toMatch(/seismic score|hazard score|out of 10/);
+    expect(html).not.toMatch(/<div class="prem-climate-row"[^>]*style="/);
+  });
+});

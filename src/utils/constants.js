@@ -681,6 +681,21 @@ const STATE_ALERT_SYSTEMS = new Map([
   ['WY', { name: 'WY Homeland Security',            url: 'https://hls.wyo.gov/alerts' }],
 ]);
 
+// ── FR-059: Seismic risk (Climate) ───────────────────────────────────────────
+const SEISMIC_DESIGNMAPS_URL = 'https://earthquake.usgs.gov/ws/designmaps/asce7-16.json';
+const SEISMIC_CACHE_TTL_DAYS = 90; // USGS hazard model updates ~every 6 years
+
+// Peak ground acceleration (g) -> layperson band. Evaluated as: first entry
+// whose `max` the PGA is strictly below. Last entry is the catch-all.
+// CONSTRAINT-001: a descriptive band, never a numeric score.
+const PGA_BAND_THRESHOLDS = [
+  { max: 0.05,     band: 'very-low',  label: 'Very low seismic hazard',  color: 'green'  },
+  { max: 0.10,     band: 'low',       label: 'Low seismic hazard',       color: 'green'  },
+  { max: 0.20,     band: 'moderate',  label: 'Moderate seismic hazard',  color: 'gold'   },
+  { max: 0.40,     band: 'high',      label: 'High seismic hazard',      color: 'orange' },
+  { max: Infinity, band: 'very-high', label: 'Very high seismic hazard', color: 'red'    },
+];
+
 // ── FR-033: Life-at-Address Calculator ───────────────────────────────────────
 // Dated fallbacks used only when a live rate fetch fails. Refresh when reviewed.
 // Sources: EIA (gas), IRS standard mileage rate, EPA/DOE fuel-economy averages.
@@ -907,4 +922,8 @@ module.exports = {
   PROFILE_BOUNDS,
   RATES_GAS_TTL_DAYS,
   RATES_IRS_TTL_DAYS,
+  // FR-059: Seismic risk
+  SEISMIC_DESIGNMAPS_URL,
+  SEISMIC_CACHE_TTL_DAYS,
+  PGA_BAND_THRESHOLDS,
 };

@@ -9,14 +9,16 @@ const {
   FEMA_DECLARATIONS_URL, USGS_ELEVATION_URL,
   CLIMATE_STORM_LOOKBACK_YEARS, CLIMATE_FEMA_LOOKBACK_YEARS,
   WATERSHED_CELL_RESOLUTION,
+  SEISMIC_DESIGNMAPS_URL,
 } = require('../../utils/constants');
 const { snapToCellAtResolution } = require('../../shared/spatial');
-const { watershedCache } = require('../../cache');
+const { watershedCache, seismicCache } = require('../../cache');
 const {
   getEmergencySystem,
   getLastSignificantEvent,
   computeRarityStatement,
   classifyTopographicPosition,
+  getSeismicContext,
 } = require('./logic');
 
 // ── FR-043: API helpers ───────────────────────────────────────────────────────
@@ -205,6 +207,32 @@ async function getNamedWatershed(lat, lng) {
   }
 }
 
+// Cell-cached (FR-058): USGS ASCE 7-16 seismic design values. Negatives cached
+// as { pga: null } (mirrors getNamedWatershed); transient errors not cached.
+async function getSeismicHazard(lat, lng) {
+  const { cellId, centroid } = snapToCellAtResolution({ lat, lng }, WATERSHED_CELL_RESOLUTION);
+
+  const cached = seismicCache.get(cellId);
+  if (cached) return cached.pga != null ? cached : null;
+
+  try {
+    const url =
+      `${SEISMIC_DESIGNMAPS_URL}?latitude=${centroid.lat}&longitude=${centroid.lng}` +
+      `&riskCategory=II&siteClass=D&title=livably`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json' } });
+    if (!resp.ok) return null; // transient — not cached
+    const data = await resp.json();
+    const d = data?.response?.data || {};
+    const pga = Number(d.pga);
+    if (!pga || isNaN(pga)) { seismicCache.set(cellId, { pga: null }); return null; }
+    const result = { pga, ss: Number(d.ss) || null, s1: Number(d.s1) || null, sds: Number(d.sds) || null };
+    seismicCache.set(cellId, result);
+    return result;
+  } catch {
+    return null; // transient errors not cached
+  }
+}
+
 async function getWatershedContext(lat, lng) {
   const offsets = [[0, 0], [0.0036, 0], [-0.0036, 0], [0, 0.0045], [0, -0.0045]];
   const urls = offsets.map(([dlat, dlng]) =>
@@ -272,13 +300,14 @@ async function getClimateHistoryData(lat, lng, locationInfo, fips) {
   const stateFips  = fips?.state          || '';
   const countyFips = fips?.county         || '';
 
-  const [stormResult, femaResult, normalsResult, watershedResult, namedResult] =
+  const [stormResult, femaResult, normalsResult, watershedResult, namedResult, seismicResult] =
     await Promise.allSettled([
       getNOAAStormEvents(stateFips, countyFips),
       getFEMADeclarations(state, county),
       getNOAAClimateNormals(lat, lng),
       getWatershedContext(lat, lng),
       getNamedWatershed(lat, lng),
+      getSeismicHazard(lat, lng),
     ]);
 
   const val = (r, fallback) => r.status === 'fulfilled' ? r.value : fallback;
@@ -287,6 +316,7 @@ async function getClimateHistoryData(lat, lng, locationInfo, fips) {
   const normals    = val(normalsResult, null);
   const watershed  = val(watershedResult, null);
   const named      = val(namedResult, null);
+  const seismic    = getSeismicContext(val(seismicResult, null));
 
   const tornadoes    = allEvents.filter((e) => /tornado/i.test(e.event_type || ''));
   const floods       = allEvents.filter((e) => /flood/i.test(e.event_type || ''));
@@ -322,6 +352,7 @@ async function getClimateHistoryData(lat, lng, locationInfo, fips) {
           named: named,
         }
       : null,
+    seismic,
     basementContext: null, // populated post-resolution in getChapterData using propIntel.constructionEra
   };
 }
@@ -334,6 +365,7 @@ module.exports = {
   getWatershedContext,
   fetchElevationWithRetry,
   getNamedWatershed,
+  getSeismicHazard,
   queryWBDName,
   getEmergencySystem,
   getLastSignificantEvent,
