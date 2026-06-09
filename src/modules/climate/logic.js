@@ -3,6 +3,7 @@
 const {
   STATE_ALERT_SYSTEMS,
   CLIMATE_SIGNIFICANT_DAMAGE_USD,
+  PGA_BAND_THRESHOLDS,
 } = require('../../utils/constants');
 
 // ── FR-043: Climate — emergency system lookup ─────────────────────────────────
@@ -78,9 +79,52 @@ function classifyTopographicPosition(elevations) {
   return 'midslope';
 }
 
+// Pure: USGS ASCE 7-16 design values -> layperson seismic band + narrative.
+// CONSTRAINT-001: descriptive band, never a numeric score.
+function getSeismicContext(raw) {
+  const pga = Number(raw && raw.pga);
+  if (!pga || isNaN(pga) || pga <= 0) return null;
+
+  const t = PGA_BAND_THRESHOLDS.find((b) => pga < b.max) || PGA_BAND_THRESHOLDS[PGA_BAND_THRESHOLDS.length - 1];
+  const promote = t.band === 'moderate' || t.band === 'high' || t.band === 'very-high';
+  const pgaG = pga.toFixed(2);
+
+  let narrative;
+  if (t.band === 'very-low' || t.band === 'low') {
+    narrative =
+      `USGS models ${t.band === 'very-low' ? 'very low' : 'low'} earthquake ground motion here ` +
+      `— peak ground acceleration about ${pgaG}g. Standard residential construction is well within ` +
+      `tolerance; seismic upgrades aren't a concern at this address.`;
+  } else if (t.band === 'moderate') {
+    narrative =
+      `USGS models moderate earthquake ground motion here — peak ground acceleration about ${pgaG}g. ` +
+      `Worth confirming the home meets current building code; ask the inspector about foundation ` +
+      `bracing and a strapped water heater.`;
+  } else {
+    narrative =
+      `This is seismically active country — USGS models ${t.band === 'very-high' ? 'very high' : 'high'} ` +
+      `ground motion (peak ground acceleration about ${pgaG}g). Confirm the home was built to or ` +
+      `retrofitted for modern seismic code, and ask specifically about foundation anchoring, ` +
+      `cripple-wall bracing, and a strapped water heater.`;
+  }
+
+  return {
+    pga,
+    ss:  Number(raw.ss)  || null,
+    s1:  Number(raw.s1)  || null,
+    sds: Number(raw.sds) || null,
+    band: t.band,
+    label: t.label,
+    color: t.color,
+    promote,
+    narrative,
+  };
+}
+
 module.exports = {
   getEmergencySystem,
   getLastSignificantEvent,
   computeRarityStatement,
   classifyTopographicPosition,
+  getSeismicContext,
 };
