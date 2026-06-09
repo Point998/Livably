@@ -114,4 +114,28 @@ describe('getDrivingRates', () => {
     expect(r.gasPricePerGallon).toBe(3.20);               // gas stale at 30d (>14) -> fallback
     expect(r.sources.gas).toBe('fallback');
   });
+
+  // FR-032 seam: per-address local electricity rate when available, else national.
+  test('adopts a local electricityRate override (sources.electric = local)', async () => {
+    delete process.env.EIA_API_KEY;
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    const r = await getDrivingRates({ electricRatePerKwh: 0.131 });
+    expect(r.electricRatePerKwh).toBe(0.131);
+    expect(r.sources.electric).toBe('local');
+  });
+
+  test('no override -> national-average electricity rate (sources.electric = national)', async () => {
+    delete process.env.EIA_API_KEY;
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    const r = await getDrivingRates();
+    expect(r.electricRatePerKwh).toBe(0.16);              // RATE_FALLBACKS
+    expect(r.sources.electric).toBe('national');
+  });
+
+  test('zero/invalid override falls back to national', async () => {
+    delete process.env.EIA_API_KEY;
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    expect((await getDrivingRates({ electricRatePerKwh: 0 })).sources.electric).toBe('national');
+    expect((await getDrivingRates({ electricRatePerKwh: 'x' })).sources.electric).toBe('national');
+  });
 });

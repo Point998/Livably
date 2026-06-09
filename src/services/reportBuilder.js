@@ -164,7 +164,10 @@ async function buildReport(address, options = {}) {
 
   let lifeCalc = null;
   try {
-    const rates = await getDrivingRates();
+    // FR-032 seam: feed the utilities chapter's per-address local electricity rate
+    // into the EV-equivalent cost when available (falls back to national avg).
+    const localElectricRate = chapters?.utilities?.electric?.residentialRate;
+    const rates = await getDrivingRates({ electricRatePerKwh: localElectricRate });
     lifeCalc = { profile: DEFAULT_PROFILE, rates, bounds: PROFILE_BOUNDS };
   } catch (_) { /* calculator omitted on total failure */ }
 

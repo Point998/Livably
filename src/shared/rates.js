@@ -70,13 +70,19 @@ async function resolveRate(key, ttlDays, fetcher) {
   return null;
 }
 
-async function getDrivingRates() {
+// overrides.electricRatePerKwh: FR-032's per-address local rate, used for the
+// EV-equivalent cost when available (>0); otherwise the national-avg fallback.
+async function getDrivingRates(overrides = {}) {
   const gas = await resolveRate('rates:gas', RATES_GAS_TTL_DAYS, fetchGasPrice);
   const irs = await resolveRate('rates:irs', RATES_IRS_TTL_DAYS, fetchIrsMileageRate);
 
   const gasPricePerGallon = gas ? gas.value : RATE_FALLBACKS.gasPricePerGallon;
   const irsRatePerMile    = irs ? irs.value : RATE_FALLBACKS.irsRatePerMile;
-  const { avgMpg, maintenancePerMile, evKwhPerMile, electricRatePerKwh } = RATE_FALLBACKS;
+  const { avgMpg, maintenancePerMile, evKwhPerMile } = RATE_FALLBACKS;
+
+  const localElectric = Number(overrides.electricRatePerKwh);
+  const hasLocalElectric = localElectric > 0;
+  const electricRatePerKwh = hasLocalElectric ? localElectric : RATE_FALLBACKS.electricRatePerKwh;
 
   return {
     gasPricePerGallon,
@@ -87,7 +93,11 @@ async function getDrivingRates() {
     electricRatePerKwh,
     marginalCostPerMile: gasPricePerGallon / avgMpg + maintenancePerMile,
     tripDistances: { ...TRIP_DISTANCE_DEFAULTS },
-    sources: { gas: gas ? 'EIA' : 'fallback', irs: irs ? 'IRS' : 'fallback' },
+    sources: {
+      gas: gas ? 'EIA' : 'fallback',
+      irs: irs ? 'IRS' : 'fallback',
+      electric: hasLocalElectric ? 'local' : 'national',
+    },
     asOf: { gas: gas ? gas.asOf : null, irs: irs ? irs.asOf : null },
   };
 }

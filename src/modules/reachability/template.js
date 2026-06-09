@@ -232,6 +232,9 @@ function buildLifeCalculatorHTML(lifeCalc) {
     </div>`;
 
   const gasAsOf = rates.asOf?.gas ? ` (EIA, as of ${escapeHtml(rates.asOf.gas)})` : ' (estimated)';
+  const evRateNote = rates.sources?.electric === 'local'
+    ? `EV uses this address's electricity rate (~${Math.round(rates.electricRatePerKwh * 100)}¢/kWh).`
+    : 'EV uses a national-average electricity rate.';
   const config = JSON.stringify({ profile, rates, bounds });
 
   return `
@@ -263,7 +266,7 @@ function buildLifeCalculatorHTML(lifeCalc) {
       </div>
     </div>
     <script type="application/json" id="life-calc-config">${config.replace(/</g, '\\u003c')}</script>
-    <p class="life-calc-disclaimer">Marginal cost = fuel (gas ÷ ${Number(rates.avgMpg)} mpg) + maintenance. IRS rate reflects full ownership cost incl. depreciation. EV uses an average residential electricity rate. Charger locations are in the Utilities chapter.</p>
+    <p class="life-calc-disclaimer">Marginal cost = fuel (gas ÷ ${Number(rates.avgMpg)} mpg) + maintenance. IRS rate reflects full ownership cost incl. depreciation. ${evRateNote} Charger locations are in the Utilities chapter.</p>
   </div>`;
 }
 
