@@ -2,6 +2,7 @@
 const { escapeHtml, formatDriveTime } = require('../../utils/text');
 const { CUSTOM_DEST_ICONS } = require('../../utils/constants');
 const { renderDepthSelector } = require('../../templates/components/depthSelector');
+const { computeDrivingProfile } = require('./logic');
 
 function buildDestSection(label, result) {
   const labelHTML = `<div class="dest-label">${label}</div>`;
@@ -216,7 +217,57 @@ function buildDailyGlanceHTML(grocery, pharmacy, hospital) {
   return `<div class="chapter-glance">${items}</div>`;
 }
 
-function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation) {
+function buildLifeCalculatorHTML(lifeCalc) {
+  if (!lifeCalc || !lifeCalc.rates) return '';
+  const { profile, rates, bounds } = lifeCalc;
+  const p = computeDrivingProfile(profile, rates);
+  const dollars = (n) => `$${Math.round(n).toLocaleString()}`;
+
+  const sliderRow = (id, label, value, min, max, step, suffix) => `
+    <div class="life-calc-control">
+      <label class="life-calc-label" for="lc-${id}">${escapeHtml(label)}</label>
+      <input class="life-calc-slider" type="range" id="lc-${id}" name="${id}"
+             min="${min}" max="${max}" step="${step}" value="${value}">
+      <output class="life-calc-value" id="lc-${id}-out">${value}${suffix ? ' ' + escapeHtml(suffix) : ''}</output>
+    </div>`;
+
+  const gasAsOf = rates.asOf?.gas ? ` (EIA, as of ${escapeHtml(rates.asOf.gas)})` : ' (estimated)';
+  const config = JSON.stringify({ profile, rates, bounds });
+
+  return `
+  <div class="life-calc">
+    <div class="life-calc-head">
+      <div class="life-calc-title">What this address costs you to drive</div>
+      <p class="life-calc-sub">Adjust to match your life. Estimates only — your actual mileage and prices vary.</p>
+    </div>
+    <div class="life-calc-controls">
+      ${sliderRow('commuteDaysPerWeek', 'Commute days per week', profile.commuteDaysPerWeek, bounds.commuteDaysPerWeek[0], bounds.commuteDaysPerWeek[1], 1, '')}
+      ${sliderRow('commuteOneWayMiles', 'Commute distance (one way)', profile.commuteOneWayMiles, bounds.commuteOneWayMiles[0], bounds.commuteOneWayMiles[1], 1, 'mi')}
+      ${sliderRow('groceryTripsPerWeek', 'Grocery trips per week', profile.groceryTripsPerWeek, bounds.groceryTripsPerWeek[0], bounds.groceryTripsPerWeek[1], 1, '')}
+      ${sliderRow('cityTripsPerMonth', 'Big-city trips per month', profile.cityTripsPerMonth, bounds.cityTripsPerMonth[0], bounds.cityTripsPerMonth[1], 1, '')}
+      <div class="life-calc-control life-calc-control--toggle">
+        <label class="life-calc-label" for="lc-hasKidsInSchool">Kids in school (adds school runs)</label>
+        <input class="life-calc-toggle" type="checkbox" id="lc-hasKidsInSchool" name="hasKidsInSchool"${profile.hasKidsInSchool ? ' checked' : ''}>
+      </div>
+    </div>
+    <div class="life-calc-outputs">
+      <div class="life-calc-headline">
+        <span class="life-calc-headline-label">Estimated yearly driving cost</span>
+        <span class="life-calc-cost-marginal" id="lc-out-marginal">${dollars(p.costMarginal)}</span>
+        <span class="life-calc-headline-note">running cost — fuel + maintenance${gasAsOf}</span>
+      </div>
+      <div class="life-calc-secondary">
+        <div class="life-calc-figure"><span class="life-calc-annual-miles" id="lc-out-miles">${p.annualMiles.toLocaleString()}</span><span class="life-calc-figure-label">miles / year</span></div>
+        <div class="life-calc-figure"><span id="lc-out-ev">${dollars(p.costEv)}</span><span class="life-calc-figure-label">on an EV</span></div>
+        <div class="life-calc-figure"><span id="lc-out-irs">${dollars(p.costIrs)}</span><span class="life-calc-figure-label">at IRS full rate ($${rates.irsRatePerMile.toFixed(2)}/mi)</span></div>
+      </div>
+    </div>
+    <script type="application/json" id="life-calc-config">${config.replace(/</g, '\\u003c')}</script>
+    <p class="life-calc-disclaimer">Marginal cost = fuel (gas ÷ ${Number(rates.avgMpg)} mpg) + maintenance. IRS rate reflects full ownership cost incl. depreciation. EV uses an average residential electricity rate. Charger locations are in the Utilities chapter.</p>
+  </div>`;
+}
+
+function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation, lifeCalc = null) {
   const daily = generateDailyConveniencesNarrative(grocery, pharmacy, gasStation);
   const peace = generatePeaceOfMindNarrative(hospital, urgentCare);
   const getting = generateGettingAroundNarrative(highwayRamp);
@@ -262,6 +313,7 @@ function buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayR
           ${calloutsHTML}
         </div>
       </div>
+      ${buildLifeCalculatorHTML(lifeCalc)}
       ${renderDepthSelector('daily')}
     </div>
   </section>
@@ -358,4 +410,4 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop, lib
   </div>`;
 }
 
-module.exports = { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML };
+module.exports = { buildInsightsCardHTML, buildCustomDestinationsCardHTML, buildAdditionalServicesCardHTML, buildLifeCalculatorHTML };

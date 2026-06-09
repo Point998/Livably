@@ -681,6 +681,48 @@ const STATE_ALERT_SYSTEMS = new Map([
   ['WY', { name: 'WY Homeland Security',            url: 'https://hls.wyo.gov/alerts' }],
 ]);
 
+// ── FR-033: Life-at-Address Calculator ───────────────────────────────────────
+// Dated fallbacks used only when a live rate fetch fails. Refresh when reviewed.
+// Sources: EIA (gas), IRS standard mileage rate, EPA/DOE fuel-economy averages.
+// Last set: June 2026.
+const RATE_FALLBACKS = {
+  gasPricePerGallon:  3.20,   // EIA US regular retail, dated fallback ($/gal)
+  irsRatePerMile:     0.67,   // IRS business standard mileage rate ($/mi)
+  avgMpg:             25,     // avg light-duty fuel economy (mpg) — modeling assumption
+  maintenancePerMile: 0.10,   // tires + maintenance + repairs ($/mi) — modeling assumption
+  evKwhPerMile:       0.30,   // typical EV consumption (kWh/mi) — modeling assumption
+  electricRatePerKwh: 0.16,   // US avg residential ($/kWh); FR-032 seam for local rate
+};
+
+// Round-trip trip distances for non-commute legs (commute distance is user-set).
+// Modeling assumptions — centralized, dated (June 2026).
+const TRIP_DISTANCE_DEFAULTS = {
+  groceryRoundTripMiles: 12,
+  cityRoundTripMiles:    60,
+  schoolRoundTripMiles:  8,
+  schoolDaysPerWeek:     5,
+};
+
+// Default profile the server renders (Office Commuter). Meaningful with JS off.
+const DEFAULT_PROFILE = {
+  commuteDaysPerWeek:  3,
+  commuteOneWayMiles:  15,
+  groceryTripsPerWeek: 1,
+  cityTripsPerMonth:   1,
+  hasKidsInSchool:     false,
+};
+
+// Input bounds (engine + client clamp identically).
+const PROFILE_BOUNDS = {
+  commuteDaysPerWeek:  [0, 7],
+  commuteOneWayMiles:  [0, 200],
+  groceryTripsPerWeek: [0, 7],
+  cityTripsPerMonth:   [0, 8],
+};
+
+const RATES_GAS_TTL_DAYS = 14;
+const RATES_IRS_TTL_DAYS  = 180;
+
 // ── FR-032: Utilities & Power ────────────────────────────────────────────────
 // Source: U.S. EIA, average residential electricity price by state ($/kWh).
 // Snapshot for comparison context only — values shift slowly; refresh annually
@@ -858,4 +900,11 @@ module.exports = {
   STATE_AVG_RELIABILITY,
   EV_BATTERY_KWH_REF,
   UTILITIES_CELL_TTL_DAYS,
+  // FR-033: Life-at-Address Calculator
+  RATE_FALLBACKS,
+  TRIP_DISTANCE_DEFAULTS,
+  DEFAULT_PROFILE,
+  PROFILE_BOUNDS,
+  RATES_GAS_TTL_DAYS,
+  RATES_IRS_TTL_DAYS,
 };

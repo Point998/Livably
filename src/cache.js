@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { DRIVETIME_CELL_TTL_DAYS, UTILITIES_CELL_TTL_DAYS } = require('./utils/constants');
+const { DRIVETIME_CELL_TTL_DAYS, UTILITIES_CELL_TTL_DAYS, RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS } = require('./utils/constants');
 
 const CACHE_DIR = path.join(__dirname, '../.cache');
 
@@ -80,6 +80,13 @@ const watershedCache = new Cache('watershed', 60 * 60 * 24 * 90); // 90 days
 // FR-032: utilities (electric + EV charging) are cell-stable — cache by cell.
 const utilitiesCache = new Cache('utilities', 60 * 60 * 24 * UTILITIES_CELL_TTL_DAYS); // 30 days
 
+// FR-033: national driving rates (gas/IRS) — global cache, "one report refreshes
+// for everyone". The namespace TTL is the BACKSTOP and must be the LONGEST of the
+// per-rate TTLs, because Cache.get evicts by namespace TTL — a shorter value would
+// evict the long-lived IRS entry before getDrivingRates' per-rate cachedFresh()
+// check (gas 14d / IRS 180d) can govern freshness. Use the max (IRS, 180d).
+const ratesCache = new Cache('rates', 60 * 60 * 24 * Math.max(RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS));
+
 function cacheStats() {
   try {
     const files = fs.readdirSync(CACHE_DIR);
@@ -96,6 +103,7 @@ function cacheStats() {
         drivetimeCell: files.filter((f) => driveTimeCellCache._ownsFile(f)).length,
         watershed:     files.filter((f) => watershedCache._ownsFile(f)).length,
         utilities:     files.filter((f) => utilitiesCache._ownsFile(f)).length,
+        rates:         files.filter((f) => ratesCache._ownsFile(f)).length,
       },
     };
   } catch {
@@ -103,4 +111,4 @@ function cacheStats() {
   }
 }
 
-module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, utilitiesCache, cacheStats, CACHE_DIR };
+module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, utilitiesCache, ratesCache, cacheStats, CACHE_DIR };
