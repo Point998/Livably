@@ -1,0 +1,67 @@
+{
+  "station_locator_url": "https://www.afdc.energy.gov/locator/",
+  "total_results": 4,
+  "station_counts": { "total": 4, "fuels": { "ELEC": { "total": 4 } } },
+  "fuel_stations": [
+    {
+      "station_name": "Scott County Public Library",
+      "street_address": "104 S Bradford Ln",
+      "city": "Georgetown", "state": "KY", "zip": "40324",
+      "latitude": 38.2105, "longitude": -84.5571,
+      "distance": 0.4,
+      "fuel_type_code": "ELEC",
+      "ev_level1_evse_num": null,
+      "ev_level2_evse_num": 2,
+      "ev_dc_fast_num": null,
+      "ev_network": "Non-Networked",
+      "ev_connector_types": ["J1772"],
+      "access_code": "public",
+      "status_code": "E"
+    },
+    {
+      "station_name": "City Hall Lot",
+      "street_address": "100 Court St",
+      "city": "Georgetown", "state": "KY", "zip": "40324",
+      "latitude": 38.2092, "longitude": -84.5603,
+      "distance": 0.9,
+      "fuel_type_code": "ELEC",
+      "ev_level1_evse_num": null,
+      "ev_level2_evse_num": null,
+      "ev_dc_fast_num": null,
+      "ev_network": "Non-Networked",
+      "ev_connector_types": ["J1772"],
+      "access_code": "public",
+      "status_code": "E"
+    },
+    {
+      "station_name": "Toyota Georgetown Visitor Center",
+      "street_address": "1001 Cherry Blossom Way",
+      "city": "Georgetown", "state": "KY", "zip": "40324",
+      "latitude": 38.2410, "longitude": -84.5210,
+      "distance": 2.7,
+      "fuel_type_code": "ELEC",
+      "ev_level1_evse_num": null,
+      "ev_level2_evse_num": 4,
+      "ev_dc_fast_num": 2,
+      "ev_network": "ChargePoint Network",
+      "ev_connector_types": ["J1772", "J1772COMBO"],
+      "access_code": "public",
+      "status_code": "E"
+    },
+    {
+      "station_name": "Pilot Travel Center DCFC",
+      "street_address": "120 Outlet Center Dr",
+      "city": "Georgetown", "state": "KY", "zip": "40324",
+      "latitude": 38.2566, "longitude": -84.4789,
+      "distance": 5.1,
+      "fuel_type_code": "ELEC",
+      "ev_level1_evse_num": null,
+      "ev_level2_evse_num": null,
+      "ev_dc_fast_num": 4,
+      "ev_network": "Electrify America",
+      "ev_connector_types": ["J1772COMBO", "CHADEMO"],
+      "access_code": "public",
+      "status_code": "E"
+    }
+  ]
+}
