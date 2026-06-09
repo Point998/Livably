@@ -126,6 +126,10 @@ describe('Life-at-Address calculator block', () => {
     const html = buildIC(G, null, null, null, null, null, LIFECALC);
     expect(html.toLowerCase()).not.toMatch(/\bscore\b|\bgrade\b|out of 10/);
   });
+  test('buildLifeCalculatorHTML returns empty string without lifeCalc/rates', () => {
+    expect(buildLifeCalculatorHTML(null)).toBe('');
+    expect(buildLifeCalculatorHTML({ profile: {}, bounds: {} })).toBe(''); // no rates
+  });
   test('calculator block itself has no inline styles (CONSTRAINT-008)', () => {
     // Scope to the calculator block — the surrounding chapter's icon SVG carries
     // pre-existing, project-tolerated --path-len custom-property styles.

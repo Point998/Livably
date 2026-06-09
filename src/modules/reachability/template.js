@@ -235,7 +235,7 @@ function buildLifeCalculatorHTML(lifeCalc) {
   const config = JSON.stringify({ profile, rates, bounds });
 
   return `
-  <div class="life-calc" data-depth="overview">
+  <div class="life-calc">
     <div class="life-calc-head">
       <div class="life-calc-title">What this address costs you to drive</div>
       <p class="life-calc-sub">Adjust to match your life. Estimates only — your actual mileage and prices vary.</p>
@@ -259,11 +259,11 @@ function buildLifeCalculatorHTML(lifeCalc) {
       <div class="life-calc-secondary">
         <div class="life-calc-figure"><span class="life-calc-annual-miles" id="lc-out-miles">${p.annualMiles.toLocaleString()}</span><span class="life-calc-figure-label">miles / year</span></div>
         <div class="life-calc-figure"><span id="lc-out-ev">${dollars(p.costEv)}</span><span class="life-calc-figure-label">on an EV</span></div>
-        <div class="life-calc-figure"><span id="lc-out-irs">${dollars(p.costIrs)}</span><span class="life-calc-figure-label">at IRS full rate (${rates.irsRatePerMile.toFixed(2)}/mi)</span></div>
+        <div class="life-calc-figure"><span id="lc-out-irs">${dollars(p.costIrs)}</span><span class="life-calc-figure-label">at IRS full rate ($${rates.irsRatePerMile.toFixed(2)}/mi)</span></div>
       </div>
     </div>
     <script type="application/json" id="life-calc-config">${config.replace(/</g, '\\u003c')}</script>
-    <p class="life-calc-disclaimer">Marginal cost = fuel (gas ÷ ${rates.avgMpg} mpg) + maintenance. IRS rate reflects full ownership cost incl. depreciation. EV uses an average residential electricity rate. Charger locations are in the Utilities chapter.</p>
+    <p class="life-calc-disclaimer">Marginal cost = fuel (gas ÷ ${Number(rates.avgMpg)} mpg) + maintenance. IRS rate reflects full ownership cost incl. depreciation. EV uses an average residential electricity rate. Charger locations are in the Utilities chapter.</p>
   </div>`;
 }
 
