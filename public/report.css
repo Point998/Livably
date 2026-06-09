@@ -534,6 +534,7 @@ body.report-page {
 .chapter[data-ch="sensory"]   { --ch: var(--ch-sensory);   --ch-light: var(--ch-sensory-light);   --ch-text: var(--ch-sensory-text);   }
 .chapter[data-ch="walk"]      { --ch: var(--ch-walk);      --ch-light: var(--ch-walk-light);      --ch-text: var(--ch-walk-text);      }
 .chapter[data-ch="costs"]     { --ch: var(--ch-costs);     --ch-light: var(--ch-costs-light);     --ch-text: var(--ch-costs-text);     }
+.chapter[data-ch="utilities"] { --ch: var(--ch-utilities); --ch-light: var(--ch-utilities-light); --ch-text: var(--ch-utilities-text); }
 .chapter[data-ch="custom"]    { --ch: var(--ch-custom);    --ch-light: var(--ch-custom-light);    --ch-text: var(--ch-custom-text);    }
 
 /* ── Body Text & Data Elements ─────────────────────────────────── */
@@ -3936,3 +3937,25 @@ body.report-page {
   transition: opacity 0.15s;
 }
 .report-expand-all-btn:hover { opacity: 1; }
+
+/* ── FR-033 Life-at-Address calculator (provisional) ─────────────── */
+/* Placeholder visuals — to be finalized in the frontend design phase. */
+.life-calc { margin-top: var(--space-32); padding-top: var(--space-24); border-top: 1px solid var(--ink-10); }
+.life-calc-title { font-family: var(--font-display); font-size: var(--text-xl); color: var(--ch-text, var(--ink)); }
+.life-calc-sub { font-size: var(--text-sm); color: var(--ink-60); margin: var(--space-4) 0 var(--space-16); }
+.life-calc-controls { display: grid; gap: var(--space-12); margin-bottom: var(--space-24); }
+.life-calc-control { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-12); }
+.life-calc-control--toggle { grid-template-columns: 1fr auto; }
+.life-calc-label { font-size: var(--text-sm); color: var(--ink); }
+.life-calc-slider { width: 100%; grid-column: 1 / -1; accent-color: var(--ch, var(--ink)); }
+.life-calc-value { font-variant-numeric: tabular-nums; color: var(--ink-60); font-size: var(--text-sm); }
+.life-calc-outputs { display: grid; gap: var(--space-16); }
+.life-calc-headline { display: grid; gap: var(--space-4); }
+.life-calc-headline-label { font-size: var(--text-sm); color: var(--ink-60); }
+.life-calc-cost-marginal { font-family: var(--font-display); font-size: 2rem; color: var(--ch-text, var(--ink)); font-variant-numeric: tabular-nums; }
+.life-calc-headline-note { font-size: var(--text-xs); color: var(--ink-30); }
+.life-calc-secondary { display: flex; flex-wrap: wrap; gap: var(--space-24); }
+.life-calc-figure { display: grid; }
+.life-calc-figure span:first-child { font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+.life-calc-figure-label { font-size: var(--text-xs); color: var(--ink-60); }
+.life-calc-disclaimer { font-size: var(--text-xs); color: var(--ink-30); margin-top: var(--space-16); }

@@ -1,0 +1,9 @@
+{
+  "response": {
+    "total": 1,
+    "frequency": "weekly",
+    "data": [
+      { "period": "2026-06-01", "duoarea": "NUS", "area-name": "U.S.", "product": "EPMR", "product-name": "Regular Gasoline", "process": "PTE", "value": "3.41", "units": "$/GAL" }
+    ]
+  }
+}

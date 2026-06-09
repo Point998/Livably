@@ -1,0 +1,22 @@
+{
+  "version": "3.0.0",
+  "errors": [],
+  "warnings": [],
+  "metadata": { "sources": ["NREL", "OpenEI U.S. Utility Rate Database"] },
+  "inputs": { "lat": "37.9803", "lon": "-84.3733" },
+  "outputs": {
+    "company_id": "2049",
+    "utility_name": "Blue Grass Energy Cooperative Corp",
+    "utility_info": [
+      {
+        "company_id": "2049",
+        "utility_name": "Blue Grass Energy Cooperative Corp",
+        "ownership": "Cooperative",
+        "rate_id": "5c2a20...residential"
+      }
+    ],
+    "commercial": 0.1101,
+    "industrial": 0.0905,
+    "residential": 0.1243
+  }
+}

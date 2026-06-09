@@ -696,6 +696,106 @@ const PGA_BAND_THRESHOLDS = [
   { max: Infinity, band: 'very-high', label: 'Very high seismic hazard', color: 'red'    },
 ];
 
+// ── FR-033: Life-at-Address Calculator ───────────────────────────────────────
+// Dated fallbacks used only when a live rate fetch fails. Refresh when reviewed.
+// Sources: EIA (gas), IRS standard mileage rate, EPA/DOE fuel-economy averages.
+// Last set: June 2026.
+const RATE_FALLBACKS = {
+  gasPricePerGallon:  3.20,   // EIA US regular retail, dated fallback ($/gal)
+  irsRatePerMile:     0.67,   // IRS business standard mileage rate ($/mi)
+  avgMpg:             25,     // avg light-duty fuel economy (mpg) — modeling assumption
+  maintenancePerMile: 0.10,   // tires + maintenance + repairs ($/mi) — modeling assumption
+  evKwhPerMile:       0.30,   // typical EV consumption (kWh/mi) — modeling assumption
+  electricRatePerKwh: 0.16,   // US avg residential ($/kWh); FR-032 seam for local rate
+};
+
+// Round-trip trip distances for non-commute legs (commute distance is user-set).
+// Modeling assumptions — centralized, dated (June 2026).
+const TRIP_DISTANCE_DEFAULTS = {
+  groceryRoundTripMiles: 12,
+  cityRoundTripMiles:    60,
+  schoolRoundTripMiles:  8,
+  schoolDaysPerWeek:     5,
+};
+
+// Default profile the server renders (Office Commuter). Meaningful with JS off.
+const DEFAULT_PROFILE = {
+  commuteDaysPerWeek:  3,
+  commuteOneWayMiles:  15,
+  groceryTripsPerWeek: 1,
+  cityTripsPerMonth:   1,
+  hasKidsInSchool:     false,
+};
+
+// Input bounds (engine + client clamp identically).
+const PROFILE_BOUNDS = {
+  commuteDaysPerWeek:  [0, 7],
+  commuteOneWayMiles:  [0, 200],
+  groceryTripsPerWeek: [0, 7],
+  cityTripsPerMonth:   [0, 8],
+};
+
+const RATES_GAS_TTL_DAYS = 14;
+const RATES_IRS_TTL_DAYS  = 180;
+
+// ── FR-032: Utilities & Power ────────────────────────────────────────────────
+// Source: U.S. EIA, average residential electricity price by state ($/kWh).
+// Snapshot for comparison context only — values shift slowly; refresh annually
+// from https://www.eia.gov/electricity/state/ . Last set: June 2026.
+const STATE_AVG_ELECTRIC_RATE = {
+  AL: 0.149, AK: 0.246, AZ: 0.143, AR: 0.124, CA: 0.298, CO: 0.149, CT: 0.276,
+  DE: 0.151, DC: 0.161, FL: 0.147, GA: 0.140, HI: 0.416, ID: 0.112, IL: 0.151,
+  IN: 0.149, IA: 0.136, KS: 0.137, KY: 0.128, LA: 0.118, ME: 0.250, MD: 0.166,
+  MA: 0.305, MI: 0.184, MN: 0.148, MS: 0.128, MO: 0.117, MT: 0.120, NE: 0.117,
+  NV: 0.155, NH: 0.238, NJ: 0.183, NM: 0.142, NY: 0.234, NC: 0.128, ND: 0.108,
+  OH: 0.156, OK: 0.117, OR: 0.128, PA: 0.179, RI: 0.293, SC: 0.142, SD: 0.126,
+  TN: 0.122, TX: 0.151, UT: 0.113, VT: 0.213, VA: 0.142, WA: 0.109, WV: 0.143,
+  WI: 0.163, WY: 0.118,
+};
+
+// Source: U.S. EIA-861 annual electric distribution reliability, IEEE 1366,
+// EXCLUDING major event days. saidiHours = avg total interruption duration per
+// customer per year; saifiEvents = avg number of interruptions per customer per
+// year. State-level averages — NOT parcel- or utility-specific. Refresh from
+// EIA-861 reliability tables. Last set: June 2026. NATIONAL is the fallback.
+const STATE_AVG_RELIABILITY = {
+  NATIONAL: { saidiHours: 2.2, saifiEvents: 1.0 },
+  AL: { saidiHours: 2.0, saifiEvents: 1.1 }, AK: { saidiHours: 2.6, saifiEvents: 1.4 },
+  AZ: { saidiHours: 1.7, saifiEvents: 0.9 }, AR: { saidiHours: 2.4, saifiEvents: 1.2 },
+  CA: { saidiHours: 2.0, saifiEvents: 0.9 }, CO: { saidiHours: 1.8, saifiEvents: 0.9 },
+  CT: { saidiHours: 1.9, saifiEvents: 0.8 }, DE: { saidiHours: 1.6, saifiEvents: 0.8 },
+  DC: { saidiHours: 1.4, saifiEvents: 0.6 }, FL: { saidiHours: 1.8, saifiEvents: 1.0 },
+  GA: { saidiHours: 2.1, saifiEvents: 1.1 }, HI: { saidiHours: 1.9, saifiEvents: 1.2 },
+  ID: { saidiHours: 2.5, saifiEvents: 1.2 }, IL: { saidiHours: 1.7, saifiEvents: 0.9 },
+  IN: { saidiHours: 2.2, saifiEvents: 1.1 }, IA: { saidiHours: 2.3, saifiEvents: 1.1 },
+  KS: { saidiHours: 2.6, saifiEvents: 1.3 }, KY: { saidiHours: 2.4, saifiEvents: 1.2 },
+  LA: { saidiHours: 2.7, saifiEvents: 1.3 }, ME: { saidiHours: 3.1, saifiEvents: 1.4 },
+  MD: { saidiHours: 1.8, saifiEvents: 0.8 }, MA: { saidiHours: 1.7, saifiEvents: 0.8 },
+  MI: { saidiHours: 2.8, saifiEvents: 1.3 }, MN: { saidiHours: 2.0, saifiEvents: 1.0 },
+  MS: { saidiHours: 2.5, saifiEvents: 1.3 }, MO: { saidiHours: 2.4, saifiEvents: 1.2 },
+  MT: { saidiHours: 2.7, saifiEvents: 1.3 }, NE: { saidiHours: 2.2, saifiEvents: 1.1 },
+  NV: { saidiHours: 1.8, saifiEvents: 0.9 }, NH: { saidiHours: 2.9, saifiEvents: 1.3 },
+  NJ: { saidiHours: 1.6, saifiEvents: 0.8 }, NM: { saidiHours: 2.3, saifiEvents: 1.2 },
+  NY: { saidiHours: 1.9, saifiEvents: 0.9 }, NC: { saidiHours: 2.2, saifiEvents: 1.1 },
+  ND: { saidiHours: 2.4, saifiEvents: 1.1 }, OH: { saidiHours: 2.1, saifiEvents: 1.0 },
+  OK: { saidiHours: 2.6, saifiEvents: 1.3 }, OR: { saidiHours: 2.5, saifiEvents: 1.2 },
+  PA: { saidiHours: 2.0, saifiEvents: 1.0 }, RI: { saidiHours: 1.7, saifiEvents: 0.8 },
+  SC: { saidiHours: 2.2, saifiEvents: 1.1 }, SD: { saidiHours: 2.3, saifiEvents: 1.1 },
+  TN: { saidiHours: 2.3, saifiEvents: 1.2 }, TX: { saidiHours: 2.5, saifiEvents: 1.2 },
+  UT: { saidiHours: 1.9, saifiEvents: 1.0 }, VT: { saidiHours: 3.0, saifiEvents: 1.4 },
+  VA: { saidiHours: 2.1, saifiEvents: 1.0 }, WA: { saidiHours: 2.6, saifiEvents: 1.2 },
+  WV: { saidiHours: 2.9, saifiEvents: 1.4 }, WI: { saidiHours: 2.1, saifiEvents: 1.0 },
+  WY: { saidiHours: 2.5, saifiEvents: 1.2 },
+};
+
+// Reference battery for the "cost to charge once" figure (mid-size EV, kWh).
+const EV_BATTERY_KWH_REF = 60;
+
+// FR-058 parity: cell-cache TTL for the utilities payload (electric + EV).
+// Utility territory + residential rate are annual-stable; 30 days balances
+// freshness against fetch volume.
+const UTILITIES_CELL_TTL_DAYS = 30;
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -810,6 +910,18 @@ module.exports = {
   CLIMATE_FEMA_LOOKBACK_YEARS,
   CLIMATE_SIGNIFICANT_DAMAGE_USD,
   STATE_ALERT_SYSTEMS,
+  // FR-032 Utilities & Power
+  STATE_AVG_ELECTRIC_RATE,
+  STATE_AVG_RELIABILITY,
+  EV_BATTERY_KWH_REF,
+  UTILITIES_CELL_TTL_DAYS,
+  // FR-033: Life-at-Address Calculator
+  RATE_FALLBACKS,
+  TRIP_DISTANCE_DEFAULTS,
+  DEFAULT_PROFILE,
+  PROFILE_BOUNDS,
+  RATES_GAS_TTL_DAYS,
+  RATES_IRS_TTL_DAYS,
   // FR-059: Seismic risk
   SEISMIC_DESIGNMAPS_URL,
   SEISMIC_CACHE_TTL_DAYS,

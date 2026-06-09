@@ -1,0 +1,22 @@
+{
+  "version": "3.0.0",
+  "errors": [],
+  "warnings": ["No rate data found for this location."],
+  "metadata": { "sources": ["NREL", "OpenEI U.S. Utility Rate Database"] },
+  "inputs": { "lat": "36.8407", "lon": "-83.3216" },
+  "outputs": {
+    "company_id": "11249",
+    "utility_name": "Harlan County RECC",
+    "utility_info": [
+      {
+        "company_id": "11249",
+        "utility_name": "Harlan County RECC",
+        "ownership": "Cooperative",
+        "rate_id": null
+      }
+    ],
+    "commercial": "no data",
+    "industrial": "no data",
+    "residential": "no data"
+  }
+}

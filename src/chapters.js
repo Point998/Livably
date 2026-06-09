@@ -28,6 +28,9 @@ const {
 const { getPropertyData, getPropertyIntelligence } = require('./modules/property/data');
 const { getGrowthAndDevelopment } = require('./modules/growth/data');
 const { getEnvironmentalData } = require('./modules/sensory/data');
+const { getUtilitiesData } = require('./modules/utilities/data');
+const { assembleUtilities } = require('./modules/utilities/logic');
+const { buildUtilitiesHTML } = require('./modules/utilities/template');
 
 const { buildClimateChapterHTML } = require('./modules/climate/template');
 const { buildWhatWillGrowHTML } = require('./modules/garden/template');
@@ -103,10 +106,10 @@ async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, google
 
 // ── Master fetch ──────────────────────────────────────────────────────────────
 
-async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes, fips: prefetchedFips }) {
+async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMapsClient, googleMapsApiKey, getDriveTime, highwayDriveMinutes, fips: prefetchedFips, ruralMode, cell }) {
   const fips = prefetchedFips ?? await getCensusFIPS(lat, lng);
 
-  const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel, gardenData, climateHistory] =
+  const [demographics, propertyData, walkability, emergency, environment, safetyLocation, schools, growth, propIntel, gardenData, climateHistory, utilitiesRaw] =
     await Promise.allSettled([
       getDemographics(lat, lng, fips),
       getPropertyData(fips, locationInfo),
@@ -119,9 +122,12 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
       getPropertyIntelligence(lat, lng, fips, locationInfo),
       getGardenData(lat, lng, locationInfo),
       getClimateHistoryData(lat, lng, locationInfo, fips),
+      getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell),
     ]);
 
   const val = (r) => (r.status === 'fulfilled' ? r.value : null);
+
+  const utilities = assembleUtilities(val(utilitiesRaw), ruralMode || 'suburban', locationInfo);
 
   // Post-resolve basementContext: needs constructionEra + ruralMode, both only available after parallel fetch
   const { getBasementContext: gbc, detectRuralMode: drm } = require('./shared/validate');
@@ -150,6 +156,7 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
     propIntel:    val(propIntel),
     gardenData:   val(gardenData),
     climateHistory: climateHistoryVal,
+    utilities,
     locationInfo,
   };
 }
@@ -169,6 +176,7 @@ function buildChaptersHTML(chapters) {
     buildSensoryEnvironmentalHTML(chapters.environment),
     buildWalkabilityHTML(chapters.walkability),
     buildPropertyDataHTML(chapters.propertyData),
+    buildUtilitiesHTML(chapters.utilities),
   ].join('');
 }
 
