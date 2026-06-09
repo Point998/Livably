@@ -40,7 +40,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - **Most recent:** FR-058 (Spatial cache keys + drive-time banding) — **merged to `main` (PR #10).** See Cost Architecture below.
 - **Recent chain:** NR-002 (API cost forecast) → NR-003 (spatial cost diagnosis) → FR-058 (Phase 1, shipped).
 - **FR-034 (Chapter Enhancements): ✅ COMPLETE — all 7 enhancements merged to `main`** (enh 6 named watershed context shipped via PR #15). See FR-034 detail below.
-- **Next:** Start the remaining Phase 5 chapters — FR-032 Utilities, FR-033 Life-at-Address calculator (neither started).
+- **Phase 5 chapters built (PRs pending):** FR-032 Utilities (branch `FR-032-utilities-intelligence`, PR #17) and FR-033 Life-at-Address calculator (branch `FR-033-life-at-address`). FR-033's live data path (EIA gas + IRS rate) is verified live; FR-032's populated NREL data awaits verification where NREL resolves. Both branch independently off `main`.
 
 ---
 
@@ -94,7 +94,8 @@ Phased: **Phase 1 — FR-058 (pure Google) ✅ merged (PR #10)** → Phase 2 (OS
 ### Phase 5 — New Chapters
 Utilities Intelligence (FR-032), Life at This Address Calculator (FR-033), Chapter Enhancements (FR-034).
 - **FR-034 — ✅ COMPLETE (7/7 merged).**
-- **FR-032, FR-033 — not started.**
+- **FR-032 Utilities — ✅ built on branch** (PR #17; populated NREL verification deferred until NREL is reachable).
+- **FR-033 Life-at-Address — ✅ built on branch** `FR-033-life-at-address` (PR pending; EIA gas + IRS rate verified live). See `feature-requests/FR-033-life-at-address/`.
 
 ### Phase 6 — The Livably Sketch
 Hand-drawn house that comes to life as the buyer scrolls. See LIVABLY-SKETCH-SPEC.md.
