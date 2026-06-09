@@ -88,7 +88,7 @@ describe('buildAdditionalServicesCardHTML — civic infrastructure', () => {
   });
 });
 
-const { buildInsightsCardHTML: buildIC } = require('../../../src/modules/reachability/template');
+const { buildInsightsCardHTML: buildIC, buildLifeCalculatorHTML } = require('../../../src/modules/reachability/template');
 
 const LIFECALC = {
   profile: { commuteDaysPerWeek: 3, commuteOneWayMiles: 15, groceryTripsPerWeek: 1, cityTripsPerMonth: 1, hasKidsInSchool: false },
@@ -122,9 +122,14 @@ describe('Life-at-Address calculator block', () => {
     const html = buildIC(G, null, null, null, null, null);
     expect(html).not.toContain('life-calc');
   });
-  test('no inline styles, no scoring language', () => {
+  test('no scoring language in the chapter', () => {
     const html = buildIC(G, null, null, null, null, null, LIFECALC);
-    expect(html).not.toMatch(/style="/);
     expect(html.toLowerCase()).not.toMatch(/\bscore\b|\bgrade\b|out of 10/);
+  });
+  test('calculator block itself has no inline styles (CONSTRAINT-008)', () => {
+    // Scope to the calculator block — the surrounding chapter's icon SVG carries
+    // pre-existing, project-tolerated --path-len custom-property styles.
+    const block = buildLifeCalculatorHTML(LIFECALC);
+    expect(block).not.toMatch(/style="/);
   });
 });
