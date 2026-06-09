@@ -87,3 +87,44 @@ describe('buildAdditionalServicesCardHTML — civic infrastructure', () => {
     expect(html).toMatch(/Scott County Public Library/);
   });
 });
+
+const { buildInsightsCardHTML: buildIC } = require('../../../src/modules/reachability/template');
+
+const LIFECALC = {
+  profile: { commuteDaysPerWeek: 3, commuteOneWayMiles: 15, groceryTripsPerWeek: 1, cityTripsPerMonth: 1, hasKidsInSchool: false },
+  rates: {
+    marginalCostPerMile: 0.2364, irsRatePerMile: 0.67, evKwhPerMile: 0.30, electricRatePerKwh: 0.16,
+    gasPricePerGallon: 3.41, avgMpg: 25, maintenancePerMile: 0.10,
+    tripDistances: { groceryRoundTripMiles: 12, cityRoundTripMiles: 60, schoolRoundTripMiles: 8, schoolDaysPerWeek: 5 },
+    sources: { gas: 'EIA', irs: 'fallback' }, asOf: { gas: '2026-06-01', irs: null },
+  },
+  bounds: { commuteDaysPerWeek: [0,7], commuteOneWayMiles: [0,200], groceryTripsPerWeek: [0,7], cityTripsPerMonth: [0,8] },
+};
+const G = [{ name: 'Kroger', address: '1 St', driveTimeMinutes: 6 }];
+
+describe('Life-at-Address calculator block', () => {
+  test('renders inside the daily chapter when lifeCalc provided', () => {
+    const html = buildIC(G, null, null, null, null, null, LIFECALC);
+    expect(html).toContain('life-calc');
+    expect(html).toContain('data-ch="daily"');
+  });
+  test('renders the computed default headline (marginal) + annual miles', () => {
+    const html = buildIC(G, null, null, null, null, null, LIFECALC);
+    expect(html).toMatch(/life-calc-cost-marginal/);
+    expect(html).toMatch(/life-calc-annual-miles/);
+  });
+  test('embeds a JSON config script for the client', () => {
+    const html = buildIC(G, null, null, null, null, null, LIFECALC);
+    expect(html).toContain('id="life-calc-config"');
+    expect(html).toContain('application/json');
+  });
+  test('omitting lifeCalc leaves the chapter unchanged (back-compat)', () => {
+    const html = buildIC(G, null, null, null, null, null);
+    expect(html).not.toContain('life-calc');
+  });
+  test('no inline styles, no scoring language', () => {
+    const html = buildIC(G, null, null, null, null, null, LIFECALC);
+    expect(html).not.toMatch(/style="/);
+    expect(html.toLowerCase()).not.toMatch(/\bscore\b|\bgrade\b|out of 10/);
+  });
+});
