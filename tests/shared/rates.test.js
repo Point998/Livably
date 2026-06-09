@@ -94,4 +94,19 @@ describe('getDrivingRates', () => {
     await getDrivingRates();
     expect(global.fetch.mock.calls.length).toBeGreaterThanOrEqual(calls1);
   });
+
+  // Regression: the namespace TTL must not evict the long-lived IRS entry before
+  // its 180-day per-rate freshness applies (gas stays short at 14 days).
+  test('per-rate TTL governs: 30-day-old IRS entry honored; gas (14d) goes stale', async () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    ratesCache.set('rates:irs', { value: 0.65, asOf: '2025-12-15', fetchedAt: Date.now() - 30 * DAY });
+    ratesCache.set('rates:gas', { value: 9.99, asOf: '2025-12-15', fetchedAt: Date.now() - 30 * DAY });
+    delete process.env.EIA_API_KEY;                       // gas live fetch unavailable
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    const r = await getDrivingRates();
+    expect(r.irsRatePerMile).toBe(0.65);                  // IRS cache still fresh at 30d (<180)
+    expect(r.sources.irs).toBe('IRS');
+    expect(r.gasPricePerGallon).toBe(3.20);               // gas stale at 30d (>14) -> fallback
+    expect(r.sources.gas).toBe('fallback');
+  });
 });

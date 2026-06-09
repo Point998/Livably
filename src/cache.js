@@ -79,8 +79,11 @@ const driveTimeCellCache = new Cache('drivetime_cell', 60 * 60 * 24 * DRIVETIME_
 const watershedCache = new Cache('watershed', 60 * 60 * 24 * 90); // 90 days
 
 // FR-033: national driving rates (gas/IRS) — global cache, "one report refreshes
-// for everyone". Gas TTL short (price moves); IRS TTL long (annual).
-const ratesCache = new Cache('rates', 60 * 60 * 24 * RATES_GAS_TTL_DAYS);
+// for everyone". The namespace TTL is the BACKSTOP and must be the LONGEST of the
+// per-rate TTLs, because Cache.get evicts by namespace TTL — a shorter value would
+// evict the long-lived IRS entry before getDrivingRates' per-rate cachedFresh()
+// check (gas 14d / IRS 180d) can govern freshness. Use the max (IRS, 180d).
+const ratesCache = new Cache('rates', 60 * 60 * 24 * Math.max(RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS));
 
 function cacheStats() {
   try {
