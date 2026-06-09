@@ -1,5 +1,18 @@
 'use strict';
-const { computeDrivingProfile } = require('../../../src/modules/reachability/logic');
+const { computeDrivingProfile, clampNum } = require('../../../src/modules/reachability/logic');
+
+describe('clampNum', () => {
+  test('passes through in-range floats', () => { expect(clampNum(3.5, 0, 7)).toBe(3.5); });
+  test('clamps below low and above high', () => {
+    expect(clampNum(-2, 0, 7)).toBe(0);
+    expect(clampNum(99, 0, 7)).toBe(7);
+  });
+  test('non-numeric returns the low bound', () => {
+    expect(clampNum('x', 0, 7)).toBe(0);
+    expect(clampNum(undefined, 2, 7)).toBe(2);
+    expect(clampNum(NaN, 1, 7)).toBe(1);
+  });
+});
 
 const RATES = {
   marginalCostPerMile: 0.20,
