@@ -450,12 +450,24 @@ describe('getSeismicHazard', () => {
     expect(global.fetch.mock.calls.length).toBeGreaterThan(calls);
   });
 
-  test('searches from the cell centroid and hits the USGS designmaps URL', async () => {
+  test('returns null when fetch rejects (network) and does not throw', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('network'));
+    await expect(getSeismicHazard(20, 20)).resolves.toBeNull();
+    const calls = global.fetch.mock.calls.length;
+    await getSeismicHazard(20, 20); // transient — re-attempts (not cached)
+    expect(global.fetch.mock.calls.length).toBeGreaterThan(calls);
+  });
+
+  test('queries the cell CENTROID, not the raw lat/lng', async () => {
+    const { snapToCellAtResolution } = require('../../../src/shared/spatial');
+    const { WATERSHED_CELL_RESOLUTION } = require('../../../src/utils/constants');
+    const { centroid } = snapToCellAtResolution({ lat: 45.68, lng: -111.04 }, WATERSHED_CELL_RESOLUTION);
     const seen = [];
     global.fetch = jest.fn((url) => { seen.push(url); return Promise.resolve(RESP({ pga: 0.1 })); });
     await getSeismicHazard(45.68, -111.04);
     expect(seen[0]).toContain('earthquake.usgs.gov/ws/designmaps/asce7-16.json');
-    expect(seen[0]).toContain('latitude=');
+    expect(seen[0]).toContain(`latitude=${centroid.lat}`);   // centroid, not raw
+    expect(seen[0]).not.toContain('latitude=45.68&');         // raw point not used
   });
 });
 
