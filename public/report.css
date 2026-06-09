@@ -534,6 +534,7 @@ body.report-page {
 .chapter[data-ch="sensory"]   { --ch: var(--ch-sensory);   --ch-light: var(--ch-sensory-light);   --ch-text: var(--ch-sensory-text);   }
 .chapter[data-ch="walk"]      { --ch: var(--ch-walk);      --ch-light: var(--ch-walk-light);      --ch-text: var(--ch-walk-text);      }
 .chapter[data-ch="costs"]     { --ch: var(--ch-costs);     --ch-light: var(--ch-costs-light);     --ch-text: var(--ch-costs-text);     }
+.chapter[data-ch="utilities"] { --ch: var(--ch-utilities); --ch-light: var(--ch-utilities-light); --ch-text: var(--ch-utilities-text); }
 .chapter[data-ch="custom"]    { --ch: var(--ch-custom);    --ch-light: var(--ch-custom-light);    --ch-text: var(--ch-custom-text);    }
 
 /* ── Body Text & Data Elements ─────────────────────────────────── */

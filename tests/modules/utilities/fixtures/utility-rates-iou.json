@@ -1,0 +1,22 @@
+{
+  "version": "3.0.0",
+  "errors": [],
+  "warnings": ["Energy rates may not reflect all charges. Always confirm with the utility."],
+  "metadata": { "sources": ["NREL", "OpenEI U.S. Utility Rate Database"] },
+  "inputs": { "lat": "38.2098", "lon": "-84.5588" },
+  "outputs": {
+    "company_id": "16572",
+    "utility_name": "Kentucky Utilities Co",
+    "utility_info": [
+      {
+        "company_id": "16572",
+        "utility_name": "Kentucky Utilities Co",
+        "ownership": "Investor Owned",
+        "rate_id": "5c2a1f...residential"
+      }
+    ],
+    "commercial": 0.1056,
+    "industrial": 0.0712,
+    "residential": 0.1187
+  }
+}

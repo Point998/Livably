@@ -38,6 +38,9 @@
   --ch-sensory:       #4a2d7a; --ch-sensory-light: #f0eaf8; --ch-sensory-text:#2d1a4f;
   --ch-walk:          #d45c3d; --ch-walk-light:    #fdf0ed; --ch-walk-text:   #8a2e1a;
   --ch-costs:         #1a6b6b; --ch-costs-light:   #e0f5f5; --ch-costs-text:  #0a4040;
+  /* FR-032 Utilities: provisional "power amber" — distinct from Costs' teal (its
+     neighbor) and every other chapter; revisit in the frontend design phase. */
+  --ch-utilities:     #a6791f; --ch-utilities-light:#fbf2dd;--ch-utilities-text:#6b4d12;
   --ch-custom:        #4a3f35; --ch-custom-light:  #f0ece8; --ch-custom-text: #2a221a;
 
   /* ── Three-Bucket System ─────────────────────────────────────── */

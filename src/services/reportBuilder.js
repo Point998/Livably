@@ -154,6 +154,8 @@ async function buildReport(address, options = {}) {
       getDriveTime,
       highwayDriveMinutes,
       fips: prefetchedFips,
+      ruralMode,
+      cell,
     });
   } catch (chapErr) {
     console.error('[Chapters] fetch error:', chapErr.message);
