@@ -6,9 +6,16 @@ The old keyless FCC map API (`broadbandmap.fcc.gov/api/public/map/listAvailabili
 
 ## Key constraint that shapes the solution
 
-The BDC public API is a **bulk data-download API** (auth: registered FCC username + 44-char token), **not** a per-address live lookup. Per-**location**, provider-named availability requires mapping an address to a **Fabric `location_id`**, and the Broadband Serviceable Location Fabric is **license-restricted (CostQuest)** — out of reach without a paid/legal license. Per-**geography** (census block) availability summaries are published **without** the Fabric but are **aggregate by technology + speed, not provider-named**.
+The BDC public API is a **bulk data-download API** (base `https://bdc.fcc.gov/api/public/map/`; auth: registered FCC `username` + 44-char token sent as `username` / `hash_value` headers; list endpoint `downloads/listAvailabilityData/<as-of-date>`), **not** a per-address live lookup.
 
-**⚠️ Decision to confirm at spec review:** This spec takes the **block-level summary** path (no Fabric). Consequence: we recover the **band + available technologies + max advertised speed** for the address's census block — exactly what FR-061's felt band needs — but **lose the named provider list**. (Alternative: license the Fabric to keep named providers — higher cost/effort; flagged, not assumed.)
+**Key correction (vs. early discovery):** the published fixed-availability download files are **location-level but carry a `block_geoid` column AND a `brand_name` column** (full schema incl. `frn, provider_id, brand_name, location_id, technology, max_advertised_download_speed, max_advertised_upload_speed, low_latency, business_residential_code, state_usps, block_geoid`). Therefore **aggregating these files by `block_geoid` recovers the provider list, technologies, AND max speeds — without the license-restricted CostQuest Fabric.** The Fabric is only needed to resolve an *exact parcel's* `location_id`; for "what's available in this address's census block," block aggregation suffices and keeps named providers.
+
+**Consequences of the block-aggregation path:**
+- ✅ Full FR-061 fidelity retained: providers + band + max speed. **No template/logic change** (FR-061 already renders all of this).
+- ⚠️ Precision is **block-level, not parcel-level** — we report what's available *somewhere in the block*, not guaranteed at the exact address. Acceptable for the "felt" framing; the disclaimer states it.
+- ⚠️ The real cost is **data volume**: location-level files are large (millions of rows per state). Aggregation happens at **ingest time** (offline), producing a compact block→availability artifact; runtime reads only the artifact.
+
+**⚠️ External preconditions (cannot be satisfied in-repo):** building/running the ingestion needs (1) an FCC BDC account + token, (2) `bdc.fcc.gov` reachable from the build environment, (3) the exact file-download endpoint + CSV schema confirmed against the gated swagger. The token-independent parts (runtime lookup, transform, wiring, tests against a fixture) are buildable now; the live ingestion + real artifact + 5-address live verify are gated on (1)–(3).
 
 ## Solution (block-level, no Fabric)
 
@@ -18,14 +25,14 @@ A periodic **ingestion** step (token used only here, offline) pulls the FCC BDC 
 
 - Authenticates to `https://bdc.fcc.gov/` with `BDC_USERNAME` + `BDC_API_TOKEN` (env; documented in `.env.example`; **never committed**).
 - Downloads the latest published **fixed broadband availability — summary by geography type = block** files (per state, current as-of date).
-- Transforms each block row to the max advertised down/up and the set of technologies present, producing a lookup keyed by 15-digit block GEOID:
-  `{ "<block_geoid>": { maxDown, maxUp, technologies: [<codes>], asOf } }`.
+- Aggregates rows by 15-digit `block_geoid`: collects the distinct `brand_name`s (with each provider's best technology + max down/up), the set of technologies present, and the block max advertised down/up. Produces a lookup keyed by block GEOID:
+  `{ "<block_geoid>": { providers: [{ name, tech, download, upload }], maxDown, maxUp, hasFiber, asOf } }`.
 - Writes a compact artifact (e.g. `src/modules/utilities/data/bdc-broadband-<asOf>.json` or a per-state shard) + records the as-of date.
 - Idempotent; re-runnable when the FCC publishes a new vintage (~biannual). The token is needed only to run this script, not to serve reports.
 
 ## Data layer — `src/modules/utilities/data.js`
 
-- Replace the dead `getBroadbandData(lat, lng)` HTTP call with `getBroadbandFromBDC(blockGeoid)` that reads the ingested lookup and returns the **FR-061 contract**: `{ providers: [], maxDownloadMbps, hasFiber }` (provider list empty under the block-level path; `hasFiber` = technologies include fiber code 50; `maxDownloadMbps` = block max advertised down). Returns `null` when the block is absent.
+- Replace the dead `getBroadbandData(lat, lng)` HTTP call with `getBroadbandFromBDC(blockGeoid)` that reads the ingested lookup and returns the **FR-061 contract**: `{ providers: [{ name, tech, download, upload }], maxDownloadMbps, hasFiber }` (providers from block aggregation; `hasFiber` = technologies include fiber code 50; `maxDownloadMbps` = block max advertised down). Returns `null` when the block is absent.
 - `getUtilitiesData` already threads `internet` and resolves an origin; pass the **block GEOID** (resolved upstream the same way the ACS FIPS is resolved) into the internet fetch. Keep FR-058 cell-cache behavior.
 - Keep the function name/shape stable so `assembleUtilities` and the template are **unchanged**.
 
@@ -35,8 +42,8 @@ A periodic **ingestion** step (token used only here, offline) pulls the FCC BDC 
 
 ## Template layer — `src/modules/utilities/template.js`
 
-- **No change required.** FR-061 already renders the no-provider case in both L1 and L3 (shared `NO_PROVIDERS_LINE`). Optionally, the L3 tab may render the available **technologies** (e.g. "Fiber, Cable available") in place of provider cards — small, additive, decided at build time.
-- The disclaimer should read "Source: FCC Broadband Data Collection (block-level, as of <date>)."
+- **No change required.** FR-061 already renders providers (cards) + band + meaning, and the no-provider fallback. Block-aggregated providers flow straight through.
+- The L3 disclaimer should read "Source: FCC Broadband Data Collection, availability by census block (as of <date>). Reflects the block, not the exact parcel."
 
 ## Config — `.env.example`
 
@@ -62,8 +69,8 @@ A periodic **ingestion** step (token used only here, offline) pulls the FCC BDC 
 
 - [ ] An offline, token-gated ingestion script produces a committed block-GEOID → availability artifact with an as-of date.
 - [ ] Runtime resolves an address's census block → availability with **no live FCC call and no runtime token**.
-- [ ] The Utilities Internet felt band renders from real BDC data for the 5 test addresses (band + max speed + fiber flag).
-- [ ] Provider-name absence is handled cleanly (no empty/broken UI); disclaimer cites BDC block-level + as-of date.
+- [ ] The Utilities Internet felt band renders from real BDC data for the 5 test addresses (providers + band + max speed + fiber flag).
+- [ ] Disclaimer cites BDC availability-by-block + as-of date + the block-not-parcel caveat.
 - [ ] Absent block → FR-061 graceful fallback (FCC link + satellite floor).
 - [ ] No secrets committed; `.env.example` documents the ingestion-only token.
 - [ ] No scoring, no inline styles; full suite green.
@@ -76,7 +83,7 @@ A periodic **ingestion** step (token used only here, offline) pulls the FCC BDC 
 
 ## Risks / Open decisions (confirm at review)
 
-1. **Provider names dropped** under the block-level path — acceptable for the felt band? (Recommendation: yes.)
-2. **Artifact storage & cadence** — committed JSON shard(s) vs. generated build artifact; refresh each BDC vintage (~biannual).
-3. **Geography grain** — census **block** (precise, larger data) vs. block group/county (smaller, coarser). Recommendation: block.
-4. **Data size** — block-level for all 5 test states is large; may shard per state or restrict to states Livably serves. Decide at planning.
+1. **Block-level precision** (not parcel-level) — acceptable for the felt band, with the disclaimer? (Recommendation: yes. Provider names ARE retained — see Key correction.)
+2. **Data volume / artifact storage & cadence** — location-level source files are large (millions of rows/state); aggregate at ingest into a compact block→availability artifact. Committed JSON shard(s) per state vs. a generated build artifact; refresh each BDC vintage (~biannual). Likely **restrict to states Livably serves** (KY/IN/MT for the test set) to bound size.
+3. **Block GEOID resolution** — confirm Livably can resolve a 15-digit census **block** GEOID per address (it already resolves tract-level FIPS for ACS; block may need a Census geocoder field). Decide the resolver at planning.
+4. **External preconditions** — FCC BDC token, `bdc.fcc.gov` reachability, and the exact download endpoint/CSV schema (gated swagger) must be confirmed before the ingestion task can be made fully concrete and executed.
