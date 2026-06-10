@@ -201,4 +201,15 @@ describe('getEvChargingData (NREL -> OpenChargeMap orchestration)', () => {
     expect(r.source).toBe('NREL');
     expect(global.fetch.mock.calls.length).toBe(1);
   });
+  test('a partial NREL result (L2 only, no DC-fast) stays on NREL — no OCM fallback', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ fuel_stations: [
+      { station_name: 'NREL L2', street_address: '1 St', ev_level2_evse_num: 2, ev_dc_fast_num: 0, latitude: 38.21, longitude: -84.51, distance: 1 },
+    ] }) });
+    const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.source).toBe('NREL');
+    expect(r.level2).not.toBeNull();
+    expect(r.dcFast).toBeNull();
+    expect(global.fetch.mock.calls.length).toBe(1); // OCM not called
+  });
 });
