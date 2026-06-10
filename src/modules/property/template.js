@@ -2,34 +2,6 @@
 const { escapeHtml } = require('../../utils/text');
 const { badgeClass, renderChapterCard } = require('../../templates/components');
 
-function buildBroadbandTab(broadband) {
-  if (!broadband?.providers?.length) {
-    return `<p class="prem-narrative-body">No provider data available. Check the <a href="https://broadbandmap.fcc.gov/" target="_blank" rel="noopener">FCC National Broadband Map</a> by entering this address directly.</p>`;
-  }
-
-  const hasHighUpload = broadband.providers.some(p => p.upload >= 100);
-  const remoteNote = hasHighUpload
-    ? `<p class="prem-narrative-body">At least one provider offers upload speeds of 100 Mbps or higher — suitable for remote work with video conferencing and large file uploads.</p>`
-    : '';
-
-  const cards = broadband.providers.map(p => {
-    const fiberBadge = p.tech === 'Fiber' ? `<span class="prem-badge ${badgeClass('green')}">Fiber</span>` : '';
-    return `
-      <div class="prem-intel-bb-provider prem-intel-bb-provider--full">
-        <span class="prem-intel-bb-name">${escapeHtml(p.name)}</span>
-        <span class="prem-intel-bb-tech">${escapeHtml(p.tech)}</span>
-        ${fiberBadge}
-        <span class="prem-intel-bb-speed">${p.download ? `↓ ${p.download} Mbps` : '—'}</span>
-        <span class="prem-intel-bb-speed">${p.upload ? `↑ ${p.upload} Mbps` : '—'}</span>
-      </div>`;
-  }).join('');
-
-  return `
-    <p class="prem-narrative-body">All confirmed providers at this address. Upload speed is the key metric for remote workers — standard cable plans often advertise high download speeds but throttle uploads to 10–20 Mbps.</p>
-    ${remoteNote}
-    <div class="prem-intel-bb-providers">${cards}</div>
-    <p class="prem-disclaimer">Source: FCC National Broadband Map. Advertised speeds; actual speeds may vary.</p>`;
-}
 
 function buildSoilTab(soil) {
   if (!soil) {
@@ -203,7 +175,6 @@ function buildPropertyDeepDiveHTML(propIntel) {
   if (!propIntel) return '';
 
   const tabs = [
-    { id: 'internet',    label: 'Internet Providers', content: buildBroadbandTab(propIntel.broadband) },
     { id: 'soil',        label: 'Soil & Foundation',  content: buildSoilTab(propIntel.soil) },
     { id: 'buildingage', label: 'Building Age',        content: buildHousingAgeTab(propIntel.housingAgeBands, propIntel.era) },
   ];
@@ -231,7 +202,7 @@ function buildPropertyDeepDiveHTML(propIntel) {
 function buildPropertyResearchHTML(propIntel) {
   if (!propIntel) return '';
 
-  const { broadband, soil, housingAgeBands, locationInfo } = propIntel;
+  const { soil, housingAgeBands, locationInfo } = propIntel;
   const county = locationInfo?.county || 'this county';
 
   const assessorUrl   = `https://www.google.com/search?q=${encodeURIComponent(`${county} county assessor property records`)}`;
@@ -239,19 +210,6 @@ function buildPropertyResearchHTML(propIntel) {
   const fccUrl        = `https://broadbandmap.fcc.gov/`;
   const soilSurveyUrl = `https://websoilsurvey.sc.egov.usda.gov/`;
   const censusUrl     = `https://data.census.gov/table?id=B25034`;
-
-  const providerTable = broadband?.providers?.length ? `
-    <div class="climate-research-section">
-      <div class="climate-research-section-label">Broadband Providers — All Data (FCC)</div>
-      <div class="climate-table-scroll">
-        <table class="climate-data-table">
-          <thead><tr><th>Provider</th><th>Technology</th><th>Download (Mbps)</th><th>Upload (Mbps)</th></tr></thead>
-          <tbody>
-            ${broadband.providers.map(p => `<tr><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.tech)}</td><td>${p.download || '—'}</td><td>${p.upload || '—'}</td></tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>` : '';
 
   const soilSection = soil ? `
     <div class="climate-research-section">
@@ -294,13 +252,13 @@ function buildPropertyResearchHTML(propIntel) {
       </ul>
     </div>`;
 
-  const content = [providerTable, soilSection, ageTable, linksSection].filter(Boolean).join('');
+  const content = [soilSection, ageTable, linksSection].filter(Boolean).join('');
   return content || '';
 }
 
 function buildPropertyIntelligenceHTML(propIntel) {
   if (!propIntel) return '';
-  const { soil, broadband, era, locationInfo } = propIntel;
+  const { soil, era, locationInfo } = propIntel;
   const county = locationInfo?.county || 'this county';
 
   // ── Construction Era ──────────────────────────────────────────────────────
@@ -349,32 +307,6 @@ function buildPropertyIntelligenceHTML(propIntel) {
     }
   }
 
-  // ── Broadband ─────────────────────────────────────────────────────────────
-  let broadbandPara;
-  let broadbandCardsHTML = '';
-  if (!broadband || !broadband.providers?.length) {
-    broadbandPara = broadband === null
-      ? 'FCC broadband availability data was not accessible for this address. Verify internet service before closing: check the <a href="https://broadbandmap.fcc.gov/" target="_blank" rel="noopener">FCC National Broadband Map</a> by searching this address, or search "[zip code] internet providers" for local ISP options.'
-      : 'No internet providers were confirmed at this address through the FCC Broadband Map. Verify connectivity directly with local providers before closing.';
-  } else {
-    const cat = broadband.category;
-    broadbandPara = cat.desc;
-    if (broadband.maxDownloadMbps > 0) broadbandPara += ` Maximum advertised download: ${broadband.maxDownloadMbps} Mbps.`;
-    broadbandPara += broadband.providers.length > 1
-      ? ` ${broadband.providers.length} providers serve this address — competition gives you options if service quality is inconsistent.`
-      : ` Only one provider is confirmed at this address — worth verifying service reliability before committing.`;
-    broadbandCardsHTML = `
-      <div class="prem-intel-bb-providers">
-        <span class="prem-badge ${badgeClass(cat.color)}">${escapeHtml(cat.label)}</span>
-        ${broadband.providers.map((p) => `
-        <div class="prem-intel-bb-provider">
-          <span class="prem-intel-bb-name">${escapeHtml(p.name)}</span>
-          <span class="prem-intel-bb-tech">${escapeHtml(p.tech)}</span>
-          ${p.download ? `<span class="prem-intel-bb-speed">${p.download} Mbps</span>` : ''}
-        </div>`).join('')}
-      </div>`;
-  }
-
   // ── Tax & Permit note ─────────────────────────────────────────────────────
   const assessorSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(`${county} county assessor property records`)}`;
   const taxPermitPara = `Property tax history and permit records for this specific parcel are public records available from the <a href="${assessorSearchUrl}" target="_blank" rel="noopener">${escapeHtml(county)} Assessor</a> and Building Department. One call before closing reveals the full permit history (including any unpermitted work), the tax assessment trajectory, and any open permits — information that doesn't appear in any public API.`;
@@ -385,26 +317,21 @@ function buildPropertyIntelligenceHTML(propIntel) {
     takeaway = 'USDA identifies this soil as hydric — a potential wetland indicator. Discuss foundation drainage and any planned additions with your inspector before closing.';
   } else if (soil?.drainageCategory?.color === 'red') {
     takeaway = `Soil drainage here is ${escapeHtml(soil.drainageCategory.label.toLowerCase())}. Ask your inspector specifically about basement moisture and discuss drainage with the seller.`;
-  } else if (broadband === null || !broadband?.providers?.length) {
-    takeaway = 'Internet connectivity at this address could not be confirmed through FCC data. If remote work or streaming is important, verify service options with local providers before committing.';
   } else if (era?.medianYearBuilt && era.medianYearBuilt < 1978 && era.context?.cautions?.length) {
     takeaway = `Homes in this tract average ${era.medianYearBuilt} — pre-1978 construction. Include a lead paint inspection in your due diligence scope.`;
-  } else if (broadband?.hasFiber || broadband?.maxDownloadMbps >= 1000) {
-    takeaway = 'Gigabit or fiber internet is available at this address — a meaningful advantage for remote workers and streaming-heavy households.';
   } else {
     takeaway = `Request the permit history and tax record for this specific parcel from the ${escapeHtml(county)} Building Department and Assessor's office before closing — it takes one call and can reveal unpermitted work or unexpected tax increases.`;
   }
 
   const sources = [
-    soil      ? 'USDA Web Soil Survey' : null,
-    broadband ? 'FCC National Broadband Map' : null,
-    era       ? 'U.S. Census ACS 5-year estimates (construction era)' : null,
+    soil ? 'USDA Web Soil Survey' : null,
+    era  ? 'U.S. Census ACS 5-year estimates (construction era)' : null,
   ].filter(Boolean);
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const body = `
     <div class="prem-narrative">
-      <p class="prem-narrative-lead">County records, soil surveys, and broadband maps reveal factors specific to this property — ones that don't show up in a listing or a 20-minute showing, but affect ownership costs, livability, and decision-making.</p>
+      <p class="prem-narrative-lead">County records and soil surveys reveal factors specific to this property — ones that don't show up in a listing or a 20-minute showing, but affect ownership costs, livability, and decision-making.</p>
     </div>
     <div class="prem-intel-section">
       <div class="prem-intel-label">Construction Era</div>
@@ -414,11 +341,6 @@ function buildPropertyIntelligenceHTML(propIntel) {
     <div class="prem-intel-section">
       <div class="prem-intel-label">Soil &amp; Drainage ${soilBadgeHTML}</div>
       <p class="prem-narrative-body">${soilPara}</p>
-    </div>
-    <div class="prem-intel-section">
-      <div class="prem-intel-label">Internet Availability</div>
-      <p class="prem-narrative-body">${broadbandPara}</p>
-      ${broadbandCardsHTML}
     </div>
     <div class="prem-intel-section">
       <div class="prem-intel-label">Tax &amp; Permit Records</div>
@@ -439,7 +361,7 @@ function buildPropertyIntelligenceHTML(propIntel) {
     researchHTML ? `<div class="depth-l4">${researchHTML}</div>` : '',
   ].filter(Boolean).join('');
 
-  return renderChapterCard('property', '11', homeSvg, 'Property Intelligence', 'Soil, broadband, permits, and the details that listings don\'t show.', null, body, null, fullHTML || null, null, glanceHTML || null);
+  return renderChapterCard('property', '11', homeSvg, 'Property Intelligence', 'Soil, permits, and the details that listings don\'t show.', null, body, null, fullHTML || null, null, glanceHTML || null);
 }
 
 function buildPropertyGlanceHTML(propIntel) {
