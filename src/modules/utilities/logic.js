@@ -136,16 +136,21 @@ function getEvChargingCost(residentialRate) {
 function assembleUtilities(raw, ruralMode, locationInfo) {
   if (!raw) return null;
   const electric = raw.electric || null;
+  const evCharging = raw.evCharging || null;
   const state = locationInfo?.state || '';
   const rate = electric?.residentialRate ?? null;
   return {
     electric,
-    evCharging:  raw.evCharging || null,
+    evCharging,
     rateContext: getElectricRateContext(rate, state),
     utilityType: electric ? getUtilityType(electric.utilityName, electric.ownership) : null,
     outage:      getOutageContext(state),
     services:    getServiceInference(ruralMode),
     evCost:      getEvChargingCost(rate),
+    // FR-060: provenance + state-avg context for the HIFLD "rate unknown" state.
+    electricSource: electric?.source ?? null,
+    evSource:       evCharging?.source ?? null,
+    stateAvgRate:   STATE_AVG_ELECTRIC_RATE[state] ?? null,
     locationInfo: locationInfo || null,
   };
 }

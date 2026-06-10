@@ -162,3 +162,25 @@ describe('assembleUtilities', () => {
     expect(assembleUtilities(null, 'urban', loc)).toBeNull();
   });
 });
+
+describe('assembleUtilities — FR-060 source + state-avg threading', () => {
+  const loc = { state: 'KY', county: 'Scott' };
+  test('threads electricSource/evSource and stateAvgRate', () => {
+    const raw = {
+      electric: { utilityName: 'Kentucky Utilities', residentialRate: null, ownership: 'INVESTOR OWNED', source: 'HIFLD' },
+      evCharging: { level2: null, dcFast: null, source: 'OpenChargeMap' },
+    };
+    const u = assembleUtilities(raw, 'suburban', loc);
+    expect(u.electricSource).toBe('HIFLD');
+    expect(u.evSource).toBe('OpenChargeMap');
+    expect(u.stateAvgRate).toBe(0.128);
+    expect(u.rateContext).toBeNull();
+    expect(u.utilityType.type).toBe('investor-owned');
+  });
+  test('sources null when raw lacks them', () => {
+    const u = assembleUtilities({ electric: null, evCharging: null }, 'rural', loc);
+    expect(u.electricSource).toBeNull();
+    expect(u.evSource).toBeNull();
+    expect(u.stateAvgRate).toBe(0.128);
+  });
+});
