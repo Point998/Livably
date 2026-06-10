@@ -5,11 +5,12 @@ const { badgeClass, renderChapterCard } = require('../../templates/components');
 const ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
 
 function evFallback() {
-  return `<p class="prem-narrative-body">No public charging stations were returned for this area through the U.S. DOE Alternative Fuel Data Center. Search current stations at <a href="https://afdc.energy.gov/stations" target="_blank" rel="noopener noreferrer">afdc.energy.gov/stations</a>.</p>`;
+  return `<p class="prem-narrative-body">No public charging stations were returned for this area through the U.S. DOE Alternative Fuel Data Center or OpenChargeMap. Search current stations at <a href="https://afdc.energy.gov/stations" target="_blank" rel="noopener noreferrer">afdc.energy.gov/stations</a>.</p>`;
 }
 
 function buildElectricSection(u) {
-  if (!u.electric || !u.rateContext) {
+  // State 3: nothing -> actionable link fallback (unchanged copy)
+  if (!u.electric) {
     const state = u.locationInfo?.state || 'your state';
     return `
       <div class="prem-intel-section">
@@ -19,12 +20,33 @@ function buildElectricSection(u) {
   }
   const { utilityName } = u.electric;
   const typeLabel = u.utilityType ? `<span class="prem-badge ${badgeClass('muted')}">${escapeHtml(u.utilityType.label)}</span>` : '';
+  const provenance = (u.electricSource && u.electricSource !== 'NREL')
+    ? `<p class="prem-disclaimer">Provider via HIFLD Electric Retail Service Territories.</p>`
+    : '';
+
+  // State 2: provider known, per-address rate unknown -> state-average context
+  if (!u.rateContext) {
+    const state = u.locationInfo?.state || 'your state';
+    const ctx = (u.stateAvgRate != null)
+      ? `Typical residential rate in ${escapeHtml(state)} is about ${Math.round(u.stateAvgRate * 100)}¢/kWh; a provider-specific rate wasn't available for this address.`
+      : `A provider-specific rate wasn't available for this address.`;
+    return `
+      <div class="prem-intel-section">
+        <div class="prem-intel-label">Electric Service</div>
+        <p class="prem-narrative-body"><strong>${escapeHtml(utilityName)}</strong> ${typeLabel}</p>
+        <p class="prem-narrative-body">${ctx}</p>
+        ${provenance}
+      </div>`;
+  }
+
+  // State 1: full NREL (provider + per-address rate vs state)
   const rateBadge = `<span class="prem-badge ${badgeClass(u.rateContext.color)}">${escapeHtml(u.rateContext.deltaLabel)}</span>`;
   return `
     <div class="prem-intel-section">
       <div class="prem-intel-label">Electric Service ${rateBadge}</div>
       <p class="prem-narrative-body"><strong>${escapeHtml(utilityName)}</strong> ${typeLabel}</p>
       <p class="prem-narrative-body">${escapeHtml(u.rateContext.narrative)}</p>
+      ${provenance}
     </div>`;
 }
 
@@ -74,16 +96,33 @@ function buildBody(u) {
 }
 
 function buildElectricTab(u) {
-  if (!u.electric || !u.rateContext) {
+  // State 3: no provider at all -> actionable link fallback
+  if (!u.electric) {
     const state = u.locationInfo?.state || 'your state';
     return `<p class="prem-narrative-body">Electric provider data wasn't returned by NREL for this address. Look up your provider and residential rate at the <a href="https://apps.openei.org/USURDB/" target="_blank" rel="noopener noreferrer">OpenEI Utility Rate Database</a>, or the ${escapeHtml(state)} Public Service Commission site.</p>`;
   }
+  const provenance = (u.electricSource && u.electricSource !== 'NREL')
+    ? `<p class="prem-disclaimer">Provider via HIFLD Electric Retail Service Territories.</p>`
+    : '';
+  // State 2: provider known, per-address rate unknown -> state-average context
+  if (!u.rateContext) {
+    const state = u.locationInfo?.state || 'your state';
+    const ctx = (u.stateAvgRate != null)
+      ? `Typical residential rate in ${escapeHtml(state)} is about ${Math.round(u.stateAvgRate * 100)}¢/kWh; a provider-specific rate wasn't available for this address.`
+      : `A provider-specific rate wasn't available for this address.`;
+    return `
+    <p class="prem-narrative-body">${escapeHtml(u.electric.utilityName)} serves this address. ${u.utilityType ? escapeHtml(u.utilityType.label) + '.' : ''}</p>
+    <p class="prem-narrative-body">${ctx}</p>
+    ${provenance}`;
+  }
+  // State 1: full NREL (provider + per-address rate vs state)
   const centsRate = Math.round(u.rateContext.rate * 100);
   const centsAvg  = Math.round(u.rateContext.stateAvg * 100);
   return `
     <p class="prem-narrative-body">${escapeHtml(u.electric.utilityName)} serves this address. ${u.utilityType ? escapeHtml(u.utilityType.label) + '.' : ''}</p>
     <p class="prem-narrative-body">Residential rate: about <strong>${centsRate}¢/kWh</strong> vs the ${escapeHtml(u.locationInfo?.state || '')} average of about ${centsAvg}¢/kWh — ${escapeHtml(u.rateContext.deltaLabel)}.</p>
-    <p class="prem-disclaimer">Source: NREL / OpenEI Utility Rate Database. Rate is the provider's residential average, not a parcel-specific bill.</p>`;
+    <p class="prem-disclaimer">Source: NREL / OpenEI Utility Rate Database. Rate is the provider's residential average, not a parcel-specific bill.</p>
+    ${provenance}`;
 }
 
 function buildReliabilityTab(u) {
@@ -96,6 +135,9 @@ function buildReliabilityTab(u) {
 
 function buildEvTab(u) {
   if (!u.evCharging) return evFallback();
+  const evProvenance = (u.evSource === 'OpenChargeMap')
+    ? `<p class="prem-disclaimer">Charger data via OpenChargeMap.</p>`
+    : '';
   const card = (s, kind) => s
     ? `<div class="prem-intel-bb-provider prem-intel-bb-provider--full">
          <span class="prem-intel-bb-name">${escapeHtml(s.name)}</span>
@@ -112,7 +154,8 @@ function buildEvTab(u) {
       ${card(u.evCharging.dcFast, 'DC Fast')}
     </div>
     ${cost}
-    <p class="prem-disclaimer">Source: U.S. DOE Alternative Fuel Data Center. Drive time via Google, 8am Tuesday departure.</p>`;
+    <p class="prem-disclaimer">Source: U.S. DOE Alternative Fuel Data Center. Drive time via Google, 8am Tuesday departure.</p>
+    ${evProvenance}`;
 }
 
 function buildDeepDive(u) {

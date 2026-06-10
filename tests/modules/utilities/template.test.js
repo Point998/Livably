@@ -77,3 +77,36 @@ describe('buildUtilitiesHTML', () => {
     expect(html).toMatch(/Key Takeaway:[\s\S]*well and septic/);
   });
 });
+
+const { buildUtilitiesHTML: buildU } = require('../../../src/modules/utilities/template');
+
+describe('FR-060 fallback rendering', () => {
+  const hifld = {
+    ...full,
+    electric: { utilityName: 'Kentucky Utilities', residentialRate: null, ownership: 'INVESTOR OWNED' },
+    rateContext: null,
+    electricSource: 'HIFLD',
+    stateAvgRate: 0.128,
+  };
+  test('renders provider + type + state-average context (not the link fallback)', () => {
+    const html = buildU(hifld);
+    expect(html).toContain('Kentucky Utilities');
+    expect(html.toLowerCase()).toMatch(/typical residential rate/);
+    expect(html).toContain('13¢/kWh'); // round(0.128*100)
+    expect(html).not.toMatch(/weren't returned by NREL/);
+  });
+  test('shows a HIFLD provenance note on the fallback path', () => {
+    expect(buildU(hifld).toLowerCase()).toContain('via hifld');
+  });
+  test('full NREL path is unchanged (no provenance note)', () => {
+    expect(buildU(full).toLowerCase()).not.toContain('via hifld');
+  });
+  test('EV provenance note when evSource is OpenChargeMap', () => {
+    expect(buildU({ ...full, evSource: 'OpenChargeMap' }).toLowerCase()).toContain('via openchargemap');
+  });
+  test('no inline styles, no scoring in the fallback state', () => {
+    const html = buildU(hifld);
+    expect(html).not.toMatch(/style="/);
+    expect(html.toLowerCase()).not.toMatch(/\bscore\b|\bgrade\b/);
+  });
+});
