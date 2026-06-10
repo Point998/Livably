@@ -3,7 +3,7 @@
 const { haversineDistance } = require('../../utils/geo');
 const { cellSearchOrigin, cellDriveOpts } = require('../../shared/spatial');
 const { utilitiesCache } = require('../../cache');
-const { HIFLD_TERRITORIES_URL } = require('../../utils/constants');
+const { HIFLD_TERRITORIES_URL, BROADBAND_TECH_CODES } = require('../../utils/constants');
 
 const NREL_BASE = 'https://developer.nrel.gov/api';
 function nrelKey() { return process.env.NREL_API_KEY || 'DEMO_KEY'; }
@@ -164,6 +164,51 @@ async function getEvChargingData(lat, lng, driveOrigin, getDriveTime, cell = nul
       || (await getEvFromOpenChargeMap(lat, lng, driveOrigin, getDriveTime, cell));
 }
 
+// FR-061: FCC National Broadband Map (keyless). Relocated from the Property
+// chapter — internet is treated as a utility. Returns advertised availability
+// only; the "felt" band is computed in logic.js. No category field here.
+async function getBroadbandData(lat, lng) {
+  try {
+    const url =
+      `https://broadbandmap.fcc.gov/api/public/map/listAvailability` +
+      `?latitude=${lat}&longitude=${lng}&unit=location&limit=25&category=residential`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json' } });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const availability =
+      Array.isArray(data?.availability) ? data.availability :
+      Array.isArray(data?.data)         ? data.data         :
+      Array.isArray(data)               ? data              : [];
+    if (!availability.length) return null;
+
+    let maxDownload = 0;
+    let hasFiber = false;
+    const seenNames = new Set();
+    const providers = [];
+    for (const item of availability) {
+      const techCode = item.technology_code ?? item.tech_code ?? 0;
+      const download = Number(item.max_advertised_download_speed ?? item.download_speed ?? 0);
+      if (download > maxDownload) maxDownload = download;
+      if (techCode === 50) hasFiber = true;
+      const name = String(item.brand_name || item.doing_business_as || item.provider_name || '').trim();
+      if (name && !seenNames.has(name)) {
+        seenNames.add(name);
+        providers.push({
+          name,
+          tech:     BROADBAND_TECH_CODES[techCode] || `Type ${techCode}`,
+          download,
+          upload:   Number(item.max_advertised_upload_speed ?? item.upload_speed ?? 0),
+        });
+      }
+    }
+    providers.sort((a, b) => b.download - a.download);
+    return { providers: providers.slice(0, 5), maxDownloadMbps: maxDownload, hasFiber };
+  } catch (err) {
+    console.error('[FCC Broadband]', err.message);
+    return null;
+  }
+}
+
 // Cell-cached entry point (FR-058 parity). Warm cell -> zero NREL calls.
 // Searches from the cell centroid so every address in a cell shares one fetch.
 async function getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell = null) {
@@ -174,21 +219,23 @@ async function getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell = nul
   const searchOrigin = cellSearchOrigin(originLatLng, cell); // "lat,lng" string
   const [sLat, sLng] = searchOrigin.split(',').map((n) => parseFloat(n));
 
-  const [electricRes, evRes] = await Promise.allSettled([
+  const [electricRes, evRes, internetRes] = await Promise.allSettled([
     getElectricData(sLat, sLng),
     getEvChargingData(sLat, sLng, searchOrigin, getDriveTime, cell),
+    getBroadbandData(sLat, sLng),
   ]);
   const result = {
     electric:   electricRes.status === 'fulfilled' ? electricRes.value : null,
     evCharging: evRes.status       === 'fulfilled' ? evRes.value       : null,
+    internet:   internetRes.status === 'fulfilled' ? internetRes.value : null,
   };
-  // Don't cache a total miss (both null) for the full 30-day TTL — a transient
-  // NREL outage on a cold call would otherwise blank this cell for a month.
+  // Don't cache a total miss (all null) for the full 30-day TTL — a transient
+  // outage on a cold call would otherwise blank this cell for a month.
   // Re-fetch next request instead; a partial result (one side present) is cached.
-  if (result.electric !== null || result.evCharging !== null) {
+  if (result.electric !== null || result.evCharging !== null || result.internet !== null) {
     utilitiesCache.set(cacheKey, result);
   }
   return result;
 }
 
-module.exports = { getElectricFromNREL, getElectricFromHIFLD, getElectricData, getEvFromNREL, getEvFromOpenChargeMap, getEvChargingData, getUtilitiesData };
+module.exports = { getElectricFromNREL, getElectricFromHIFLD, getElectricData, getEvFromNREL, getEvFromOpenChargeMap, getEvChargingData, getBroadbandData, getUtilitiesData };
