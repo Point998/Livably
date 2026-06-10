@@ -136,4 +136,14 @@ describe('Life-at-Address calculator block', () => {
     const block = buildLifeCalculatorHTML(LIFECALC);
     expect(block).not.toMatch(/style="/);
   });
+  test('EV note reflects national rate when sources.electric is not local', () => {
+    const block = buildLifeCalculatorHTML(LIFECALC); // sources.electric undefined
+    expect(block).toMatch(/national-average electricity rate/);
+  });
+  test('EV note reflects the local rate when sources.electric is local (FR-032 seam)', () => {
+    const local = { ...LIFECALC, rates: { ...LIFECALC.rates, electricRatePerKwh: 0.131, sources: { ...LIFECALC.rates.sources, electric: 'local' } } };
+    const block = buildLifeCalculatorHTML(local);
+    expect(block).toMatch(/this address's electricity rate/);
+    expect(block).toContain('13¢/kWh'); // round(0.131*100)
+  });
 });
