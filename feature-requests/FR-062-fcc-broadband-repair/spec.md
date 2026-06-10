@@ -1,5 +1,16 @@
 # FR-062 — FCC Broadband Repair (official BDC API)
 
+> **STATUS: 📋 BACKLOG — design complete, build deferred (June 2026).**
+> Blocked on a **human-in-the-loop FCC BDC API token** (free, but requires an FCC
+> CORES/Username account + FRN registration that asks for an SSN/EIN — judged not
+> worth the friction right now for a low-stakes "felt" tidbit). The chapter already
+> degrades gracefully via FR-061 (FCC link + satellite floor), so there is **no
+> production gap** while this waits. Pick this up when the human-in-the-loop steps
+> are worth doing. See **"Remaining work to complete"** at the bottom.
+>
+> Verified during discovery: `bdc.fcc.gov` IS reachable from the build environment
+> (returns HTTP 401 without auth — needs only the token, not a network workaround).
+
 ## Problem
 
 The old keyless FCC map API (`broadbandmap.fcc.gov/api/public/map/listAvailability`) is **retired** — the entire `/api/public/map/*` surface returns HTTP 405 for GET and POST. Livably's Utilities Internet section (FR-061) therefore always degrades to its fallback (FCC link + satellite floor). We want to restore real internet availability data via the **official FCC Broadband Data Collection (BDC) Public Data API**.
@@ -87,3 +98,20 @@ A periodic **ingestion** step (token used only here, offline) pulls the FCC BDC 
 2. **Data volume / artifact storage & cadence** — location-level source files are large (millions of rows/state); aggregate at ingest into a compact block→availability artifact. Committed JSON shard(s) per state vs. a generated build artifact; refresh each BDC vintage (~biannual). Likely **restrict to states Livably serves** (KY/IN/MT for the test set) to bound size.
 3. **Block GEOID resolution** — confirm Livably can resolve a 15-digit census **block** GEOID per address (it already resolves tract-level FIPS for ACS; block may need a Census geocoder field). Decide the resolver at planning.
 4. **External preconditions** — FCC BDC token, `bdc.fcc.gov` reachability, and the exact download endpoint/CSV schema (gated swagger) must be confirmed before the ingestion task can be made fully concrete and executed.
+
+## Remaining work to complete (human-in-the-loop)
+
+When this comes off the backlog, the sequence is:
+
+**Human steps (one-time):**
+1. Create an FCC Username Account (CORES) and register/link an FRN — sole-proprietor uses SSN as TIN, or get a free instant EIN from the IRS; an LLC later would use its own EIN. (See the deferral note above — this friction is why it's parked.)
+2. Sign in at `bdc.fcc.gov` → entity selection → username menu → **Manage API Access** → **Generate** the 44-char token.
+3. Put `BDC_USERNAME` + `BDC_API_TOKEN` in `.env` (never commit) and tell Claude.
+
+**Then (agent, mostly automatable):**
+4. **Probe** `GET https://bdc.fcc.gov/api/public/map/downloads/listAvailabilityData/<as-of-date>` with the `username`/`hash_value` headers → confirm 200 + capture the real **file-list shape** and the **download-file endpoint** + **CSV columns** (validates the documented schema; adjust the parser if fields differ). This is the one step that turns the ingestion task from documented-shape into fully concrete code.
+5. Write the implementation plan (Phase A: runtime lookup + block-aggregation transform + resolver + wiring + tests against a fixture — all token-independent; Phase B: the live ingestion script + real committed artifact + 5-address live verify).
+6. Build it (subagent-driven, per the project's two-stage-review flow), restricting ingestion to served states to bound artifact size.
+7. Live-verify the 5 test addresses resolve providers + band; confirm graceful fallback for absent blocks; update summary + roadmap; PR.
+
+Everything in steps 4–7 is ready to execute the moment step 3 (the token) exists — no further design decisions are open.
