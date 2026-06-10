@@ -133,6 +133,39 @@ function getEvChargingCost(residentialRate) {
   return { batteryKwh: EV_BATTERY_KWH_REF, fullChargeCost, homeNote };
 }
 
+// FR-061: internet treated as a utility. Qualitative "felt" band + plain-language
+// meaning from FCC advertised availability — never a precise throughput promise
+// (CONSTRAINT-001: label+color, not a score). Satellite copy is generic (CONSTRAINT-004).
+function getInternetContext(broadband, ruralMode) {
+  if (!broadband) return null;
+  const max = Number(broadband.maxDownloadMbps) || 0;
+  const hasFiber = !!broadband.hasFiber;
+
+  let band, meaning;
+  if (hasFiber || max >= 940) {
+    band = { label: 'Gigabit-class (fiber)', color: 'green' };
+    meaning = 'Handles anything a household throws at it — multiple remote workers, 4K streaming, and large uploads at once.';
+  } else if (max >= 200) {
+    band = { label: 'Fast wired broadband', color: 'lightgreen' };
+    meaning = 'Comfortable for remote work, video calls, and a houseful of simultaneous streaming.';
+  } else if (max >= 25) {
+    band = { label: 'Standard broadband', color: 'gold' };
+    meaning = 'Fine for everyday streaming and a remote worker or two; heavy simultaneous use may strain it.';
+  } else if (max > 0) {
+    band = { label: 'Limited wired options', color: 'orange' };
+    meaning = 'Wired speeds here are modest — fine for browsing and standard streaming, tighter for heavy remote work.';
+  } else {
+    band = { label: 'Wired coverage unconfirmed', color: 'muted' };
+    meaning = 'No wired speed was confirmed for this address through FCC data — worth verifying directly.';
+  }
+
+  const isRural = ruralMode === 'rural' || ruralMode === 'remote';
+  const satelliteFloor = band.color === 'orange' || band.color === 'muted' || isRural;
+
+  const providers = Array.isArray(broadband.providers) ? broadband.providers : [];
+  return { providers, providerCount: providers.length, band, meaning, satelliteFloor };
+}
+
 function assembleUtilities(raw, ruralMode, locationInfo) {
   if (!raw) return null;
   const electric = raw.electric || null;
@@ -147,6 +180,7 @@ function assembleUtilities(raw, ruralMode, locationInfo) {
     outage:      getOutageContext(state),
     services:    getServiceInference(ruralMode),
     evCost:      getEvChargingCost(rate),
+    internet:    getInternetContext(raw.internet ?? null, ruralMode),
     // FR-060: provenance + state-avg context for the HIFLD "rate unknown" state.
     electricSource: electric?.source ?? null,
     evSource:       evCharging?.source ?? null,
@@ -161,5 +195,6 @@ module.exports = {
   getOutageContext,
   getServiceInference,
   getEvChargingCost,
+  getInternetContext,
   assembleUtilities,
 };
