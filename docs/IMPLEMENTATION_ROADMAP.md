@@ -25,7 +25,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 **GitHub:** https://github.com/Point998/Livably
 
 ## Current State (June 2026)
-- All 14 chapters rendering with real data
+- All 14 chapters rendering with real data (internet currently on its FR-061 fallback — FCC source dead, repair tracked in FR-062)
 - Modular architecture: each chapter owns data.js / logic.js / template.js
 - Depth slider system (FR-045): Glance / Overview / Deep Read / Research — all 14 chapters wired
 - L3/L4 content complete for all 12 data chapters (Daily and Reach are structure only)
@@ -33,7 +33,8 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - Design system: Fraunces + DM Sans, design-tokens.css, report.css
 - Error memory/logging layer
 - Feature request workflow established with 4-phase process
-- **Tests: 1,214 across 65 suites** (on `main`)
+- **Tests: 1,384 across 73 suites** (on `main`)
+- **Completion (backend/data, frontend excluded): structure ~90%, data ~75%, blended ~80%** — see "Completion Roadmap" below
 
 ## Active Work
 - **Active branch:** `FR-032-utilities-intelligence` — Utilities & Power chapter built (PR pending).
@@ -47,6 +48,36 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - **FR-060 (Resilient Utilities fallback): ✅ MERGED to `main` (PR #21, squash)** — adds a data fallback behind FR-032's NREL dependency: NREL → HIFLD (electric provider/ownership, keyless ArcGIS) + OpenChargeMap (EV) → existing OpenEI/AFDC link fallback. Template gains a "provider known, rate unknown" state (state-average rate context) + HIFLD/OCM provenance notes. **Closes FR-032's NREL provider-verification gap** — HIFLD live-verified across all 5 addresses (Georgetown/Harlan→Kentucky Utilities, Louisville→Louisville Gas & Electric, Bozeman→NorthWestern Energy, Jeffersonville→Duke Energy Indiana). New optional `OPENCHARGEMAP_API_KEY`. Full suite green at 1,371 / 73. See `feature-requests/FR-060-resilient-utilities-fallback/`.
 - **Phase 6 (The Livably Sketch): DEFERRED** — excluded for now (it prematurely sets the visual identity; design-setting work is deferred to a dedicated design phase). See LIVABLY-SKETCH-SPEC.md.
 - **Direction:** new data goes into the chapter where it fits (e.g. seismic → Climate), not new similar chapters. Most clean free data is already consumed by Climate/Sensory/Property/Utilities.
+
+---
+
+## Completion Roadmap — Structure & Data (to "done for now")
+
+*Added June 2026. Backend/data only — frontend (Phase 6 Sketch) is excluded by design. Honest self-assessment: **structure ~90%, data ~75%, blended ~80%**. The number depends on where "100%" is drawn: against the **currently-scoped 14-chapter model** it's ~85%; against the **full data-differentiation vision** (incl. the breadth backlog) it's ~75%.*
+
+**"Done for now" = all 14 chapters' data sources live + verified against the 5 test addresses + resilient — NOT every breadth idea.** Breadth items (Track B, #4+) are optional upside, promoted to their own FR when a session takes them on.
+
+### Track A — Structure / Architecture (~90% → done)
+1. **Extend the FR-060 resilience pattern** (primary → fallback → graceful link) beyond Utilities to other single-source modules — each lone API (NOAA climate, USDA soil, Google in health/reachability, etc.) is a single point of failure today. *Highest structural value.*
+2. **Source-verification harness** — a repeatable check that each live source returns real data for the 5 test addresses. The FCC 405 and NREL DNS failures both hid behind graceful fallbacks; we want dead sources surfaced, not silently masked.
+3. **Production hardening** — rate-limit handling, load behavior, and observability beyond the current error-memory log (per-source success rates / structured metrics).
+
+### Track B — Data Collected (~75% → done)
+**Repair / verify first (close known holes in the current model):**
+1. **FR-062 — FCC broadband repair** — restores live internet data; designed, deferred on a human-in-the-loop FCC BDC token. See Deferred section + `feature-requests/FR-062-fcc-broadband-repair/`.
+2. **NREL per-address electric rate** — unverified (DNS-blocked from dev). Verify at deploy / clean-DNS env; HIFLD already covers the provider name.
+3. **Reachability "Daily / Reach" L3/L4 content** — currently structure-only; fill in the depth content.
+
+**Then breadth (new data — ordered by rough value; promote to an FR when picked up):**
+4. Power-outage history by address (NERC/EIA) → Utilities.
+5. Emergency preparedness — evac routes, shelters, FEMA disaster history (possible own area).
+6. In-home cell signal (FCC mobile coverage) → Utilities/Sensory.
+7. Property boundary / easement reality → Property.
+8. Local-government financial health → fit TBD.
+9. Measured internet speed (M-Lab/Ookla) → pairs with FR-062.
+
+### Sequencing suggestion for future sessions
+A1 (resilience) and A2 (verification harness) are the highest-leverage *structure* work and would also surface/repair B1–B2. Do **A2 → B1/B2 → A1** to get the current model fully live + verified + resilient (that reaches "done for now"), then take Track B breadth items one FR at a time as upside.
 
 ---
 
@@ -170,9 +201,9 @@ src/modules/
   sensory/         Environmental, noise, light
   walkability/     Getting around on foot
   costs/           Property costs and market
-  utilities/       Utilities intelligence (FR-032, not yet built)
+  utilities/       Utilities intelligence (FR-032/060/061: electric, reliability, EV, internet)
   traffic/         Traffic patterns
-  property/        Property intelligence (broadband, soil, building age)
+  property/        Property intelligence (soil, building age, permits)
 
 src/shared/
   validate.js      Logic Layer — coherence rules (incl. classifyBand, FR-058)
