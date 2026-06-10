@@ -110,3 +110,41 @@ describe('FR-060 fallback rendering', () => {
     expect(html.toLowerCase()).not.toMatch(/\bscore\b|\bgrade\b/);
   });
 });
+
+describe('FR-061 internet rendering', () => {
+  const { buildUtilitiesHTML: buildUnet } = require('../../../src/modules/utilities/template');
+  const withNet = (internet) => ({ ...full, internet });
+
+  test('L1 section + L3 tab show providers, band, and meaning', () => {
+    const html = buildUnet(withNet({
+      providers: [{ name: 'Glo Fiber', tech: 'Fiber' }, { name: 'Spectrum', tech: 'Cable' }],
+      providerCount: 2,
+      band: { label: 'Gigabit-class (fiber)', color: 'green' },
+      meaning: 'Handles anything a household throws at it.',
+      satelliteFloor: false,
+    }));
+    expect(html).toContain('Gigabit-class (fiber)');
+    expect(html).toContain('Glo Fiber');
+    expect(html).toMatch(/2 providers serve this address/);
+    expect(html).toContain('Internet'); // tab label
+  });
+
+  test('satellite line appears only when satelliteFloor is true', () => {
+    const on = buildUnet(withNet({ providers: [], providerCount: 0, band: { label: 'Limited wired options', color: 'orange' }, meaning: 'Modest.', satelliteFloor: true }));
+    expect(on.toLowerCase()).toMatch(/satellite internet/);
+    const off = buildUnet(withNet({ providers: [{ name: 'A', tech: 'Fiber' }], providerCount: 1, band: { label: 'Gigabit-class (fiber)', color: 'green' }, meaning: 'Great.', satelliteFloor: false }));
+    expect(off.toLowerCase()).not.toMatch(/satellite internet/);
+  });
+
+  test('null internet -> FCC link fallback, never silent', () => {
+    const html = buildUnet(withNet(null));
+    expect(html).toMatch(/broadbandmap\.fcc\.gov/);
+    expect(html.toLowerCase()).toMatch(/satellite internet/);
+  });
+
+  test('no inline styles, no scoring in the internet section', () => {
+    const html = buildUnet(withNet({ providers: [{ name: 'A', tech: 'Fiber' }], providerCount: 1, band: { label: 'Gigabit-class (fiber)', color: 'green' }, meaning: 'Great.', satelliteFloor: false }));
+    expect(html).not.toMatch(/style="/);
+    expect(html.toLowerCase()).not.toMatch(/\bscore\b|\bgrade\b/);
+  });
+});
