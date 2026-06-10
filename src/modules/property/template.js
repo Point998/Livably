@@ -207,7 +207,6 @@ function buildPropertyResearchHTML(propIntel) {
 
   const assessorUrl   = `https://www.google.com/search?q=${encodeURIComponent(`${county} county assessor property records`)}`;
   const buildingUrl   = `https://www.google.com/search?q=${encodeURIComponent(`${county} county building department permit records`)}`;
-  const fccUrl        = `https://broadbandmap.fcc.gov/`;
   const soilSurveyUrl = `https://websoilsurvey.sc.egov.usda.gov/`;
   const censusUrl     = `https://data.census.gov/table?id=B25034`;
 
@@ -248,7 +247,6 @@ function buildPropertyResearchHTML(propIntel) {
       <ul class="climate-research-links">
         <li><a href="${assessorUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(county)} County Assessor — Property Tax Records</a></li>
         <li><a href="${buildingUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(county)} County Building Department — Permit History</a></li>
-        <li><a href="${fccUrl}" target="_blank" rel="noopener noreferrer">FCC National Broadband Map — Search This Address</a></li>
       </ul>
     </div>`;
 
