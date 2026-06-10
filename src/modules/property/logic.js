@@ -12,7 +12,6 @@ function getDrainageCategory(drainagecl) {
   return { label: drainagecl, color: 'muted', implication: 'Consult a soil engineer for specific drainage implications at this location.' };
 }
 
-
 function getConstructionEraContext(year) {
   if (!year || isNaN(year)) return null;
   if (year >= 2010) return { era: 'Modern construction (2010s–present)', cautions: [] };

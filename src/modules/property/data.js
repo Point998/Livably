@@ -81,7 +81,6 @@ async function getSoilData(lat, lng) {
   }
 }
 
-
 async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
   const [soilRes, acsRes] = await Promise.allSettled([
     getSoilData(lat, lng),
