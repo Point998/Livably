@@ -3,11 +3,16 @@
 const { haversineDistance } = require('../../utils/geo');
 const { cellSearchOrigin, cellDriveOpts } = require('../../shared/spatial');
 const { utilitiesCache } = require('../../cache');
+const { HIFLD_TERRITORIES_URL } = require('../../utils/constants');
 
 const NREL_BASE = 'https://developer.nrel.gov/api';
 function nrelKey() { return process.env.NREL_API_KEY || 'DEMO_KEY'; }
 
-async function getElectricData(lat, lng) {
+function titleCase(s) {
+  return String(s).toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+async function getElectricFromNREL(lat, lng) {
   try {
     const url = `${NREL_BASE}/utility_rates/v3.json?api_key=${nrelKey()}&lat=${lat}&lon=${lng}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json' } });
@@ -22,16 +27,46 @@ async function getElectricData(lat, lng) {
     // name heuristic downstream when absent/unrecognized.
     const ownership = String(out.utility_info?.[0]?.ownership || '').trim() || null;
     if (!residentialRate || residentialRate <= 0) return null;
-    return { utilityName: utilityName || 'Unknown provider', residentialRate, ownership };
+    return { utilityName: utilityName || 'Unknown provider', residentialRate, ownership, source: 'NREL' };
   } catch (err) {
     console.error('[NREL Utility Rates]', err.message);
     return null;
   }
 }
 
+// Fallback: HIFLD Electric Retail Service Territories (ArcGIS point query) —
+// provider name + ownership type, no rate. Keyless.
+async function getElectricFromHIFLD(lat, lng) {
+  try {
+    const params = new URLSearchParams({
+      geometry: `${lng},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326',
+      spatialRel: 'esriSpatialRelIntersects', outFields: 'NAME,TYPE',
+      returnGeometry: 'false', resultRecordCount: '1', f: 'json',
+    });
+    const resp = await fetch(`${HIFLD_TERRITORIES_URL}/query?${params}`, {
+      signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json' },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data?.error) return null;
+    const a = data?.features?.[0]?.attributes;
+    const name = String(a?.NAME || '').trim();
+    if (!name) return null;
+    return { utilityName: titleCase(name), residentialRate: null, ownership: String(a?.TYPE || '').trim() || null, source: 'HIFLD' };
+  } catch (err) {
+    console.error('[HIFLD territories]', err.message);
+    return null;
+  }
+}
+
+// NREL primary -> HIFLD fallback. Short-circuits: no HIFLD call when NREL succeeds.
+async function getElectricData(lat, lng) {
+  return (await getElectricFromNREL(lat, lng)) || (await getElectricFromHIFLD(lat, lng));
+}
+
 // driveOrigin is the cell centroid string ("lat,lng") when a cell is present;
 // drive time is cell-shared via cellDriveOpts (FR-058), never a Google call here.
-async function getEvChargingData(lat, lng, driveOrigin, getDriveTime, cell = null) {
+async function getEvFromNREL(lat, lng, driveOrigin, getDriveTime, cell = null) {
   try {
     const url =
       `${NREL_BASE}/alt-fuel-stations/v1/nearest.json?api_key=${nrelKey()}` +
@@ -68,11 +103,65 @@ async function getEvChargingData(lat, lng, driveOrigin, getDriveTime, cell = nul
     };
 
     const [level2, dcFast] = await Promise.all([shape(rawL2), shape(rawDC)]);
-    return { level2, dcFast };
+    if (!level2 && !dcFast) return null;
+    return { level2, dcFast, source: 'NREL' };
   } catch (err) {
     console.error('[NREL Alt Fuel Stations]', err.message);
     return null;
   }
+}
+
+// Fallback: OpenChargeMap. Optional key; null without it (degrade to link fallback).
+async function getEvFromOpenChargeMap(lat, lng, driveOrigin, getDriveTime, cell = null) {
+  const key = process.env.OPENCHARGEMAP_API_KEY;
+  if (!key) return null;
+  try {
+    const params = new URLSearchParams({
+      output: 'json', latitude: String(lat), longitude: String(lng),
+      distance: '25', distanceunit: 'Miles', maxresults: '20', key,
+    });
+    const resp = await fetch(`https://api.openchargemap.io/v3/poi/?${params}`, {
+      signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json' },
+    });
+    if (!resp.ok) return null;
+    const pois = await resp.json();
+    if (!Array.isArray(pois) || !pois.length) return null;
+    const conns = (p) => Array.isArray(p.Connections) ? p.Connections : [];
+    const isDC = (p) => conns(p).some((c) => c.LevelID === 3 || c.Level?.IsFastChargeCapable === true);
+    const isL2 = (p) => conns(p).some((c) => c.LevelID === 2 || c.Level?.ID === 2);
+    const nearest = (pred) => pois.filter(pred).sort((a, b) => (a.AddressInfo?.Distance ?? 1e9) - (b.AddressInfo?.Distance ?? 1e9))[0] || null;
+    const shape = async (p) => {
+      if (!p) return null;
+      const ai = p.AddressInfo || {};
+      let driveTimeMinutes = null;
+      try {
+        driveTimeMinutes = await getDriveTime(driveOrigin, { lat: ai.Latitude, lng: ai.Longitude }, cellDriveOpts(cell));
+      } catch (err) {
+        console.warn('[OCM EV drive time]', err?.message);
+      }
+      const distanceMiles = ai.Distance != null
+        ? Number(ai.Distance).toFixed(1)
+        : haversineDistance(lat, lng, ai.Latitude, ai.Longitude).toFixed(1);
+      return {
+        name: String(ai.Title || 'Charging station').trim(),
+        address: String(ai.AddressLine1 || '').trim(),
+        driveTimeMinutes,
+        distanceMiles,
+      };
+    };
+    const [level2, dcFast] = await Promise.all([shape(nearest(isL2)), shape(nearest(isDC))]);
+    if (!level2 && !dcFast) return null;
+    return { level2, dcFast, source: 'OpenChargeMap' };
+  } catch (err) {
+    console.error('[OpenChargeMap]', err.message);
+    return null;
+  }
+}
+
+// NREL primary -> OpenChargeMap fallback.
+async function getEvChargingData(lat, lng, driveOrigin, getDriveTime, cell = null) {
+  return (await getEvFromNREL(lat, lng, driveOrigin, getDriveTime, cell))
+      || (await getEvFromOpenChargeMap(lat, lng, driveOrigin, getDriveTime, cell));
 }
 
 // Cell-cached entry point (FR-058 parity). Warm cell -> zero NREL calls.
@@ -102,4 +191,4 @@ async function getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell = nul
   return result;
 }
 
-module.exports = { getElectricData, getEvChargingData, getUtilitiesData };
+module.exports = { getElectricFromNREL, getElectricFromHIFLD, getElectricData, getEvFromNREL, getEvFromOpenChargeMap, getEvChargingData, getUtilitiesData };

@@ -1,5 +1,7 @@
 'use strict';
-const { getElectricData, getEvChargingData, getUtilitiesData } = require('../../../src/modules/utilities/data');
+const { getElectricData, getEvChargingData, getUtilitiesData, getElectricFromHIFLD, getEvFromOpenChargeMap } = require('../../../src/modules/utilities/data');
+const ocmFixture = require('./fixtures/openchargemap-poi.json');
+const hifldFixture = require('./fixtures/hifld-territories.json');
 const { utilitiesCache } = require('../../../src/cache');
 
 beforeEach(() => utilitiesCache.clear());
@@ -14,7 +16,7 @@ describe('getElectricData', () => {
       json: async () => ({ outputs: { utility_name: 'Kentucky Utilities Co', residential: 0.131 } }),
     });
     const r = await getElectricData(38.2, -84.5);
-    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: 0.131, ownership: null });
+    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: 0.131, ownership: null, source: 'NREL' });
   });
 
   test('returns null on non-ok response', async () => {
@@ -51,12 +53,13 @@ describe('getEvChargingData', () => {
     expect(r.level2.name).toBe('Library L2');
     expect(r.level2.driveTimeMinutes).toBe(7);
     expect(r.dcFast.name).toBe('Pilot DCFC');
+    expect(r.source).toBe('NREL');
   });
 
-  test('null fields when a type is absent', async () => {
+  test('returns null when NREL finds no stations (no OCM key set)', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ fuel_stations: [] }) });
     const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', fakeDrive);
-    expect(r).toEqual({ level2: null, dcFast: null });
+    expect(r).toBeNull();
   });
 
   test('returns null on fetch failure', async () => {
@@ -108,5 +111,105 @@ describe('getUtilitiesData', () => {
     const callsAfterFirst = global.fetch.mock.calls.length;
     await getUtilitiesData(38.2, -84.5, '38.2,-84.5', async () => 5, cell);
     expect(global.fetch.mock.calls.length).toBeGreaterThan(callsAfterFirst); // not served from cache
+  });
+});
+
+describe('getElectricFromHIFLD', () => {
+  afterEach(() => { global.fetch = undefined; });
+  test('parses + title-cases NAME, maps TYPE to ownership, rate null, source HIFLD', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => hifldFixture });
+    const r = await getElectricFromHIFLD(38.2098, -84.5588);
+    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: null, ownership: 'INVESTOR OWNED', source: 'HIFLD' });
+  });
+  test('returns null on empty features / ArcGIS error / non-ok / throw', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ features: [] }) });
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ error: { code: 400 } }) });
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+  });
+});
+
+describe('getElectricData (NREL -> HIFLD orchestration)', () => {
+  afterEach(() => { global.fetch = undefined; });
+  test('returns NREL result (source NREL) and does NOT call HIFLD when NREL succeeds', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ outputs: { utility_name: 'KU', residential: 0.13 } }) });
+    const r = await getElectricData(38.2, -84.5);
+    expect(r.source).toBe('NREL');
+    expect(global.fetch.mock.calls.length).toBe(1);
+  });
+  test('falls back to HIFLD (source HIFLD) when NREL returns null', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true, json: async () => hifldFixture });
+    const r = await getElectricData(38.2, -84.5);
+    expect(r.source).toBe('HIFLD');
+    expect(r.utilityName).toBe('Kentucky Utilities Co');
+    expect(r.residentialRate).toBeNull();
+  });
+});
+
+describe('getEvFromOpenChargeMap', () => {
+  afterEach(() => { global.fetch = undefined; delete process.env.OPENCHARGEMAP_API_KEY; });
+  const noDrive = async () => null;
+  test('returns null without an API key (no fetch)', async () => {
+    global.fetch = jest.fn();
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+  test('parses nearest L2 + DC-fast from Connections, source OpenChargeMap', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ocmFixture });
+    const r = await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.level2.name).toBe('Library L2');
+    expect(r.level2.distanceMiles).toBe('1.2');
+    expect(r.dcFast.name).toBe('Pilot DCFC');
+    expect(r.source).toBe('OpenChargeMap');
+  });
+  test('null on non-ok / empty / throw', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+  });
+});
+
+describe('getEvChargingData (NREL -> OpenChargeMap orchestration)', () => {
+  afterEach(() => { global.fetch = undefined; delete process.env.OPENCHARGEMAP_API_KEY; });
+  const noDrive = async () => null;
+  test('falls back to OCM when NREL finds nothing', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ fuel_stations: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ocmFixture });
+    const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.source).toBe('OpenChargeMap');
+    expect(r.level2.name).toBe('Library L2');
+  });
+  test('uses NREL (source NREL) when it has stations; no OCM call', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ fuel_stations: [
+      { station_name: 'NREL L2', street_address: '1 St', ev_level2_evse_num: 2, ev_dc_fast_num: 0, latitude: 38.21, longitude: -84.51, distance: 1 },
+    ] }) });
+    const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.source).toBe('NREL');
+    expect(global.fetch.mock.calls.length).toBe(1);
+  });
+  test('a partial NREL result (L2 only, no DC-fast) stays on NREL — no OCM fallback', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ fuel_stations: [
+      { station_name: 'NREL L2', street_address: '1 St', ev_level2_evse_num: 2, ev_dc_fast_num: 0, latitude: 38.21, longitude: -84.51, distance: 1 },
+    ] }) });
+    const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.source).toBe('NREL');
+    expect(r.level2).not.toBeNull();
+    expect(r.dcFast).toBeNull();
+    expect(global.fetch.mock.calls.length).toBe(1); // OCM not called
   });
 });

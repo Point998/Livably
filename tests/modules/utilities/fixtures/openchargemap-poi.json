@@ -1,0 +1,6 @@
+[
+  { "ID": 1, "AddressInfo": { "Title": "Library L2", "AddressLine1": "1 Main St", "Latitude": 38.21, "Longitude": -84.51, "Distance": 1.2 },
+    "Connections": [ { "ConnectionTypeID": 1, "LevelID": 2, "Level": { "ID": 2, "Title": "Level 2", "IsFastChargeCapable": false } } ] },
+  { "ID": 2, "AddressInfo": { "Title": "Pilot DCFC", "AddressLine1": "2 Hwy", "Latitude": 38.25, "Longitude": -84.40, "Distance": 4.0 },
+    "Connections": [ { "ConnectionTypeID": 33, "LevelID": 3, "Level": { "ID": 3, "Title": "DC Fast", "IsFastChargeCapable": true } } ] }
+]

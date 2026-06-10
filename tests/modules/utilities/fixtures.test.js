@@ -49,10 +49,10 @@ describe('getEvChargingData against real alt-fuel-stations shapes', () => {
     expect(r.dcFast.distanceMiles).toBe('2.7');
   });
 
-  test('empty station list yields both null, no throw', async () => {
+  test('empty station list yields null (enables fallback), no throw', async () => {
     mockJson(fx('alt-fuel-stations-empty.json'));
     const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive);
-    expect(r).toEqual({ level2: null, dcFast: null });
+    expect(r).toBeNull();
   });
 });
 

@@ -796,9 +796,15 @@ const EV_BATTERY_KWH_REF = 60;
 // freshness against fetch volume.
 const UTILITIES_CELL_TTL_DAYS = 30;
 
+// FR-060: HIFLD Electric Retail Service Territories (ArcGIS REST, keyless) —
+// point-query fallback for electric provider + ownership when NREL is down.
+const HIFLD_TERRITORIES_URL = 'https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/Electric_Retail_Service_Territories_HIFLD/FeatureServer/0';
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
+  // FR-060 Resilient Utilities fallback
+  HIFLD_TERRITORIES_URL,
   // Search radii
   GROCERY_SEARCH_RADIUS_M,
   HOSPITAL_SEARCH_RADIUS_M,
