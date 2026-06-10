@@ -1,5 +1,6 @@
 'use strict';
-const { getElectricData, getEvChargingData, getUtilitiesData } = require('../../../src/modules/utilities/data');
+const { getElectricData, getEvChargingData, getUtilitiesData, getElectricFromHIFLD } = require('../../../src/modules/utilities/data');
+const hifldFixture = require('./fixtures/hifld-territories.json');
 const { utilitiesCache } = require('../../../src/cache');
 
 beforeEach(() => utilitiesCache.clear());
@@ -14,7 +15,7 @@ describe('getElectricData', () => {
       json: async () => ({ outputs: { utility_name: 'Kentucky Utilities Co', residential: 0.131 } }),
     });
     const r = await getElectricData(38.2, -84.5);
-    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: 0.131, ownership: null });
+    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: 0.131, ownership: null, source: 'NREL' });
   });
 
   test('returns null on non-ok response', async () => {
@@ -108,5 +109,43 @@ describe('getUtilitiesData', () => {
     const callsAfterFirst = global.fetch.mock.calls.length;
     await getUtilitiesData(38.2, -84.5, '38.2,-84.5', async () => 5, cell);
     expect(global.fetch.mock.calls.length).toBeGreaterThan(callsAfterFirst); // not served from cache
+  });
+});
+
+describe('getElectricFromHIFLD', () => {
+  afterEach(() => { global.fetch = undefined; });
+  test('parses + title-cases NAME, maps TYPE to ownership, rate null, source HIFLD', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => hifldFixture });
+    const r = await getElectricFromHIFLD(38.2098, -84.5588);
+    expect(r).toEqual({ utilityName: 'Kentucky Utilities Co', residentialRate: null, ownership: 'INVESTOR OWNED', source: 'HIFLD' });
+  });
+  test('returns null on empty features / ArcGIS error / non-ok / throw', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ features: [] }) });
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ error: { code: 400 } }) });
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    expect(await getElectricFromHIFLD(0, 0)).toBeNull();
+  });
+});
+
+describe('getElectricData (NREL -> HIFLD orchestration)', () => {
+  afterEach(() => { global.fetch = undefined; });
+  test('returns NREL result (source NREL) and does NOT call HIFLD when NREL succeeds', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ outputs: { utility_name: 'KU', residential: 0.13 } }) });
+    const r = await getElectricData(38.2, -84.5);
+    expect(r.source).toBe('NREL');
+    expect(global.fetch.mock.calls.length).toBe(1);
+  });
+  test('falls back to HIFLD (source HIFLD) when NREL returns null', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true, json: async () => hifldFixture });
+    const r = await getElectricData(38.2, -84.5);
+    expect(r.source).toBe('HIFLD');
+    expect(r.utilityName).toBe('Kentucky Utilities Co');
+    expect(r.residentialRate).toBeNull();
   });
 });

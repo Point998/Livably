@@ -3,11 +3,16 @@
 const { haversineDistance } = require('../../utils/geo');
 const { cellSearchOrigin, cellDriveOpts } = require('../../shared/spatial');
 const { utilitiesCache } = require('../../cache');
+const { HIFLD_TERRITORIES_URL } = require('../../utils/constants');
 
 const NREL_BASE = 'https://developer.nrel.gov/api';
 function nrelKey() { return process.env.NREL_API_KEY || 'DEMO_KEY'; }
 
-async function getElectricData(lat, lng) {
+function titleCase(s) {
+  return String(s).toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
+
+async function getElectricFromNREL(lat, lng) {
   try {
     const url = `${NREL_BASE}/utility_rates/v3.json?api_key=${nrelKey()}&lat=${lat}&lon=${lng}`;
     const resp = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { Accept: 'application/json' } });
@@ -22,11 +27,41 @@ async function getElectricData(lat, lng) {
     // name heuristic downstream when absent/unrecognized.
     const ownership = String(out.utility_info?.[0]?.ownership || '').trim() || null;
     if (!residentialRate || residentialRate <= 0) return null;
-    return { utilityName: utilityName || 'Unknown provider', residentialRate, ownership };
+    return { utilityName: utilityName || 'Unknown provider', residentialRate, ownership, source: 'NREL' };
   } catch (err) {
     console.error('[NREL Utility Rates]', err.message);
     return null;
   }
+}
+
+// Fallback: HIFLD Electric Retail Service Territories (ArcGIS point query) —
+// provider name + ownership type, no rate. Keyless.
+async function getElectricFromHIFLD(lat, lng) {
+  try {
+    const params = new URLSearchParams({
+      geometry: `${lng},${lat}`, geometryType: 'esriGeometryPoint', inSR: '4326',
+      spatialRel: 'esriSpatialRelIntersects', outFields: 'NAME,TYPE',
+      returnGeometry: 'false', resultRecordCount: '1', f: 'json',
+    });
+    const resp = await fetch(`${HIFLD_TERRITORIES_URL}/query?${params}`, {
+      signal: AbortSignal.timeout(10000), headers: { Accept: 'application/json' },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data?.error) return null;
+    const a = data?.features?.[0]?.attributes;
+    const name = String(a?.NAME || '').trim();
+    if (!name) return null;
+    return { utilityName: titleCase(name), residentialRate: null, ownership: String(a?.TYPE || '').trim() || null, source: 'HIFLD' };
+  } catch (err) {
+    console.error('[HIFLD territories]', err.message);
+    return null;
+  }
+}
+
+// NREL primary -> HIFLD fallback. Short-circuits: no HIFLD call when NREL succeeds.
+async function getElectricData(lat, lng) {
+  return (await getElectricFromNREL(lat, lng)) || (await getElectricFromHIFLD(lat, lng));
 }
 
 // driveOrigin is the cell centroid string ("lat,lng") when a cell is present;
@@ -102,4 +137,4 @@ async function getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell = nul
   return result;
 }
 
-module.exports = { getElectricData, getEvChargingData, getUtilitiesData };
+module.exports = { getElectricFromNREL, getElectricFromHIFLD, getElectricData, getEvChargingData, getUtilitiesData };
