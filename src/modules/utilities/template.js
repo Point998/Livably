@@ -6,6 +6,8 @@ const ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke
 
 const SATELLITE_LINE = 'Even where wired options are thin, satellite internet now reaches roughly 100–300 Mbps almost anywhere — a workable backstop for this address.';
 
+const NO_PROVIDERS_LINE = "Provider details weren't itemized for this address.";
+
 function internetFallback() {
   return `<p class="prem-narrative-body">No internet providers were returned for this address through the FCC National Broadband Map. Check current availability at <a href="https://broadbandmap.fcc.gov/" target="_blank" rel="noopener noreferrer">broadbandmap.fcc.gov</a> by entering the address directly. ${SATELLITE_LINE}</p>`;
 }
@@ -87,8 +89,8 @@ function buildInternetSection(u) {
   }
   const bandBadge = `<span class="prem-badge ${badgeClass(net.band.color)}">${escapeHtml(net.band.label)}</span>`;
   const who = net.providerCount > 0
-    ? `${net.providerCount} provider${net.providerCount === 1 ? '' : 's'} serve this address.`
-    : "Provider details weren't itemized for this address.";
+    ? `${net.providerCount} provider${net.providerCount === 1 ? '' : 's'} ${net.providerCount === 1 ? 'serves' : 'serve'} this address.`
+    : NO_PROVIDERS_LINE;
   const sat = net.satelliteFloor ? ` ${SATELLITE_LINE}` : '';
   return `
     <div class="prem-intel-section">
@@ -198,7 +200,7 @@ function buildInternetTab(u) {
            <span class="prem-intel-bb-tech">${escapeHtml(p.tech)}</span>
          </div>`).join('')}
        </div>`
-    : '';
+    : `<p class="prem-narrative-body">${NO_PROVIDERS_LINE}</p>`;
   const sat = net.satelliteFloor ? `<p class="prem-narrative-body">${SATELLITE_LINE}</p>` : '';
   return `
     <p class="prem-narrative-body">${bandBadge} ${escapeHtml(net.meaning)}</p>

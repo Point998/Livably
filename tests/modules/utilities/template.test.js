@@ -147,4 +147,27 @@ describe('FR-061 internet rendering', () => {
     expect(html).not.toMatch(/style="/);
     expect(html.toLowerCase()).not.toMatch(/\bscore\b|\bgrade\b/);
   });
+
+  test('singular grammar: 1 provider "serves" this address', () => {
+    const html = buildUnet(withNet({
+      providers: [{ name: 'Solo ISP', tech: 'Fiber' }],
+      providerCount: 1,
+      band: { label: 'Gigabit-class (fiber)', color: 'green' },
+      meaning: 'Great.',
+      satelliteFloor: false,
+    }));
+    expect(html).toMatch(/1 provider serve?s this address/); // "1 provider serves" (singular, no double 's' on provider)
+    expect(html).toContain('1 provider serves this address');
+  });
+
+  test('L3 tab is not silent when internet present but providers empty', () => {
+    const html = buildUnet(withNet({
+      providers: [],
+      providerCount: 0,
+      band: { label: 'Standard broadband', color: 'gold' },
+      meaning: 'Fine for everyday use.',
+      satelliteFloor: false,
+    }));
+    expect(html.toLowerCase()).toMatch(/provider details weren't itemized/i);
+  });
 });
