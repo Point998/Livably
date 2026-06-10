@@ -224,6 +224,26 @@ describe('getInternetContext — FR-061 felt band', () => {
     const r = getInternetContext(bb({ maxDownloadMbps: 300, providers: [{ name: 'A', tech: 'Fiber' }, { name: 'B', tech: 'Cable' }] }), 'suburban');
     expect(r.providerCount).toBe(2);
   });
+  test('199 -> standard gold (just below the fast-wired fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 199 }), 'suburban').band.color).toBe('gold');
+  });
+  test('200 -> fast wired lightgreen (at the fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 200 }), 'suburban').band.color).toBe('lightgreen');
+  });
+  test('24 -> limited orange (just below the broadband fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 24 }), 'suburban').band.color).toBe('orange');
+  });
+  test('25 -> standard gold (at the fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 25 }), 'suburban').band.color).toBe('gold');
+  });
+  // Documents a deliberate product choice: the FCC fiber flag is trusted even if
+  // no advertised download speed was on the row. We do NOT downgrade a fiber
+  // address just because the speed field was missing.
+  test('hasFiber true with max 0 still returns gigabit-class (fiber flag trusted), satelliteFloor false', () => {
+    const r = getInternetContext(bb({ hasFiber: true, maxDownloadMbps: 0 }), 'suburban');
+    expect(r.band.color).toBe('green');
+    expect(r.satelliteFloor).toBe(false);
+  });
 });
 
 describe('assembleUtilities threads internet (FR-061)', () => {
