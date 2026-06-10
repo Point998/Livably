@@ -1,5 +1,6 @@
 'use strict';
-const { getElectricData, getEvChargingData, getUtilitiesData, getElectricFromHIFLD } = require('../../../src/modules/utilities/data');
+const { getElectricData, getEvChargingData, getUtilitiesData, getElectricFromHIFLD, getEvFromOpenChargeMap } = require('../../../src/modules/utilities/data');
+const ocmFixture = require('./fixtures/openchargemap-poi.json');
 const hifldFixture = require('./fixtures/hifld-territories.json');
 const { utilitiesCache } = require('../../../src/cache');
 
@@ -52,12 +53,13 @@ describe('getEvChargingData', () => {
     expect(r.level2.name).toBe('Library L2');
     expect(r.level2.driveTimeMinutes).toBe(7);
     expect(r.dcFast.name).toBe('Pilot DCFC');
+    expect(r.source).toBe('NREL');
   });
 
-  test('null fields when a type is absent', async () => {
+  test('returns null when NREL finds no stations (no OCM key set)', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ fuel_stations: [] }) });
     const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', fakeDrive);
-    expect(r).toEqual({ level2: null, dcFast: null });
+    expect(r).toBeNull();
   });
 
   test('returns null on fetch failure', async () => {
@@ -147,5 +149,56 @@ describe('getElectricData (NREL -> HIFLD orchestration)', () => {
     expect(r.source).toBe('HIFLD');
     expect(r.utilityName).toBe('Kentucky Utilities Co');
     expect(r.residentialRate).toBeNull();
+  });
+});
+
+describe('getEvFromOpenChargeMap', () => {
+  afterEach(() => { global.fetch = undefined; delete process.env.OPENCHARGEMAP_API_KEY; });
+  const noDrive = async () => null;
+  test('returns null without an API key (no fetch)', async () => {
+    global.fetch = jest.fn();
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+  test('parses nearest L2 + DC-fast from Connections, source OpenChargeMap', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ocmFixture });
+    const r = await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.level2.name).toBe('Library L2');
+    expect(r.level2.distanceMiles).toBe('1.2');
+    expect(r.dcFast.name).toBe('Pilot DCFC');
+    expect(r.source).toBe('OpenChargeMap');
+  });
+  test('null on non-ok / empty / throw', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+    global.fetch = jest.fn().mockRejectedValue(new Error('net'));
+    expect(await getEvFromOpenChargeMap(38.2, -84.5, '38.2,-84.5', noDrive)).toBeNull();
+  });
+});
+
+describe('getEvChargingData (NREL -> OpenChargeMap orchestration)', () => {
+  afterEach(() => { global.fetch = undefined; delete process.env.OPENCHARGEMAP_API_KEY; });
+  const noDrive = async () => null;
+  test('falls back to OCM when NREL finds nothing', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ fuel_stations: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ocmFixture });
+    const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.source).toBe('OpenChargeMap');
+    expect(r.level2.name).toBe('Library L2');
+  });
+  test('uses NREL (source NREL) when it has stations; no OCM call', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ fuel_stations: [
+      { station_name: 'NREL L2', street_address: '1 St', ev_level2_evse_num: 2, ev_dc_fast_num: 0, latitude: 38.21, longitude: -84.51, distance: 1 },
+    ] }) });
+    const r = await getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive);
+    expect(r.source).toBe('NREL');
+    expect(global.fetch.mock.calls.length).toBe(1);
   });
 });
