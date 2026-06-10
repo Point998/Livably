@@ -1,0 +1,7 @@
+{
+  "availability": [
+    { "brand_name": "Glo Fiber", "technology_code": 50, "max_advertised_download_speed": 1000, "max_advertised_upload_speed": 1000 },
+    { "brand_name": "Spectrum", "technology_code": 41, "max_advertised_download_speed": 300, "max_advertised_upload_speed": 20 },
+    { "brand_name": "Spectrum", "technology_code": 41, "max_advertised_download_speed": 300, "max_advertised_upload_speed": 20 }
+  ]
+}

@@ -7,7 +7,6 @@ jest.mock('../../../src/shared/census', () => ({
 const { fetchCensusACS } = require('../../../src/shared/census');
 const {
   getDrainageCategory,
-  getBroadbandCategory,
   getConstructionEraContext,
   getPropertyData,
   getPropertyIntelligence,
@@ -22,14 +21,6 @@ describe('getDrainageCategory', () => {
   test('null returns null', () => expect(getDrainageCategory(null)).toBeNull());
 });
 
-describe('getBroadbandCategory', () => {
-  test('fiber (hasFiber=true) returns green', () => expect(getBroadbandCategory(1000, true).color).toBe('green'));
-  test('1000Mbps without fiber flag still green', () => expect(getBroadbandCategory(1000, false).color).toBe('green'));
-  test('200Mbps returns lightgreen', () => expect(getBroadbandCategory(250, false).color).toBe('lightgreen'));
-  test('25Mbps returns gold', () => expect(getBroadbandCategory(25, false).color).toBe('gold'));
-  test('1Mbps returns orange', () => expect(getBroadbandCategory(1, false).color).toBe('orange'));
-  test('0Mbps returns muted', () => expect(getBroadbandCategory(0, false).color).toBe('muted'));
-});
 
 describe('getConstructionEraContext', () => {
   test('2015 is Modern construction', () => expect(getConstructionEraContext(2015).era).toMatch(/modern/i));

@@ -5,6 +5,7 @@ const {
   getOutageContext,
   getServiceInference,
   getEvChargingCost,
+  getInternetContext,
   assembleUtilities,
 } = require('../../../src/modules/utilities/logic');
 
@@ -182,5 +183,80 @@ describe('assembleUtilities — FR-060 source + state-avg threading', () => {
     expect(u.electricSource).toBeNull();
     expect(u.evSource).toBeNull();
     expect(u.stateAvgRate).toBe(0.128);
+  });
+});
+
+describe('getInternetContext — FR-061 felt band', () => {
+  const bb = (over) => ({ providers: [{ name: 'X', tech: 'Cable' }], maxDownloadMbps: 0, hasFiber: false, ...over });
+
+  test('null in -> null out', () => {
+    expect(getInternetContext(null, 'suburban')).toBeNull();
+  });
+  test('fiber -> gigabit-class green', () => {
+    const r = getInternetContext(bb({ hasFiber: true, maxDownloadMbps: 1000 }), 'suburban');
+    expect(r.band).toEqual({ label: 'Gigabit-class (fiber)', color: 'green' });
+    expect(r.satelliteFloor).toBe(false);
+  });
+  test('>=940 without fiber flag still gigabit-class', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 940 }), 'suburban').band.color).toBe('green');
+  });
+  test('>=200 -> fast wired lightgreen', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 300 }), 'suburban').band.color).toBe('lightgreen');
+  });
+  test('>=25 -> standard gold', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 50 }), 'suburban').band.color).toBe('gold');
+  });
+  test('>0 -> limited orange, satelliteFloor true', () => {
+    const r = getInternetContext(bb({ maxDownloadMbps: 10 }), 'suburban');
+    expect(r.band.color).toBe('orange');
+    expect(r.satelliteFloor).toBe(true);
+  });
+  test('0 -> unconfirmed muted, satelliteFloor true', () => {
+    const r = getInternetContext(bb({ maxDownloadMbps: 0 }), 'suburban');
+    expect(r.band.color).toBe('muted');
+    expect(r.satelliteFloor).toBe(true);
+  });
+  test('rural mode forces satelliteFloor even on fast wired', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 300 }), 'rural').satelliteFloor).toBe(true);
+    expect(getInternetContext(bb({ maxDownloadMbps: 300 }), 'remote').satelliteFloor).toBe(true);
+  });
+  test('providerCount reflects providers length', () => {
+    const r = getInternetContext(bb({ maxDownloadMbps: 300, providers: [{ name: 'A', tech: 'Fiber' }, { name: 'B', tech: 'Cable' }] }), 'suburban');
+    expect(r.providerCount).toBe(2);
+  });
+  test('199 -> standard gold (just below the fast-wired fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 199 }), 'suburban').band.color).toBe('gold');
+  });
+  test('200 -> fast wired lightgreen (at the fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 200 }), 'suburban').band.color).toBe('lightgreen');
+  });
+  test('24 -> limited orange (just below the broadband fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 24 }), 'suburban').band.color).toBe('orange');
+  });
+  test('25 -> standard gold (at the fence)', () => {
+    expect(getInternetContext(bb({ maxDownloadMbps: 25 }), 'suburban').band.color).toBe('gold');
+  });
+  // Documents a deliberate product choice: the FCC fiber flag is trusted even if
+  // no advertised download speed was on the row. We do NOT downgrade a fiber
+  // address just because the speed field was missing.
+  test('hasFiber true with max 0 still returns gigabit-class (fiber flag trusted), satelliteFloor false', () => {
+    const r = getInternetContext(bb({ hasFiber: true, maxDownloadMbps: 0 }), 'suburban');
+    expect(r.band.color).toBe('green');
+    expect(r.satelliteFloor).toBe(false);
+  });
+});
+
+describe('assembleUtilities threads internet (FR-061)', () => {
+  test('internet present when raw.internet present', () => {
+    const u = assembleUtilities(
+      { electric: null, evCharging: null, internet: { providers: [], maxDownloadMbps: 1000, hasFiber: true } },
+      'suburban',
+      { state: 'KY' },
+    );
+    expect(u.internet.band.color).toBe('green');
+  });
+  test('internet null when raw lacks it', () => {
+    const u = assembleUtilities({ electric: null, evCharging: null }, 'suburban', { state: 'KY' });
+    expect(u.internet).toBeNull();
   });
 });

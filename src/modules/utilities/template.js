@@ -4,6 +4,14 @@ const { badgeClass, renderChapterCard } = require('../../templates/components');
 
 const ICON = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
 
+const SATELLITE_LINE = 'Even where wired options are thin, satellite internet now reaches roughly 100–300 Mbps almost anywhere — a workable backstop for this address.';
+
+const NO_PROVIDERS_LINE = "Provider details weren't itemized for this address.";
+
+function internetFallback() {
+  return `<p class="prem-narrative-body">No internet providers were returned for this address through the FCC National Broadband Map. Check current availability at <a href="https://broadbandmap.fcc.gov/" target="_blank" rel="noopener noreferrer">broadbandmap.fcc.gov</a> by entering the address directly. ${SATELLITE_LINE}</p>`;
+}
+
 function evFallback() {
   return `<p class="prem-narrative-body">No public charging stations were returned for this area through the U.S. DOE Alternative Fuel Data Center or OpenChargeMap. Search current stations at <a href="https://afdc.energy.gov/stations" target="_blank" rel="noopener noreferrer">afdc.energy.gov/stations</a>.</p>`;
 }
@@ -70,6 +78,27 @@ function buildServicesSection(u) {
     </div>`;
 }
 
+function buildInternetSection(u) {
+  const net = u.internet;
+  if (!net) {
+    return `
+      <div class="prem-intel-section">
+        <div class="prem-intel-label">Internet</div>
+        ${internetFallback()}
+      </div>`;
+  }
+  const bandBadge = `<span class="prem-badge ${badgeClass(net.band.color)}">${escapeHtml(net.band.label)}</span>`;
+  const who = net.providerCount > 0
+    ? `${net.providerCount} provider${net.providerCount === 1 ? '' : 's'} ${net.providerCount === 1 ? 'serves' : 'serve'} this address.`
+    : NO_PROVIDERS_LINE;
+  const sat = net.satelliteFloor ? ` ${SATELLITE_LINE}` : '';
+  return `
+    <div class="prem-intel-section">
+      <div class="prem-intel-label">Internet ${bandBadge}</div>
+      <p class="prem-narrative-body">${escapeHtml(who)} ${escapeHtml(net.meaning)}${sat}</p>
+    </div>`;
+}
+
 function buildBody(u) {
   let takeaway;
   if (u.rateContext?.deltaLabel === 'above state average') {
@@ -89,6 +118,7 @@ function buildBody(u) {
     ${buildElectricSection(u)}
     ${buildReliabilitySection(u)}
     ${buildServicesSection(u)}
+    ${buildInternetSection(u)}
     <div class="key-takeaway">
       <span class="kt-icon">🔌</span>
       <div class="kt-body"><strong>Key Takeaway:</strong> ${escapeHtml(takeaway)}</div>
@@ -158,11 +188,33 @@ function buildEvTab(u) {
     ${evProvenance}`;
 }
 
+function buildInternetTab(u) {
+  const net = u.internet;
+  if (!net) return internetFallback();
+  const bandBadge = `<span class="prem-badge ${badgeClass(net.band.color)}">${escapeHtml(net.band.label)}</span>`;
+  const cards = net.providers.length
+    ? `<div class="prem-intel-bb-providers">
+         ${net.providers.map((p) => `
+         <div class="prem-intel-bb-provider prem-intel-bb-provider--full">
+           <span class="prem-intel-bb-name">${escapeHtml(p.name)}</span>
+           <span class="prem-intel-bb-tech">${escapeHtml(p.tech)}</span>
+         </div>`).join('')}
+       </div>`
+    : `<p class="prem-narrative-body">${NO_PROVIDERS_LINE}</p>`;
+  const sat = net.satelliteFloor ? `<p class="prem-narrative-body">${SATELLITE_LINE}</p>` : '';
+  return `
+    <p class="prem-narrative-body">${bandBadge} ${escapeHtml(net.meaning)}</p>
+    ${cards}
+    ${sat}
+    <p class="prem-disclaimer">Source: FCC National Broadband Map. Advertised availability, not measured speeds.</p>`;
+}
+
 function buildDeepDive(u) {
   const tabs = [
     { id: 'electric',    label: 'Electric',    content: buildElectricTab(u) },
     { id: 'reliability', label: 'Reliability', content: buildReliabilityTab(u) },
     { id: 'ev',          label: 'EV Charging',  content: buildEvTab(u) },
+    { id: 'internet',    label: 'Internet',    content: buildInternetTab(u) },
   ];
   const buttons = tabs.map((t, i) =>
     `<button class="climate-tab${i === 0 ? ' climate-tab--active' : ''}" role="tab" aria-selected="${i === 0 ? 'true' : 'false'}" aria-controls="utiltab-${t.id}" id="utilbtn-${t.id}">${t.label}</button>`).join('');
@@ -181,6 +233,7 @@ function buildResearch(u) {
   const county = u.locationInfo?.county || 'this county';
   const outageSearch = `https://www.google.com/search?q=${encodeURIComponent(`${u.electric?.utilityName || state + ' electric utility'} outage map`)}`;
   const serviceSearch = `https://www.google.com/search?q=${encodeURIComponent(`${county} county water sewer service area`)}`;
+  const ispSearch = `https://www.google.com/search?q=${encodeURIComponent(`internet providers ${county} county ${state}`)}`;
   return `
     <div class="climate-research-section">
       <div class="climate-research-section-label">Verify &amp; Go Deeper</div>
@@ -190,8 +243,9 @@ function buildResearch(u) {
         <li><a href="${outageSearch}" target="_blank" rel="noopener noreferrer">Your utility's live outage map</a></li>
         <li><a href="${serviceSearch}" target="_blank" rel="noopener noreferrer">${escapeHtml(county)} water &amp; sewer service-area lookup</a></li>
         <li><a href="https://afdc.energy.gov/stations" target="_blank" rel="noopener noreferrer">DOE Alternative Fuel Data Center — EV charging stations</a></li>
+        <li><a href="https://broadbandmap.fcc.gov/" target="_blank" rel="noopener noreferrer">FCC National Broadband Map — internet providers at this address</a></li>
+        <li><a href="${ispSearch}" target="_blank" rel="noopener noreferrer">Search internet providers in ${escapeHtml(county)} County</a></li>
       </ul>
-      <p class="prem-narrative-body">Internet providers for this address are covered in the <strong>Property Intelligence</strong> chapter's "Internet Providers" tab (FCC National Broadband Map).</p>
     </div>`;
 }
 

@@ -5,10 +5,9 @@ const { safeInt } = require('../../utils/text');
 const {
   STATE_TAX_RATES, STATE_INSURANCE_ANNUAL, STATE_UTILITIES_MONTHLY,
   STATE_HOMESTEAD,
-  BROADBAND_TECH_CODES,
 } = require('../../utils/constants');
 const { getDensityType } = require('../community/logic');
-const { getDrainageCategory, getBroadbandCategory, getConstructionEraContext, buildHousingAgeBands } = require('./logic');
+const { getDrainageCategory, getConstructionEraContext, buildHousingAgeBands } = require('./logic');
 
 // ── FR-023: Property Costs & Market ──────────────────────────────────────────
 
@@ -82,56 +81,9 @@ async function getSoilData(lat, lng) {
   }
 }
 
-async function getBroadbandData(lat, lng) {
-  try {
-    const url =
-      `https://broadbandmap.fcc.gov/api/public/map/listAvailability` +
-      `?latitude=${lat}&longitude=${lng}&unit=location&limit=25&category=residential`;
-    const resp = await fetch(url, {
-      signal:  AbortSignal.timeout(12000),
-      headers: { Accept: 'application/json' },
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const availability =
-      Array.isArray(data?.availability) ? data.availability :
-      Array.isArray(data?.data)         ? data.data         :
-      Array.isArray(data)               ? data              : [];
-    if (!availability.length) return null;
-
-    let maxDownload = 0;
-    let hasFiber    = false;
-    const seenNames = new Set();
-    const providers = [];
-
-    for (const item of availability) {
-      const techCode = item.technology_code ?? item.tech_code ?? 0;
-      const download = Number(item.max_advertised_download_speed ?? item.download_speed ?? 0);
-      if (download > maxDownload) maxDownload = download;
-      if (techCode === 50) hasFiber = true;
-      const name = String(item.brand_name || item.doing_business_as || item.provider_name || '').trim();
-      if (name && !seenNames.has(name)) {
-        seenNames.add(name);
-        providers.push({
-          name,
-          tech:     BROADBAND_TECH_CODES[techCode] || `Type ${techCode}`,
-          download,
-          upload:   Number(item.max_advertised_upload_speed ?? item.upload_speed ?? 0),
-        });
-      }
-    }
-    providers.sort((a, b) => b.download - a.download);
-    return { providers: providers.slice(0, 5), maxDownloadMbps: maxDownload, hasFiber, category: getBroadbandCategory(maxDownload, hasFiber) };
-  } catch (err) {
-    console.error('[FCC Broadband]', err.message);
-    return null;
-  }
-}
-
 async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
-  const [soilRes, broadbandRes, acsRes] = await Promise.allSettled([
+  const [soilRes, acsRes] = await Promise.allSettled([
     getSoilData(lat, lng),
-    getBroadbandData(lat, lng),
     fips
       ? fetchCensusACS(fips, [
           'B25035_001E',
@@ -142,9 +94,8 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
       : Promise.resolve(null),
   ]);
 
-  const soil      = soilRes.status      === 'fulfilled' ? soilRes.value      : null;
-  const broadband = broadbandRes.status === 'fulfilled' ? broadbandRes.value  : null;
-  const acs       = acsRes.status       === 'fulfilled' ? acsRes.value        : null;
+  const soil = soilRes.status === 'fulfilled' ? soilRes.value : null;
+  const acs  = acsRes.status  === 'fulfilled' ? acsRes.value  : null;
 
   let era = null;
   if (acs) {
@@ -161,7 +112,7 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
 
   const housingAgeBands = acs ? buildHousingAgeBands((k) => acs.get(k)) : null;
 
-  return { soil, broadband, era, housingAgeBands, locationInfo };
+  return { soil, era, housingAgeBands, locationInfo };
 }
 
 module.exports = {
@@ -169,7 +120,5 @@ module.exports = {
   getPropertyIntelligence,
   getSoilData,
   getDrainageCategory,
-  getBroadbandData,
-  getBroadbandCategory,
   getConstructionEraContext,
 };

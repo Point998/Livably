@@ -12,14 +12,6 @@ function getDrainageCategory(drainagecl) {
   return { label: drainagecl, color: 'muted', implication: 'Consult a soil engineer for specific drainage implications at this location.' };
 }
 
-function getBroadbandCategory(maxMbps, hasFiber) {
-  if (hasFiber || maxMbps >= 1000) return { label: 'Gigabit available',    color: 'green',      desc: 'Fiber or gigabit internet is available — ideal for remote work and large households.' };
-  if (maxMbps >= 200)              return { label: 'High-speed available', color: 'lightgreen', desc: 'Fast broadband is available. Most remote work and streaming needs are well-covered.' };
-  if (maxMbps >= 25)               return { label: 'Broadband available',  color: 'gold',       desc: 'Standard broadband is available. Sufficient for most households.' };
-  if (maxMbps > 0)                 return { label: 'Limited options',      color: 'orange',     desc: 'Limited speeds available. Verify connectivity before committing, especially for remote work.' };
-  return                               { label: 'Coverage unconfirmed',  color: 'muted',      desc: 'Internet availability not confirmed at this address via FCC data.' };
-}
-
 function getConstructionEraContext(year) {
   if (!year || isNaN(year)) return null;
   if (year >= 2010) return { era: 'Modern construction (2010s–present)', cautions: [] };
@@ -58,4 +50,4 @@ function buildHousingAgeBands(get) {
   return { totalUnits: total, bands };
 }
 
-module.exports = { getDrainageCategory, getBroadbandCategory, getConstructionEraContext, buildHousingAgeBands };
+module.exports = { getDrainageCategory, getConstructionEraContext, buildHousingAgeBands };

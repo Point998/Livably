@@ -16,12 +16,6 @@ const basePropIntel = {
     drainageCategory: { label: 'Well Drained', color: 'green', implication: 'Good drainage expected.' },
     isHydric: false,
   },
-  broadband: {
-    providers: [{ name: 'AT&T', tech: 'Fiber', download: 1000 }],
-    maxDownloadMbps: 1000,
-    hasFiber: true,
-    category: { label: 'Excellent', color: 'green', desc: 'Gigabit fiber available.' },
-  },
   locationInfo: { county: 'Scott County' },
 };
 
@@ -46,7 +40,6 @@ describe('buildPropertyIntelligenceHTML — FR-045 glance bar', () => {
     const propIntel = {
       era: { medianYearBuilt: 1990, newConstructionPct: 5, context: null },
       soil: { muname: 'Urban land', drainageCategory: null, isHydric: false },
-      broadband: null,
       locationInfo: { county: 'Scott County' },
     };
     const html = buildPropertyIntelligenceHTML(propIntel);
@@ -69,15 +62,6 @@ describe('buildPropertyIntelligenceHTML — FR-045 glance bar', () => {
 
 const basePropIntelWithBands = {
   ...basePropIntel,
-  broadband: {
-    providers: [
-      { name: 'AT&T', tech: 'Fiber', download: 1000, upload: 500 },
-      { name: 'Spectrum', tech: 'Cable', download: 200, upload: 20 },
-    ],
-    maxDownloadMbps: 1000,
-    hasFiber: true,
-    category: { label: 'Excellent', color: 'green', desc: 'Gigabit fiber available.' },
-  },
   housingAgeBands: {
     totalUnits: 1000,
     bands: [
@@ -98,11 +82,6 @@ describe('buildPropertyIntelligenceHTML — L3 deep dive', () => {
     expect(html).toMatch(/depth-l3/);
   });
 
-  test('renders Internet Providers tab button', () => {
-    const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
-    expect(html).toMatch(/Internet Providers/);
-  });
-
   test('renders Soil tab button', () => {
     const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
     expect(html).toMatch(/Soil.*Foundation|Foundation.*Soil/);
@@ -111,31 +90,6 @@ describe('buildPropertyIntelligenceHTML — L3 deep dive', () => {
   test('renders Building Age tab button', () => {
     const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
     expect(html).toMatch(/Building Age/);
-  });
-
-  test('shows upload speed arrow in broadband tab', () => {
-    const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
-    expect(html).toMatch(/↑/);
-  });
-
-  test('shows remote work note when upload >= 100 Mbps', () => {
-    const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
-    expect(html).toMatch(/remote work/i);
-  });
-
-  test('does not show remote work note when no provider has upload >= 100 Mbps', () => {
-    const lowUpload = {
-      ...basePropIntelWithBands,
-      broadband: {
-        ...basePropIntelWithBands.broadband,
-        providers: [{ name: 'Spectrum', tech: 'Cable', download: 200, upload: 20 }],
-      },
-    };
-    const html = buildPropertyIntelligenceHTML(lowUpload);
-    // The L2 body may mention "remote work" in the category desc — check the L3 tab specifically
-    // We verify by ensuring upload IS shown (↑ arrow) but NOT the specific remote-work note
-    expect(html).toMatch(/↑/); // upload speed still shown
-    expect(html).not.toMatch(/At least one provider offers upload speeds of 100 Mbps or higher/);
   });
 
   test('shows hydric badge when isHydric is true', () => {
@@ -200,13 +154,6 @@ describe('buildPropertyIntelligenceHTML — L3 deep dive', () => {
     expect(html).toMatch(/not available/i);
   });
 
-  test('graceful fallback when broadband is null', () => {
-    const noBroadband = { ...basePropIntelWithBands, broadband: null };
-    const html = buildPropertyIntelligenceHTML(noBroadband);
-    expect(html).toMatch(/depth-l3/);
-    expect(html).toMatch(/FCC National Broadband Map/);
-  });
-
   test('no inline styles (CONSTRAINT-008)', () => {
     const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
     const violations = html.match(/style="(?!--)[^"]+"/g);
@@ -218,11 +165,6 @@ describe('buildPropertyIntelligenceHTML — L4 research', () => {
   test('renders depth-l4 container', () => {
     const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
     expect(html).toMatch(/depth-l4/);
-  });
-
-  test('renders provider table with Download and Upload column headers', () => {
-    const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
-    expect(html).toMatch(/Download.*Upload|Upload.*Download/);
   });
 
   test('renders USDA soil reference section', () => {
@@ -240,15 +182,9 @@ describe('buildPropertyIntelligenceHTML — L4 research', () => {
     expect(html).toMatch(/Scott County.*Assessor|Assessor.*Scott County/);
   });
 
-  test('renders FCC broadband map link', () => {
-    const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
-    expect(html).toMatch(/broadbandmap\.fcc\.gov/);
-  });
-
   test('renders county records links section even when all data is null', () => {
     const noData = {
       ...basePropIntelWithBands,
-      broadband: null,
       soil: null,
       housingAgeBands: null,
     };
