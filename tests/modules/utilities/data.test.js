@@ -238,6 +238,19 @@ describe('getBroadbandData (relocated from Property)', () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('net'));
     expect(await getBroadbandData(0, 0)).toBeNull();
   });
+
+  test('dedup keeps the highest-tier plan when a provider appears multiple times', async () => {
+    const out = { availability: [
+      { brand_name: 'Acme', technology_code: 40, max_advertised_download_speed: 300, max_advertised_upload_speed: 20 }, // Cable, listed first
+      { brand_name: 'Acme', technology_code: 50, max_advertised_download_speed: 1000, max_advertised_upload_speed: 1000 }, // Fiber, listed second
+    ] };
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => out });
+    const r = await getBroadbandData(38.2, -84.5);
+    const acme = r.providers.find((p) => p.name === 'Acme');
+    expect(acme.tech).toBe('Fiber');       // highest-tier row wins, not the first-listed Cable row
+    expect(acme.download).toBe(1000);
+    expect(r.hasFiber).toBe(true);
+  });
 });
 
 describe('getUtilitiesData threads internet', () => {

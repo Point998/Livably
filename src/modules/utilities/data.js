@@ -185,7 +185,10 @@ async function getBroadbandData(lat, lng) {
     let hasFiber = false;
     const seenNames = new Set();
     const providers = [];
-    for (const item of availability) {
+    const byDownloadDesc = [...availability].sort((a, b) =>
+      Number(b.max_advertised_download_speed ?? b.download_speed ?? 0) -
+      Number(a.max_advertised_download_speed ?? a.download_speed ?? 0));
+    for (const item of byDownloadDesc) {
       const techCode = item.technology_code ?? item.tech_code ?? 0;
       const download = Number(item.max_advertised_download_speed ?? item.download_speed ?? 0);
       if (download > maxDownload) maxDownload = download;
