@@ -35,6 +35,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - Feature request workflow established with 4-phase process
 - **Tests: 1,384 across 73 suites** (on `main`)
 - **Completion (backend/data, frontend excluded): structure ~90%, data ~75%, blended ~80%** — see "Completion Roadmap" below
+- **Architecture posture: Tier-2 single-instance monolith with Tier-3/4 discipline** — substrate (state/deploy/security/ops) not yet B2B-ready. Hardening plan in NR-004 → see "Hardening Track" below. **Stage 0 (CI, config validation, admin auth, rate-limit) leads the queue.**
 
 ## Active Work
 - **Active branch:** `FR-032-utilities-intelligence` — Utilities & Power chapter built (PR pending).
@@ -59,8 +60,42 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 
 ### Track A — Structure / Architecture (~90% → done)
 1. **Extend the FR-060 resilience pattern** (primary → fallback → graceful link) beyond Utilities to other single-source modules — each lone API (NOAA climate, USDA soil, Google in health/reachability, etc.) is a single point of failure today. *Highest structural value.*
-2. **Source-verification harness** — a repeatable check that each live source returns real data for the 5 test addresses. The FCC 405 and NREL DNS failures both hid behind graceful fallbacks; we want dead sources surfaced, not silently masked.
-3. **Production hardening** — rate-limit handling, load behavior, and observability beyond the current error-memory log (per-source success rates / structured metrics).
+2. **Source-verification harness** — a repeatable check that each live source returns real data for the 5 test addresses. The FCC 405 and NREL DNS failures both hid behind graceful fallbacks; we want dead sources surfaced, not silently masked. *(Designed as FR-063; now sequenced behind Hardening Stage 0 — CI is what turns this into a scheduled monitor. See Hardening Track.)*
+3. **Production hardening** — now its own first-class workstream with teeth + ordering. **See the Hardening Track below (NR-004).**
+
+---
+
+## Hardening Track — Closing the Tier Gap (NR-004)
+
+*Added June 2026. Source: NR-004 architecture hardening review (`docs/nathan-reports/NR-004-architecture-hardening-review.md`). Livably today is a **Tier-2 single-instance monolith with Tier-3/4 discipline** — the governance is real but the substrate (state, deployment, security, ops) cannot run on a second box. This track seals the foundation before B2B load. Not a rebuild (NR-001 already fixed the code bones) — edge-hardening + one state-layer swap.*
+
+**Top findings (ranked by what breaks, and when):**
+- 🔴 **State is local disk + process memory** (`.cache/`, `data/reports.json`, in-memory `usageLog`) → hard single-instance ceiling. *The enterprise blocker.*
+- 🔴 **No CI** — 1,384 tests nothing runs automatically. *Highest ROI fix.*
+- 🟠 **No inbound rate limiting / `helmet` / input guards** — public `/report` triggers metered Google calls → cost-DoS.
+- 🟠 **Admin mutation endpoints unauthenticated** — `/admin/clear-cache|api-usage|cache-stats` lack the IP guard `/admin/health` has (`app.js:98-107`); `clear-cache` POST can force fully-billed cold refetches.
+- 🟠 **File JSON read-modify-write races** (`reportStore.js:24-33`, logger, errorMemory) — lost writes / corruption under concurrency.
+- 🟡 **No startup config validation** — fails per-request (`app.js:36`), not loud at boot.
+- 🟡 **In-process Puppeteer** — ~300MB Chromium per request, unbounded busy-wait (`app.js:121-132`); OOM/latency bomb at volume.
+- 🟡 **Vanilla JS at ~12k LOC** — loosely-typed shapes across module boundaries; a growing tax, stage a TS migration.
+- 🧵 **Thread:** graceful degradation (CONSTRAINT-015) buys UX resilience with **observability debt** — swallowed `null`s hid the FCC 405. FR-063 pays down one slice; the real fix is a generalized observability layer.
+
+### Stage 0 — Near-zero-cost wins (~1 day; do BEFORE new feature work, incl. FR-063)
+1. **CI workflow** — `npm test` on every push/PR.
+2. **Startup config validation** — `config.js` asserts required env at boot, crashes loud.
+3. **Lock down `/admin/*`** — one shared guard on all four routes.
+4. **`helmet` + `express-rate-limit`** on public routes.
+
+### Stage 1 — Multi-instance capability (BEFORE signing a B2B contract)
+5. **Externalize state** behind the existing `Cache` interface seam — managed Redis (caches) + small Postgres (reports/usage), or object storage + Postgres. Swap impl, keep callers. *(The Tier-2 → scalable unlock.)*
+6. **Move PDF generation out-of-process** — worker queue or managed render service.
+7. **Atomic writes** — falls out of #5 for free.
+
+### Stage 2 — Durability & type safety (incremental, no big-bang)
+8. **Observability layer** — keep JSONL logs + add error tracking + real `/health`/`/ready`; fold FR-063 in as a scheduled synthetic monitor.
+9. **TypeScript file-by-file** — start at orchestrator + `validate.js`; `// @ts-check` + JSDoc as a zero-migration first step.
+
+**"Hardening done for now" =** CI green on every push · fails loud on misconfig · no public endpoint can become an unbounded Google bill · no unauthenticated admin mutation · a second instance runs behind a load balancer with zero cache-coherence loss · every swallowed failure is visible on a dashboard.
 
 ### Track B — Data Collected (~75% → done)
 **Repair / verify first (close known holes in the current model):**
@@ -77,7 +112,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 9. Measured internet speed (M-Lab/Ookla) → pairs with FR-062.
 
 ### Sequencing suggestion for future sessions
-A1 (resilience) and A2 (verification harness) are the highest-leverage *structure* work and would also surface/repair B1–B2. Do **A2 → B1/B2 → A1** to get the current model fully live + verified + resilient (that reaches "done for now"), then take Track B breadth items one FR at a time as upside.
+**Hardening Stage 0 now leads** (NR-004): it's ~1 day, it's the cheapest enterprise-grade win available, and CI is what turns A2/FR-063 into a scheduled monitor instead of a manual script. Revised order: **Hardening Stage 0 → A2 (FR-063) → B1/B2 → A1 → Hardening Stage 1** (state externalization, before any B2B contract). Track B breadth items follow one FR at a time as upside. *(Prior note was A2 → B1/B2 → A1, pre-NR-004.)*
 
 ---
 
