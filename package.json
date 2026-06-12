@@ -4,6 +4,9 @@
   "private": true,
   "description": "Residential address intelligence report prototype for homebuyers.",
   "main": "src/app.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/app.js",
     "test": "jest",
