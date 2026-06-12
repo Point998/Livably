@@ -20,6 +20,12 @@ describe('validateConfig', () => {
     const cfg = validateConfig({ GOOGLE_MAPS_API_KEY: 'k' }, logger);
     expect(logger.warnings.length).toBe(6); // all 6 optional keys missing
     expect(cfg.googleMapsApiKey).toBe('k');
+    expect(logger.warnings.some((w) => w.includes('NOAA_CDO_API_KEY'))).toBe(true);
+  });
+
+  test('port is a number (env.PORT coerced) and defaults to 3000', () => {
+    expect(validateConfig({ GOOGLE_MAPS_API_KEY: 'k', PORT: '4000' }, fakeLogger()).port).toBe(4000);
+    expect(validateConfig({ GOOGLE_MAPS_API_KEY: 'k' }, fakeLogger()).port).toBe(3000);
   });
 
   test('emits no warnings when all optional keys are set', () => {

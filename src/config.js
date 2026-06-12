@@ -38,7 +38,7 @@ function validateConfig(env = process.env, logger = console) {
   return {
     googleMapsApiKey: env.GOOGLE_MAPS_API_KEY,
     adminToken: isBlank(env.ADMIN_TOKEN) ? null : env.ADMIN_TOKEN,
-    port: env.PORT || 3000,
+    port: Number(env.PORT) || 3000,
   };
 }
 
