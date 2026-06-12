@@ -21,8 +21,18 @@ const { buildErrorHTML, buildLoadingHTML } = require('./templates/pages/errorPag
 const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML } = require('./templates/pages/comparePage');
 const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
 
+const { validateConfig } = require('./config');
+
+let config;
+try {
+  config = validateConfig();
+} catch (err) {
+  console.error(`[config] FATAL: ${err.message}`);
+  process.exit(1);
+}
+
 const app = express();
-const port = process.env.PORT || 3000;
+const port = config.port;
 
 app.use(express.static(path.join(__dirname, '../public')));
 
