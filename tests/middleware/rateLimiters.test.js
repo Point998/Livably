@@ -15,4 +15,7 @@ describe('meteredSkip', () => {
   test('skips loopback traffic (e.g. PDF route fetching /report internally)', () => {
     expect(meteredSkip(req({ fetch: '1', ip: '127.0.0.1' }))).toBe(true);
   });
+  test('skips IPv6 loopback (::1)', () => {
+    expect(meteredSkip(req({ fetch: '1', ip: '::1' }))).toBe(true);
+  });
 });

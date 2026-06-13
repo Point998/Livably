@@ -56,9 +56,13 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-app.use(globalLimiter);
-
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Blanket per-IP DoS guard on dynamic routes. Mounted AFTER static so cheap CSS/JS/font
+// requests don't consume the budget — a normal page load is several asset requests, and
+// counting them risks false 429s for legitimate users. Metered limiter below protects the
+// billed Google path; static files carry no per-request cost.
+app.use(globalLimiter);
 
 app.use(['/report', '/compare'], meteredLimiter);
 

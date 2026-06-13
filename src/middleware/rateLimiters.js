@@ -4,6 +4,12 @@ const { isLoopback } = require('./adminAuth');
 const { toTitleCase } = require('../utils/text');
 const { buildErrorHTML } = require('../templates/pages/errorPage');
 
+// Stage 0 limiters use express-rate-limit's default in-memory MemoryStore and key on
+// req.ip (socket address, since `trust proxy` is off — see app.js). Both are intentional
+// single-instance choices: Stage 1 (multi-instance) swaps in a shared store (e.g. Redis)
+// and enables `trust proxy` so X-Forwarded-For is honored behind a load balancer. Until
+// then, clients behind a shared NAT are bucketed together.
+
 // Only the billed build path (fetch=1) counts; loopback (PDF route, local dev) is exempt.
 function meteredSkip(req) {
   return req.query.fetch !== '1' || isLoopback(req);
