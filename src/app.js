@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const express = require('express');
+const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 const { geocodeCache, placesCache, driveTimeCache, cacheStats } = require('./cache');
@@ -20,8 +21,6 @@ const { generateComparisonData } = require('./services/compareBuilder');
 const { buildErrorHTML, buildLoadingHTML } = require('./templates/pages/errorPage');
 const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML } = require('./templates/pages/comparePage');
 const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
-
-const helmet = require('helmet');
 
 const { validateConfig } = require('./config');
 const { makeRequireAdmin } = require('./middleware/adminAuth');
@@ -48,7 +47,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'https:'],
+      imgSrc: ["'self'", 'data:'],
       connectSrc: ["'self'"],
     },
   },
