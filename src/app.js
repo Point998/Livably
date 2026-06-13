@@ -21,6 +21,8 @@ const { buildErrorHTML, buildLoadingHTML } = require('./templates/pages/errorPag
 const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML } = require('./templates/pages/comparePage');
 const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
 
+const helmet = require('helmet');
+
 const { validateConfig } = require('./config');
 const { makeRequireAdmin } = require('./middleware/adminAuth');
 
@@ -34,6 +36,24 @@ try {
 
 const app = express();
 const port = config.port;
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      // 'unsafe-inline' is REQUIRED: report/compare/error/loading templates emit
+      // inline <script> and the loading page dynamically re-executes scripts.
+      // Nonce/hash CSP would break rendering. Stage 0 compromise — externalizing
+      // inline scripts to enable a strict script-src is a future hardening pass.
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
 app.use(express.static(path.join(__dirname, '../public')));
 
