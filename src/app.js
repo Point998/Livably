@@ -47,6 +47,10 @@ app.use(helmet({
       // Nonce/hash CSP would break rendering. Stage 0 compromise — externalizing
       // inline scripts to enable a strict script-src is a future hardening pass.
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
+      // helmet defaults script-src-attr to 'none', which 'unsafe-inline' on script-src does
+      // NOT override — that would break the inline onclick handlers on the PDF-export links
+      // (reportPage.js) and the history page buttons. Same Stage 0 inline compromise.
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:'],
