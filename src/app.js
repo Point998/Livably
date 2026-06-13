@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const express = require('express');
+const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 const { geocodeCache, placesCache, driveTimeCache, cacheStats } = require('./cache');
@@ -21,10 +22,53 @@ const { buildErrorHTML, buildLoadingHTML } = require('./templates/pages/errorPag
 const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML } = require('./templates/pages/comparePage');
 const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
 
+const { validateConfig } = require('./config');
+const { makeRequireAdmin } = require('./middleware/adminAuth');
+const { globalLimiter, meteredLimiter } = require('./middleware/rateLimiters');
+
+let config;
+try {
+  config = validateConfig();
+} catch (err) {
+  console.error(`[config] FATAL: ${err.message}`);
+  process.exit(1);
+}
+
 const app = express();
-const port = process.env.PORT || 3000;
+// app.set('trust proxy', 1); // Stage 1: enable when running behind a load balancer/proxy
+const port = config.port;
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      // 'unsafe-inline' is REQUIRED: report/compare/error/loading templates emit
+      // inline <script> and the loading page dynamically re-executes scripts.
+      // Nonce/hash CSP would break rendering. Stage 0 compromise — externalizing
+      // inline scripts to enable a strict script-src is a future hardening pass.
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
+      // helmet defaults script-src-attr to 'none', which 'unsafe-inline' on script-src does
+      // NOT override — that would break the inline onclick handlers on the PDF-export links
+      // (reportPage.js) and the history page buttons. Same Stage 0 inline compromise.
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Blanket per-IP DoS guard on dynamic routes. Mounted AFTER static so cheap CSS/JS/font
+// requests don't consume the budget — a normal page load is several asset requests, and
+// counting them risks false 429s for legitimate users. Metered limiter below protects the
+// billed Google path; static files carry no per-request cost.
+app.use(globalLimiter);
+
+app.use(['/report', '/compare'], meteredLimiter);
 
 // ── Report ────────────────────────────────────────────────────────────────────
 
@@ -82,10 +126,10 @@ app.get('/compare', async (req, res) => {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
-app.get('/admin/health', (req, res) => {
-  const ip = req.ip || req.socket?.remoteAddress || '';
-  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip)) return res.status(403).send('Forbidden');
+// Guards every /admin/* route below — loopback OR matching x-admin-token (FR-064).
+app.use('/admin', makeRequireAdmin(() => config.adminToken));
 
+app.get('/admin/health', (req, res) => {
   let patterns = null;
   try { patterns = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/error-patterns.json'), 'utf8')); } catch {}
   const mitigations = loadMitigations();
