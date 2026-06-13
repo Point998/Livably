@@ -22,6 +22,7 @@ const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML }
 const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
 
 const { validateConfig } = require('./config');
+const { makeRequireAdmin } = require('./middleware/adminAuth');
 
 let config;
 try {
@@ -92,10 +93,9 @@ app.get('/compare', async (req, res) => {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
-app.get('/admin/health', (req, res) => {
-  const ip = req.ip || req.socket?.remoteAddress || '';
-  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip)) return res.status(403).send('Forbidden');
+app.use('/admin', makeRequireAdmin(() => config.adminToken));
 
+app.get('/admin/health', (req, res) => {
   let patterns = null;
   try { patterns = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/error-patterns.json'), 'utf8')); } catch {}
   const mitigations = loadMitigations();
