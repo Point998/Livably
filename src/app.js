@@ -93,6 +93,7 @@ app.get('/compare', async (req, res) => {
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
+// Guards every /admin/* route below — loopback OR matching x-admin-token (FR-064).
 app.use('/admin', makeRequireAdmin(() => config.adminToken));
 
 app.get('/admin/health', (req, res) => {
