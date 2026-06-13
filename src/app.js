@@ -24,6 +24,7 @@ const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
 
 const { validateConfig } = require('./config');
 const { makeRequireAdmin } = require('./middleware/adminAuth');
+const { globalLimiter, meteredLimiter } = require('./middleware/rateLimiters');
 
 let config;
 try {
@@ -34,6 +35,7 @@ try {
 }
 
 const app = express();
+// app.set('trust proxy', 1); // Stage 1: enable when running behind a load balancer/proxy
 const port = config.port;
 
 app.use(helmet({
@@ -54,7 +56,11 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
+app.use(globalLimiter);
+
 app.use(express.static(path.join(__dirname, '../public')));
+
+app.use(['/report', '/compare'], meteredLimiter);
 
 // ── Report ────────────────────────────────────────────────────────────────────
 
