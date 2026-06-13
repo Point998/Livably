@@ -23,6 +23,8 @@ describe('isLoopback', () => {
   test('true for IPv4 loopback', () => expect(isLoopback(mockReq({ ip: '127.0.0.1' }))).toBe(true));
   test('true for IPv6 loopback', () => expect(isLoopback(mockReq({ ip: '::1' }))).toBe(true));
   test('false for public IP', () => expect(isLoopback(mockReq({ ip: '203.0.113.5' }))).toBe(false));
+  test('true via socket.remoteAddress fallback when req.ip is absent', () =>
+    expect(isLoopback({ socket: { remoteAddress: '127.0.0.1' } })).toBe(true));
 });
 
 describe('requireAdmin', () => {
