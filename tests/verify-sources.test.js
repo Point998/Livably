@@ -35,3 +35,66 @@ describe('computeExitCode', () => {
     expect(computeExitCode(['PASS', 'INFO', 'SKIPPED'])).toBe(0);
   });
 });
+
+const { evaluateCell } = require('../scripts/lib/evaluateCell');
+const noSleep = { sleep: async () => {} };
+const ctx = { address: 'x', lat: 1, lng: 2, state: 'KY', county: 'X County', fips: null };
+
+describe('evaluateCell', () => {
+  afterEach(() => { delete process.env.SOME_KEY; });
+
+  test('deferred → SKIPPED(deferred)', async () => {
+    const r = await evaluateCell({ status: 'deferred', run: async () => 1, isValid: () => true }, ctx, noSleep);
+    expect(r).toEqual({ outcome: 'SKIPPED', reason: 'deferred' });
+  });
+
+  test('missing required key → SKIPPED(no key)', async () => {
+    const r = await evaluateCell({ requiresKey: 'SOME_KEY', run: async () => 1, isValid: () => true }, ctx, noSleep);
+    expect(r).toEqual({ outcome: 'SKIPPED', reason: 'no key' });
+  });
+
+  test('valid result → OK', async () => {
+    const r = await evaluateCell({ run: async () => [1], isValid: (x) => x.length === 1 }, ctx, noSleep);
+    expect(r.outcome).toBe('OK');
+  });
+
+  test('invalid on both attempts → FAIL', async () => {
+    const r = await evaluateCell({ run: async () => null, isValid: () => false }, ctx, noSleep);
+    expect(r.outcome).toBe('FAIL');
+  });
+
+  test('transient throw then success on retry → OK', async () => {
+    let n = 0;
+    const r = await evaluateCell({
+      run: async () => { if (n++ === 0) throw new Error('blip'); return [1]; },
+      isValid: (x) => Array.isArray(x),
+    }, ctx, noSleep);
+    expect(r.outcome).toBe('OK');
+  });
+
+  test('429 on both attempts → SKIPPED(rate-limited)', async () => {
+    const r = await evaluateCell({
+      run: async () => { throw new Error('HTTP 429 Too Many Requests'); },
+      isValid: () => true,
+    }, ctx, noSleep);
+    expect(r).toEqual({ outcome: 'SKIPPED', reason: 'rate-limited' });
+  });
+
+  test('probe unreachable but payload empty → FAIL', async () => {
+    const r = await evaluateCell({
+      probe: async () => 503,
+      run: async () => [],
+      isValid: (x) => Array.isArray(x),
+    }, ctx, noSleep);
+    expect(r.outcome).toBe('FAIL');
+  });
+
+  test('probe reachable + valid → OK', async () => {
+    const r = await evaluateCell({
+      probe: async () => 200,
+      run: async () => [],
+      isValid: (x) => Array.isArray(x),
+    }, ctx, noSleep);
+    expect(r.outcome).toBe('OK');
+  });
+});
