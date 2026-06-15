@@ -91,9 +91,27 @@ is the targeted down-payment.
 | `status` | no | defaults `'active'`. `'deferred'` → all addresses `SKIPPED (deferred)`. |
 | `run(ctx)` | yes | Calls the module's real fetcher with context-mapped args. |
 | `isValid(result)` | yes | Content check. Returns true only for reachable + real-shaped data. `[]` is valid where empty is legitimate (coverage:'some'). |
-| `probe(ctx)` | no | Reachability check (HTTP status) for swallow-to-empty sources whose `isValid` can't tell failure from empty. When present: cell `OK` iff probe reachable AND `isValid` passes. See "Swallow-to-empty sources". |
+| `probe(ctx)` | no | Reachability check (HTTP status) for swallow-to-empty sources whose `isValid` can't tell failure from empty. When present: cell `OK` iff probe reachable AND `isValid` passes. See "Swallow-to-empty sources". Probes MUST build their URL from the same `constants.js` value the module's fetcher uses — never a hardcoded copy — so a probe can't drift out of sync with the real endpoint. |
+
+### Provider tags & concurrency
+
+Each source belongs to a **provider** (the upstream host/quota domain — `google`,
+`noaa`, `census`, `usgs`, `fema`, `nrel`, `eia`, `airnow`, etc.), derived from its
+module/constants or an explicit `provider` field. The harness bounds concurrency
+**per provider** (small cap, e.g. 2) so a burst of parallel calls to one host
+can't trip its QPS limit. A rate-limit response (`429`) is **not** an outage; it
+is retried (see flap tolerance) and, if still rate-limited, reported as
+`SKIPPED (rate-limited)` rather than `FAIL`, so quota throttling never reads as a
+dead source.
 
 ## Inputs
+
+### Cache bypass (liveness, not cached)
+The harness probes **live** upstreams, never cached results — a dead source whose
+last-good payload is cached must still read `FAIL`. It runs with caches bypassed
+(a harness flag / `LIVABLY_VERIFY=1` env the cache layer honors, or a fresh
+cache instance) so `run`/`probe` always hit the network. In CI the cache is cold
+anyway; this guarantees the same authoritative behavior when run locally.
 
 ### Per-address context (`ctx`)
 Resolved once per test address before any source runs, reusing existing shared helpers:
@@ -121,18 +139,32 @@ reported as a discovery gap (warning), not a crash.
 
 ## Processing
 
-1. Resolve `ctx` for each of the 5 addresses.
+1. Resolve `ctx` for each of the 5 addresses (caches bypassed — see Cache bypass).
 2. Discover all `SOURCES` across modules.
-3. For each source × address:
+3. For each source × address, scheduled with a **per-provider concurrency cap** so
+   one upstream's QPS limit is never exceeded:
    - If `status === 'deferred'` → `SKIPPED (deferred)`.
    - Else if `requiresKey` is named and blank → `SKIPPED (no key)`.
-   - Else `await run(ctx)` inside try/catch; a throw → invalid with reason; then
-     apply `isValid(result)` → `OK` / `FAIL`.
-   - If the source defines `probe`, `await probe(ctx)` too: cell is `OK` only when
-     probe is reachable **and** `isValid` passes; unreachable probe → `FAIL`.
+   - Else evaluate the cell with **flap tolerance** (below).
 4. Compute per-source verdict from `coverage` (skipped cells excluded from the
    denominator; an all-skipped source → `SKIPPED`, not FAIL/PASS).
 5. Print matrix + summary. Exit 1 if any source verdict is `FAIL`, else 0.
+
+### Cell evaluation with flap tolerance
+
+A monitor that alarms on the first transient blip becomes noise and gets muted.
+Each cell is therefore evaluated as **try → on-failure retry-once → only then
+fail**:
+
+1. `await run(ctx)` (and `await probe(ctx)` if defined) inside try/catch.
+2. A cell is `OK` when: probe reachable (if present) **and** `isValid(result)` passes.
+3. On any failure (throw, timeout, unreachable probe, `isValid` false) — wait a
+   short backoff and **retry once**.
+4. If the retry also fails → cell `FAIL` with the retry's reason.
+5. A `429`/rate-limit response on both attempts → cell `SKIPPED (rate-limited)`,
+   **not** `FAIL` (throttling ≠ dead source).
+
+This means only **sustained** failure alarms; a single dropped request self-heals.
 
 ## Outputs
 
@@ -147,7 +179,7 @@ acs-demographics (community) FAIL FAIL FAIL FAIL FAIL   FAIL
 
 1 FAIL · N INFO · M PASS · K SKIPPED        exit 1
 ```
-Legend: `OK` valid · `FAIL` invalid/unreachable · `--` skipped/expected-empty.
+Legend: `OK` valid · `FAIL` invalid/unreachable (after retry) · `--` skipped (no key / deferred / rate-limited / expected-empty).
 A failing cell prints its reason beneath the matrix (HTTP status, thrown message,
 or "isValid returned false").
 
@@ -160,12 +192,29 @@ the scheduled workflow to upload as an artifact.
 - `1` — at least one source FAILed, OR geocoding failed for all addresses, OR a
   fatal harness error.
 
-## Edge cases
+## CI workflow & notification
+
+`.github/workflows/verify-sources.yml` — **separate** from `ci.yml`:
+
+- Triggers: `schedule` (cron — weekly, Mon 06:00 UTC placeholder) + `workflow_dispatch`.
+  **Never** `push`/`pull_request`.
+- Steps: checkout → setup-node → `npm ci` → `npm run verify:sources -- --json`,
+  uploading the JSON as a run artifact.
+- Secrets: the `config.js` keys as repo secrets (`GOOGLE_MAPS_API_KEY` +
+  optionals). Missing secrets → those sources `SKIPPED (no key)`, never FAIL —
+  the run stays green and honest when secrets are partial.
+- **Notification on FAIL** — a monitor nobody sees is decorative. On a failing run
+  (exit 1) the workflow **opens or updates a single GitHub issue** (labelled e.g.
+  `source-health`, de-duped by a stable title) with the failing sources + reasons,
+  and closes/comments it when a later run goes green. This is the visible alert
+  path; GitHub's default cron-failure email is the fallback, not the primary.
 
 | Case | Behavior |
 |------|----------|
-| Source throws | cell = FAIL, reason = error message |
-| Source times out | cell = FAIL (AbortSignal in the module fetcher), reason = timeout |
+| Transient failure (throw/timeout) then success on retry | cell = OK (flap tolerance self-heals) |
+| Source throws on both attempts | cell = FAIL, reason = error message |
+| Source times out on both attempts | cell = FAIL (AbortSignal in the module fetcher), reason = timeout |
+| `429` / rate-limited on both attempts | cell = SKIPPED (rate-limited), not FAIL |
 | `coverage:'some'` empty at all 5 | source verdict FAIL |
 | `coverage:'some'` empty at 1–4 | source verdict INFO (exit-neutral) |
 | `coverage:'all'` empty at ≥1 | source verdict FAIL |
@@ -191,15 +240,24 @@ the scheduled workflow to upload as an artifact.
    Neither produces FAIL.
 5. A separate workflow `.github/workflows/verify-sources.yml` runs on `schedule`
    (cron) + `workflow_dispatch` only — not on push/PR — with the config keys wired
-   as repo secrets.
-6. `tests/verify-sources.test.js` (Jest, mocked results — no live calls) covers the
+   as repo secrets, and **opens/updates a `source-health` GitHub issue on FAIL**
+   (closes/comments on recovery).
+6. **Flap tolerance**: every cell retries once before being scored `FAIL`; a
+   transient failure that succeeds on retry reads `OK`.
+7. **Per-provider concurrency**: calls are bounded per upstream provider so a
+   `429` is not produced by the harness's own parallelism; a sustained `429` →
+   `SKIPPED (rate-limited)`, never `FAIL`.
+8. **Liveness, not cached**: the harness bypasses caches so `run`/`probe` hit the
+   network; `probe` URLs are built from `constants.js`, not hardcoded.
+9. `tests/verify-sources.test.js` (Jest, mocked results — no live calls) covers the
    verdict engine: coverage:'all' dead-at-one → FAIL; coverage:'some' dead-at-all →
    FAIL; coverage:'some' partial → INFO; thrown → FAIL; missing key → SKIPPED;
-   deferred → SKIPPED; probe-unreachable-but-payload-empty → FAIL. Plus a structural
-   test that every module exports a valid SOURCES (and swallow-to-empty ones carry a probe).
-7. Pure verdict logic lives in its own module (e.g. `scripts/lib/verdict.js`) so it
-   is unit-testable without the harness I/O.
-8. No business rules or HTML in the harness; it only reads descriptors and reports.
+   deferred → SKIPPED; rate-limited → SKIPPED; transient-then-retry-OK → OK;
+   probe-unreachable-but-payload-empty → FAIL. Plus a structural test that every
+   module exports a valid SOURCES (and swallow-to-empty ones carry a probe).
+10. Pure verdict logic lives in its own module (e.g. `scripts/lib/verdict.js`) so it
+    is unit-testable without the harness I/O.
+11. No business rules or HTML in the harness; it only reads descriptors and reports.
 
 ## Out of scope
 
