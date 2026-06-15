@@ -21,6 +21,7 @@ class Cache {
   }
 
   get(key) {
+    if (process.env.LIVABLY_VERIFY === '1') return null;
     const file = this._filePath(key);
     if (!fs.existsSync(file)) return null;
     try {
@@ -36,6 +37,7 @@ class Cache {
   }
 
   set(key, value) {
+    if (process.env.LIVABLY_VERIFY === '1') return;
     const file = this._filePath(key);
     try {
       fs.writeFileSync(file, JSON.stringify({ value, expiresAt: Date.now() + this.ttl * 1000, createdAt: Date.now() }), 'utf8');
