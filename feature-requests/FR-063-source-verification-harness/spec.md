@@ -87,6 +87,7 @@ is the targeted down-payment.
 | `id` | yes | Unique within the module. Matrix row key (namespaced by module). |
 | `label` | yes | Display name. |
 | `coverage` | yes | `'all'` or `'some'` — drives verdict. |
+| `provider` | yes | Upstream quota domain (`google`, `noaa`, `census`, `usgs`, `fema`, `nrel`, `eia`, `airnow`, `opencharge`). Groups sources for per-provider concurrency. |
 | `requiresKey` | no | env var name. If named and blank → all addresses `SKIPPED (no key)`. |
 | `status` | no | defaults `'active'`. `'deferred'` → all addresses `SKIPPED (deferred)`. |
 | `run(ctx)` | yes | Calls the module's real fetcher with context-mapped args. |
