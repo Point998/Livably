@@ -67,6 +67,24 @@ describe('buildClimateChapterHTML', () => {
     expect(html).toMatch(/1 federal.*disaster declaration/i);
   });
 
+  // FR-065 — honest-provenance callout for the modeled-normals fallback path.
+  test('NOAA-sourced normals do NOT render the modeled-provenance callout', () => {
+    const html = buildClimateChapterHTML(baseEnv, baseHistory, locationInfo);
+    expect(html).not.toMatch(/Regional modeled climate normals/i);
+    expect(html).toMatch(/NOAA Climate Normals/); // standard NOAA source line
+  });
+
+  test('modeled normals (normalsSource=model) render the regional-provenance callout', () => {
+    const modeled = {
+      ...baseHistory,
+      climateNormals: { ...baseHistory.climateNormals, normalsSource: 'model', stationName: 'Modeled climatology (Open-Meteo, 1991–2020)' },
+    };
+    const html = buildClimateChapterHTML(baseEnv, modeled, locationInfo);
+    expect(html).toMatch(/Regional modeled climate normals/i);
+    expect(html).toMatch(/Open-Meteo/);
+    expect(html).not.toMatch(/NOAA Climate Normals/); // source line must not claim NOAA normals
+  });
+
   test('Overview omits FEMA sentence when count is 0', () => {
     const h = { ...baseHistory, femaDeclarations: { ...baseHistory.femaDeclarations, count: 0, weatherRelated: [] } };
     const html = buildClimateChapterHTML(baseEnv, h, locationInfo);

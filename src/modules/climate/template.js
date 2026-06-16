@@ -293,6 +293,15 @@ function buildTornadoTab(tornadoes, basementContext, emergencySystem) {
     <p class="prem-disclaimer">Source: NOAA Storm Events Database. Last ${CLIMATE_STORM_LOOKBACK_YEARS} years.</p>`;
 }
 
+// FR-065 — cite the actual normals source; the Open-Meteo modeled fallback fires
+// when no NOAA station has records nearby, so claiming "NOAA Climate Normals" then
+// would be inaccurate.
+function normalsSrcLabel(normals) {
+  return normals?.normalsSource && normals.normalsSource !== 'NOAA'
+    ? 'Open-Meteo modeled climate normals'
+    : 'NOAA Climate Normals';
+}
+
 function buildWinterTab(winterStorms, normals, roadPriority) {
   const daysBelow32 = normals?.annual?.daysBelow32 ?? null;
   const profileHTML = daysBelow32 !== null
@@ -318,7 +327,7 @@ function buildWinterTab(winterStorms, normals, roadPriority) {
     ${stormItems ? `<div class="climate-event-group"><div class="climate-event-group-label">Significant Winter Events</div>${stormItems}</div>` : ''}
     ${roadHTML}
     <p class="prem-narrative-body">Three actions: register for emergency alerts before move-in, know your road priority tier, stock a 72-hour power outage kit before your first winter.</p>
-    <p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>`;
+    <p class="prem-disclaimer">Source: NOAA Storm Events Database, ${normalsSrcLabel(normals)}.</p>`;
 }
 
 function buildHeatTab(heatEvents, normals) {
@@ -341,7 +350,7 @@ function buildHeatTab(heatEvents, normals) {
     ${profileHTML}
     ${heatItems ? `<div class="climate-event-group"><div class="climate-event-group-label">Heat &amp; Drought Events</div>${heatItems}</div>` : ''}
     <p class="prem-narrative-body">Service the HVAC before your first summer — $80–$150 and prevents the most common cause of cooling failure.</p>
-    <p class="prem-disclaimer">Source: NOAA Climate Normals, NOAA Storm Events Database.</p>`;
+    <p class="prem-disclaimer">Source: ${normalsSrcLabel(normals)}, NOAA Storm Events Database.</p>`;
 }
 
 function buildPreparednessTab(preparedness, county) {
@@ -397,7 +406,7 @@ function buildClimateCalendarTab(normals, stormEvents) {
   return `
     <p class="prem-narrative-body">Month-by-month profile based on ${CLIMATE_STORM_LOOKBACK_YEARS} years of county storm data and 30-year climate normals.</p>
     <div class="climate-calendar">${rows}</div>
-    <p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>`;
+    <p class="prem-disclaimer">Source: NOAA Storm Events Database, ${normalsSrcLabel(normals)}.</p>`;
 }
 
 function buildSeismicTab(seismic) {
@@ -488,6 +497,10 @@ function buildClimateResearchHTML(climateHistory) {
     </tr>`
   ).join('');
 
+  // FR-065 — normals may come from the Open-Meteo modeled fallback when no NOAA
+  // station has records nearby. Surface that honestly (regional, not station).
+  const normalsModeled = !!(climateNormals?.normalsSource && climateNormals.normalsSource !== 'NOAA');
+
   if (!eventRows && !normalRows && !watershedHTML && !seismicTableHTML) return '';
 
   return `
@@ -512,8 +525,12 @@ function buildClimateResearchHTML(climateHistory) {
           <tbody>${normalRows}</tbody>
         </table>
       </div>
+      ${normalsModeled ? '<p class="prem-disclaimer">Regional modeled climate normals (Open-Meteo) — no NOAA weather station has records near this address, so this reflects the wider area rather than a single-station reading.</p>' : ''}
     </div>` : ''}
-    ${(eventRows || normalRows) ? '<p class="prem-disclaimer">Source: NOAA Storm Events Database, NOAA Climate Normals.</p>' : ''}`;
+    ${(eventRows || normalRows) ? `<p class="prem-disclaimer">Source: ${[
+      eventRows ? 'NOAA Storm Events Database' : null,
+      normalRows ? normalsSrcLabel(climateNormals) : null,
+    ].filter(Boolean).join(', ')}.</p>` : ''}`;
 }
 
 // getTornadoTier is needed here — imported from chapters.js indirectly via the caller.
