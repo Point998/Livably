@@ -98,3 +98,33 @@ describe('evaluateCell', () => {
     expect(r.outcome).toBe('OK');
   });
 });
+
+const { runWithProviderLimit } = require('../scripts/lib/pool');
+
+describe('runWithProviderLimit', () => {
+  test('never exceeds the per-provider concurrency cap', async () => {
+    let active = 0, peak = 0;
+    const make = (provider) => ({
+      provider,
+      run: async () => {
+        active++; peak = Math.max(peak, active);
+        await new Promise((r) => setTimeout(r, 5));
+        active--; return provider;
+      },
+    });
+    const tasks = Array.from({ length: 6 }, () => make('google'));
+    const results = await runWithProviderLimit(tasks, 2);
+    expect(results).toHaveLength(6);
+    expect(peak).toBeLessThanOrEqual(2);
+  });
+
+  test('different providers run concurrently and results keep input order', async () => {
+    const order = [];
+    const tasks = [
+      { provider: 'a', run: async () => { order.push('a'); return 'a'; } },
+      { provider: 'b', run: async () => { order.push('b'); return 'b'; } },
+    ];
+    const results = await runWithProviderLimit(tasks, 1);
+    expect(results).toEqual(['a', 'b']);
+  });
+});
