@@ -99,8 +99,8 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 
 ### Track B — Data Collected (~75% → done)
 **Repair / verify first (close known holes in the current model):**
-1. **FR-062 — FCC broadband repair** — restores live internet data; designed, deferred on a human-in-the-loop FCC BDC token. See Deferred section + `feature-requests/FR-062-fcc-broadband-repair/`.
-2. **NREL per-address electric rate** — unverified (DNS-blocked from dev). Verify at deploy / clean-DNS env; HIFLD already covers the provider name.
+1. **FR-062 — FCC broadband repair** — 🅿️ **DEFERRED (re-confirmed 2026-06-16):** still blocked on the human-in-the-loop FCC BDC token. `bdc.fcc.gov` reachable (405 bare / 401 with date) but no token in `.env`; no `BDC_USERNAME`/`BDC_API_TOKEN`. FR-061 fallback = no production gap. Pick up the moment the token exists. See Deferred section + `feature-requests/FR-062-fcc-broadband-repair/`.
+2. **NREL per-address electric rate** — 🅿️ **DEPLOY-TIME ACCEPTANCE CHECK (re-confirmed 2026-06-16):** NREL still unreachable from Nathan's dev env (`developer.nrel.gov` DNS does not resolve → curl `HTTP 000`, `time_namelookup 0.0s`, even sandbox-disabled). Code is correct + shipped (`getElectricFromNREL`, `utilities/data.js`). This is a **live-verify, not a build** — run on a clean-DNS network/deploy with a real `NREL_API_KEY` and confirm the 5 test addresses return a residential rate (Georgetown→Kentucky Utilities, Bozeman→NorthWestern Energy, etc.). HIFLD already covers the provider name, so no functional gap until then.
 3. **Reachability "Daily / Reach" L3/L4 content** — currently structure-only; fill in the depth content.
 
 **Then breadth (new data — ordered by rough value; promote to an FR when picked up):**
@@ -112,7 +112,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 9. Measured internet speed (M-Lab/Ookla) → pairs with FR-062.
 
 ### Sequencing suggestion for future sessions
-**Hardening Stage 0 and A2 (FR-063) are both done.** Revised order: **Hardening Stage 0 → A2 (FR-063) → B1/B2 → A1 → Hardening Stage 1** (state externalization, before any B2B contract) — next up is **B1/B2** (FR-062 FCC broadband repair + NREL per-address electric rate verification). Track B breadth items follow one FR at a time as upside. *(Prior note was A2 → B1/B2 → A1, pre-NR-004.)*
+**Hardening Stage 0, A2 (FR-063), and the B1/B2 attempt are now behind us.** **B1/B2 are both DEFERRED on human-in-the-loop blockers** (2026-06-16 discovery: FR-062 needs the FCC BDC token; NREL is a deploy-time live-verify, still DNS-unreachable from dev). Neither is buildable in the current environment — see Track B items 1–2. Revised order: **Hardening Stage 0 → A2 (FR-063) → ~~B1/B2~~ (deferred) → A1 → Hardening Stage 1** (state externalization, before any B2B contract) — **next up is A1** (extend the FR-060 primary→fallback→graceful-link resilience pattern to other single-source modules: NOAA climate, USDA soil, Google in health/reachability). Track B breadth items follow one FR at a time as upside. *(Prior note was A2 → B1/B2 → A1, pre-NR-004.)*
 
 ---
 
