@@ -357,6 +357,26 @@ async function getClimateHistoryData(lat, lng, locationInfo, fips) {
   };
 }
 
+const SOURCES = [
+  { id: 'noaa-normals', label: 'NOAA CDO 30-yr normals', provider: 'noaa', coverage: 'all', requiresKey: 'NOAA_CDO_API_KEY',
+    run: (ctx) => getNOAAClimateNormals(ctx.lat, ctx.lng),
+    isValid: (r) => Array.isArray(r?.monthly) && r.monthly.length === 12 },
+  { id: 'fema-declarations', label: 'FEMA disaster declarations', provider: 'fema', coverage: 'some',
+    run: (ctx) => getFEMADeclarations(ctx.state, ctx.county),
+    isValid: (r) => Array.isArray(r),
+    probe: async () => { const resp = await fetch(`${FEMA_DECLARATIONS_URL}?$top=1&$format=json`, { signal: AbortSignal.timeout(8000), headers: { Accept: 'application/json' } }); return resp.status; } },
+  { id: 'usgs-elevation', label: 'USGS elevation (watershed context)', provider: 'usgs', coverage: 'all',
+    run: (ctx) => getWatershedContext(ctx.lat, ctx.lng),
+    isValid: (r) => Array.isArray(r?.elevations) && r.elevations.length > 0 },
+  { id: 'usgs-watershed', label: 'USGS WBD named watershed', provider: 'usgs', coverage: 'some',
+    run: (ctx) => getNamedWatershed(ctx.lat, ctx.lng),
+    isValid: (r) => typeof r?.huc12Name === 'string',
+    probe: async (ctx) => { const params = new URLSearchParams({ geometry: `${ctx.lng},${ctx.lat}`, geometryType: 'esriGeometryPoint', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', outFields: 'name', returnGeometry: 'false', f: 'json' }); const resp = await fetch(`${WBD_BASE}/6/query?${params}`, { signal: AbortSignal.timeout(8000) }); return resp.status; } },
+  { id: 'usgs-seismic', label: 'USGS ASCE seismic design', provider: 'usgs', coverage: 'all',
+    run: (ctx) => getSeismicHazard(ctx.lat, ctx.lng),
+    isValid: (r) => typeof r?.pga === 'number' },
+];
+
 module.exports = {
   getClimateHistoryData,
   getNOAAClimateNormals,
@@ -371,4 +391,6 @@ module.exports = {
   getLastSignificantEvent,
   computeRarityStatement,
   classifyTopographicPosition,
+  WBD_BASE,
+  SOURCES,
 };

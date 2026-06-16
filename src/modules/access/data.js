@@ -143,4 +143,10 @@ async function findNearestHighwayOnRamp(originLatLng) {
   return result;
 }
 
-module.exports = { findNearestHighwayOnRamp };
+const SOURCES = [
+  { id: 'google-geocode-highway', label: 'Google geocode + distance matrix (highway access)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestHighwayOnRamp(`${ctx.lat},${ctx.lng}`),
+    isValid: (r) => typeof r?.name === 'string' && typeof r?.driveTimeMinutes === 'number' },
+];
+
+module.exports = { findNearestHighwayOnRamp, SOURCES };

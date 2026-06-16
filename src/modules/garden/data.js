@@ -19,6 +19,8 @@ const {
   getMonarchCorridorInfo, getFireflyHabitat,
 } = require('./logic');
 
+const INAT_SPECIES_COUNTS_URL = 'https://api.inaturalist.org/v1/observations/species_counts';
+
 async function getHardinessZone(zip) {
   if (!zip) return null;
   try {
@@ -53,7 +55,7 @@ async function iNatSpeciesCounts(lat, lng, radiusKm, taxonId, flags, perPage) {
     });
     if (flags.native)     params.set('native', 'true');
     if (flags.introduced) params.set('introduced', 'true');
-    const resp = await fetch(`https://api.inaturalist.org/v1/observations/species_counts?${params}`, {
+    const resp = await fetch(`${INAT_SPECIES_COUNTS_URL}?${params}`, {
       signal: AbortSignal.timeout(12000),
       headers: { Accept: 'application/json' },
     });
@@ -77,7 +79,7 @@ async function iNatSeasonalBirds(lat, lng, months) {
       order_by: 'count',
       months,
     });
-    const resp = await fetch(`https://api.inaturalist.org/v1/observations/species_counts?${params}`, {
+    const resp = await fetch(`${INAT_SPECIES_COUNTS_URL}?${params}`, {
       signal: AbortSignal.timeout(12000),
       headers: { Accept: 'application/json' },
     });
@@ -160,6 +162,19 @@ async function getGardenData(lat, lng, locationInfo) {
   };
 }
 
+const SOURCES = [
+  { id: 'phzm-hardiness', label: 'PHZMapi.org plant hardiness zone', provider: 'phzmapi', coverage: 'all',
+    run: (ctx) => { const zip = (ctx.address || '').match(/\b(\d{5})\b/)?.[1]; return getHardinessZone(zip || null); },
+    isValid: (r) => r !== null && typeof r?.zone === 'string' && r.zone.length > 0 },
+  { id: 'inaturalist', label: 'iNaturalist species counts', provider: 'inaturalist', coverage: 'some',
+    run: (ctx) => iNatSpeciesCounts(ctx.lat, ctx.lng, INAT_NATIVE_PLANTS_RADIUS_KM, 47126, { native: true }, INAT_NATIVE_PLANTS_PER_PAGE),
+    isValid: (r) => Array.isArray(r) && r.length > 0,
+    probe: async (ctx) => { const params = new URLSearchParams({ lat: ctx.lat.toFixed(4), lng: ctx.lng.toFixed(4), radius: INAT_NATIVE_PLANTS_RADIUS_KM, taxon_id: 47126, per_page: 1 }); const resp = await fetch(`${INAT_SPECIES_COUNTS_URL}?${params}`, { signal: AbortSignal.timeout(8000), headers: { Accept: 'application/json' } }); return resp.status; } },
+  { id: 'usgs-elevation-garden', label: 'USGS elevation (garden microclimate)', provider: 'usgs', coverage: 'all',
+    run: (ctx) => getMicroclimateData(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && r.lat != null },
+];
+
 module.exports = {
   getGardenData,
   getHardinessZone,
@@ -178,4 +193,6 @@ module.exports = {
   categorizePlantsByForm,
   getMonarchCorridorInfo,
   getFireflyHabitat,
+  INAT_SPECIES_COUNTS_URL,
+  SOURCES,
 };
