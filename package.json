@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node src/app.js",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "verify:sources": "node scripts/verify-sources.js"
   },
   "jest": {
     "testEnvironment": "node",
