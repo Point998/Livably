@@ -10,6 +10,7 @@ const {
   DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M,
 } = require('../../utils/constants');
 const { calcPermitPercentChange, classifyPermitTrend } = require('./logic');
+const { googlePlacesProbe } = require('../../shared/google/probe');
 
 // ── FR-025: Growth & Development ─────────────────────────────────────────────
 
@@ -137,11 +138,14 @@ const SOURCES = [
     isValid: (r) => r !== null && typeof r?.newConstructionPct === 'number' },
   { id: 'google-places-development', label: 'Google Places nearby (commercial development)', provider: 'google', coverage: 'some',
     run: (ctx) => getRecentDevelopmentActivity(ctx.lat, ctx.lng),
-    isValid: (r) => Array.isArray(r) && r.length > 0,
-    probe: async (ctx) => { const { googleMapsApiKey } = require('../../shared/google/client'); const resp = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${ctx.lat},${ctx.lng}&radius=1000&type=restaurant&key=${googleMapsApiKey}`, { signal: AbortSignal.timeout(8000) }); return resp.status; } },
+    // Swallow-to-empty (Promise.allSettled → [] on total failure); probe gates
+    // reachability, so isValid accepts an empty (no nearby development) result.
+    isValid: (r) => Array.isArray(r),
+    probe: googlePlacesProbe },
   { id: 'google-news-rss', label: 'Google News RSS (development news)', provider: 'google-news', coverage: 'some',
     run: (ctx) => discoverDevelopments(ctx.county?.replace(/\s+County\s*$/i, '') || ctx.state, ctx.state),
-    isValid: (r) => Array.isArray(r) && r.length > 0,
+    // News results are legitimately empty for many areas; probe gates reachability.
+    isValid: (r) => Array.isArray(r),
     probe: async (ctx) => { const q = encodeURIComponent(`"${ctx.state}" development construction`); const resp = await fetch(`${GOOGLE_NEWS_RSS_URL}?q=${q}&hl=en-US&gl=US&ceid=US:en`, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Livably/1.0' } }); return resp.status; } },
 ];
 

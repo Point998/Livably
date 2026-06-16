@@ -4,6 +4,7 @@ const { googleMapsClient, googleMapsApiKey } = require('../../shared/google/clie
 const { haversineDistance } = require('../../utils/geo');
 const { WALKABILITY_SEARCH_RADIUS_M, WALK_TYPES } = require('../../utils/constants');
 const { getWalkCategory } = require('./logic');
+const { googlePlacesProbe } = require('../../shared/google/probe');
 
 // ── FR-021: Walkability Score (proxy via Google Places) ───────────────────────
 
@@ -47,8 +48,11 @@ async function getWalkabilityScore(lat, lng) {
 const SOURCES = [
   { id: 'google-places-walkability', label: 'Google Places (walkability score proxy)', provider: 'google', coverage: 'some',
     run: (ctx) => getWalkabilityScore(ctx.lat, ctx.lng),
-    isValid: (r) => r !== null && typeof r?.score === 'number' && r.destinations.length > 0,
-    probe: async (ctx) => { const { googleMapsApiKey } = require('../../shared/google/client'); const resp = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${ctx.lat},${ctx.lng}&radius=1000&type=restaurant&key=${googleMapsApiKey}`, { signal: AbortSignal.timeout(8000) }); return resp.status; } },
+    // Swallow-to-empty: getWalkabilityScore always returns a well-formed object
+    // (score 0, destinations []) even if Places is down — so isValid only checks
+    // shape; the probe gates reachability. A zero-walkability rural area is valid.
+    isValid: (r) => r !== null && typeof r?.score === 'number' && Array.isArray(r?.destinations),
+    probe: googlePlacesProbe },
 ];
 
 module.exports = { getWalkabilityScore, SOURCES };

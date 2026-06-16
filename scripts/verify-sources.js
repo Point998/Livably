@@ -1,7 +1,7 @@
 'use strict';
 // Live verification: bypass caches BEFORE anything loads the cache module.
 process.env.LIVABLY_VERIFY = '1';
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const path = require('path');
 const TEST_ADDRESSES = require('./lib/testAddresses');
@@ -19,7 +19,18 @@ async function main() {
   const contexts = await resolveContexts(TEST_ADDRESSES);
   const usable = contexts.filter((c) => !c.error);
   if (usable.length === 0) {
-    console.error('All addresses failed to geocode — cannot verify sources.');
+    // Still emit a valid JSON object in --json mode so the CI workflow's
+    // JSON.parse never throws (the failure is conveyed via exitCode + addresses).
+    if (asJson) {
+      console.log(JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        addresses: contexts.map((c) => ({ address: c.address, error: c.error || null })),
+        sources: [],
+        exitCode: 1,
+      }, null, 2));
+    } else {
+      console.error('All addresses failed to geocode — cannot verify sources.');
+    }
     process.exit(1);
   }
 

@@ -22,7 +22,7 @@ jobs:
         id: verify
         run: |
           set +e   # don't let bash -e abort before we capture the exit code
-          npm run verify:sources -- --json > source-health.json
+          node scripts/verify-sources.js --json > source-health.json   # node direct: no npm banner polluting the JSON
           echo "exit=$?" >> "$GITHUB_OUTPUT"
         env:
           GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}

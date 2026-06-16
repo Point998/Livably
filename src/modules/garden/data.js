@@ -168,7 +168,9 @@ const SOURCES = [
     isValid: (r) => r !== null && typeof r?.zone === 'string' && r.zone.length > 0 },
   { id: 'inaturalist', label: 'iNaturalist species counts', provider: 'inaturalist', coverage: 'some',
     run: (ctx) => iNatSpeciesCounts(ctx.lat, ctx.lng, INAT_NATIVE_PLANTS_RADIUS_KM, 47126, { native: true }, INAT_NATIVE_PLANTS_PER_PAGE),
-    isValid: (r) => Array.isArray(r) && r.length > 0,
+    // Swallow-to-empty: iNat fetchers return [] for both no-data and error;
+    // probe gates reachability, so isValid accepts an empty species list.
+    isValid: (r) => Array.isArray(r),
     probe: async (ctx) => { const params = new URLSearchParams({ lat: ctx.lat.toFixed(4), lng: ctx.lng.toFixed(4), radius: INAT_NATIVE_PLANTS_RADIUS_KM, taxon_id: 47126, per_page: 1 }); const resp = await fetch(`${INAT_SPECIES_COUNTS_URL}?${params}`, { signal: AbortSignal.timeout(8000), headers: { Accept: 'application/json' } }); return resp.status; } },
   { id: 'usgs-elevation-garden', label: 'USGS elevation (garden microclimate)', provider: 'usgs', coverage: 'all',
     run: (ctx) => getMicroclimateData(ctx.lat, ctx.lng),
