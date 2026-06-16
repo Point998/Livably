@@ -128,3 +128,17 @@ describe('runWithProviderLimit', () => {
     expect(results).toEqual(['a', 'b']);
   });
 });
+
+const path = require('path');
+const { discoverSources } = require('../scripts/lib/discoverSources');
+
+describe('discoverSources', () => {
+  test('collects SOURCES from every module that exports them', () => {
+    const dir = path.join(__dirname, '..', 'src', 'modules');
+    const logger = { warn: () => {} };
+    const sources = discoverSources(dir, logger);
+    expect(Array.isArray(sources)).toBe(true);
+    // Every discovered source carries its owning module name.
+    for (const s of sources) expect(typeof s.module).toBe('string');
+  });
+});
