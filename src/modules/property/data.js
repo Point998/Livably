@@ -81,52 +81,65 @@ async function getSoilData(lat, lng) {
   }
 }
 
-async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
-  const [soilRes, acsRes] = await Promise.allSettled([
-    getSoilData(lat, lng),
-    fips
-      ? fetchCensusACS(fips, [
-          'B25035_001E',
-          'B25034_001E', 'B25034_002E', 'B25034_003E',
-          'B25034_004E', 'B25034_005E', 'B25034_006E', 'B25034_007E',
-          'B25034_008E', 'B25034_009E', 'B25034_010E', 'B25034_011E',
-        ])
-      : Promise.resolve(null),
-  ]);
-
-  const soil = soilRes.status === 'fulfilled' ? soilRes.value : null;
-  const acs  = acsRes.status  === 'fulfilled' ? acsRes.value  : null;
-
-  let era = null;
-  if (acs) {
+async function getHousingVintageData(fips) {
+  if (!fips) return null;
+  try {
+    const acs = await fetchCensusACS(fips, [
+      'B25035_001E',
+      'B25034_001E', 'B25034_002E', 'B25034_003E',
+      'B25034_004E', 'B25034_005E', 'B25034_006E', 'B25034_007E',
+      'B25034_008E', 'B25034_009E', 'B25034_010E', 'B25034_011E',
+    ]);
+    if (!acs) return null;
     const medianYear  = parseInt(acs.get('B25035_001E'), 10);
     const total       = safeInt(acs.get('B25034_001E')) || 1;
     const post2014    = safeInt(acs.get('B25034_002E'));
     const post2010    = post2014 + safeInt(acs.get('B25034_003E'));
-    era = {
-      medianYearBuilt:   isNaN(medianYear) ? null : medianYear,
+    return {
+      medianYearBuilt:    isNaN(medianYear) ? null : medianYear,
       newConstructionPct: Math.round(post2010 / total * 100),
-      context:           getConstructionEraContext(isNaN(medianYear) ? null : medianYear),
+      housingAgeBands:    buildHousingAgeBands((k) => acs.get(k)),
     };
+  } catch (err) {
+    console.error('[Census ACS housing vintage]', err.message);
+    return null;
   }
+}
 
-  const housingAgeBands = acs ? buildHousingAgeBands((k) => acs.get(k)) : null;
+async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
+  const [soilRes, acsRes] = await Promise.allSettled([
+    getSoilData(lat, lng),
+    getHousingVintageData(fips),
+  ]);
 
-  return { soil, era, housingAgeBands, locationInfo };
+  const soil    = soilRes.status === 'fulfilled' ? soilRes.value : null;
+  const vintage = acsRes.status  === 'fulfilled' ? acsRes.value  : null;
+
+  return {
+    soil,
+    era: vintage ? {
+      medianYearBuilt:    vintage.medianYearBuilt,
+      newConstructionPct: vintage.newConstructionPct,
+      context:            getConstructionEraContext(vintage.medianYearBuilt),
+    } : null,
+    housingAgeBands: vintage?.housingAgeBands ?? null,
+    locationInfo,
+  };
 }
 
 const SOURCES = [
   { id: 'usda-soil', label: 'USDA Soil Data Access (SDA)', provider: 'usda', coverage: 'some',
     run: (ctx) => getSoilData(ctx.lat, ctx.lng),
     isValid: (r) => r !== null && typeof r?.drainagecl === 'string' },
-  { id: 'census-acs-property', label: 'Census ACS5 housing vintage + construction era', provider: 'census', coverage: 'all', requiresKey: 'CENSUS_API_KEY',
-    run: (ctx) => getPropertyIntelligence(ctx.lat, ctx.lng, ctx.fips, { state: ctx.state, county: ctx.county }),
-    isValid: (r) => r !== null && r?.era !== null && typeof r?.era?.medianYearBuilt === 'number' },
+  { id: 'census-acs-property', label: 'Census ACS5 housing vintage (median year built + age bands)', provider: 'census', coverage: 'all', requiresKey: 'CENSUS_API_KEY',
+    run: (ctx) => getHousingVintageData(ctx.fips),
+    isValid: (r) => r !== null && typeof r?.medianYearBuilt === 'number' && r.medianYearBuilt > 1700 && r.medianYearBuilt < 2100 },
 ];
 
 module.exports = {
   getPropertyData,
   getPropertyIntelligence,
+  getHousingVintageData,
   getSoilData,
   getDrainageCategory,
   getConstructionEraContext,
