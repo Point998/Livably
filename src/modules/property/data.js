@@ -115,10 +115,20 @@ async function getPropertyIntelligence(lat, lng, fips, locationInfo) {
   return { soil, era, housingAgeBands, locationInfo };
 }
 
+const SOURCES = [
+  { id: 'usda-soil', label: 'USDA Soil Data Access (SDA)', provider: 'usda', coverage: 'some',
+    run: (ctx) => getSoilData(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.drainagecl === 'string' },
+  { id: 'census-acs-property', label: 'Census ACS5 housing vintage + construction era', provider: 'census', coverage: 'all', requiresKey: 'CENSUS_API_KEY',
+    run: (ctx) => getPropertyIntelligence(ctx.lat, ctx.lng, ctx.fips, { state: ctx.state, county: ctx.county }),
+    isValid: (r) => r !== null && r?.era !== null && typeof r?.era?.medianYearBuilt === 'number' },
+];
+
 module.exports = {
   getPropertyData,
   getPropertyIntelligence,
   getSoilData,
   getDrainageCategory,
   getConstructionEraContext,
+  SOURCES,
 };
