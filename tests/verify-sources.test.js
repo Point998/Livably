@@ -142,3 +142,36 @@ describe('discoverSources', () => {
     for (const s of sources) expect(typeof s.module).toBe('string');
   });
 });
+
+describe('SOURCES contract (every module)', () => {
+  const dir = path.join(__dirname, '..', 'src', 'modules');
+  const all = discoverSources(dir, { warn: () => {} });
+
+  test('at least one module exports SOURCES', () => {
+    expect(all.length).toBeGreaterThan(0);
+  });
+
+  test.each(all.map((s) => [`${s.module}/${s.id}`, s]))('descriptor %s is well-formed', (_label, s) => {
+    expect(typeof s.id).toBe('string');
+    expect(typeof s.label).toBe('string');
+    expect(typeof s.provider).toBe('string');
+    expect(['all', 'some']).toContain(s.coverage);
+    expect(typeof s.run).toBe('function');
+    expect(typeof s.isValid).toBe('function');
+    if (s.probe !== undefined) expect(typeof s.probe).toBe('function');
+    if (s.status !== undefined) expect(['active', 'deferred']).toContain(s.status);
+    if (s.requiresKey !== undefined) expect(typeof s.requiresKey).toBe('string');
+  });
+
+  test('source ids are unique within each module', () => {
+    const byModule = {};
+    for (const s of all) (byModule[s.module] ||= []).push(s.id);
+    for (const [mod, ids] of Object.entries(byModule)) {
+      const uniqueCount = new Set(ids).size;
+      if (uniqueCount !== ids.length) {
+        throw new Error(`Duplicate source id found in module "${mod}": [${ids.join(', ')}]`);
+      }
+      expect(uniqueCount).toBe(ids.length);
+    }
+  });
+});
