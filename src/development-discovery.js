@@ -17,6 +17,8 @@ const {
 
 const CACHE_DIR = path.join(__dirname, '..', '.cache', 'development-intel');
 
+const GOOGLE_NEWS_RSS_URL = 'https://news.google.com/rss/search';
+
 
 const DEFAULT_IMPACT = {
   'Grocery Store':           'Adds a new full-service grocery option — expands shopping choices and may reduce drive times for routine errands.',
@@ -219,7 +221,7 @@ const SEARCH_TEMPLATES = [
 ];
 
 async function fetchRSS(query) {
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const url = `${GOOGLE_NEWS_RSS_URL}?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Livably/1.0 (residential address intelligence; not for commercial redistribution)' },
     signal:  AbortSignal.timeout(12000),
@@ -337,4 +339,4 @@ async function discoverDevelopments(city, state, { forceRefresh = false } = {}) 
   return discovered;
 }
 
-module.exports = { discoverDevelopments };
+module.exports = { discoverDevelopments, GOOGLE_NEWS_RSS_URL };

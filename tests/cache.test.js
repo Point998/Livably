@@ -31,3 +31,17 @@ describe('Cache namespace isolation (prefix collision)', () => {
     expect(inner.stats()).toBe(2); // only inner's own files
   });
 });
+
+describe('LIVABLY_VERIFY cache bypass', () => {
+  const { Cache } = require('../src/cache');
+  afterEach(() => { delete process.env.LIVABLY_VERIFY; });
+
+  test('get returns null and set is a no-op when LIVABLY_VERIFY=1', () => {
+    const c = new Cache('verifytest', 3600);
+    process.env.LIVABLY_VERIFY = '1';
+    c.set('k', { v: 1 });        // no-op
+    expect(c.get('k')).toBeNull(); // bypassed read
+    delete process.env.LIVABLY_VERIFY;
+    expect(c.get('k')).toBeNull(); // confirms nothing was written
+  });
+});

@@ -800,11 +800,19 @@ const UTILITIES_CELL_TTL_DAYS = 30;
 // point-query fallback for electric provider + ownership when NREL is down.
 const HIFLD_TERRITORIES_URL = 'https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arcgis/rest/services/Electric_Retail_Service_Territories_HIFLD/FeatureServer/0';
 
+// FR-063: Google Places Nearby Search endpoint — used only by the source-
+// verification harness's reachability probe (the runtime fetchers use the
+// googleMapsClient SDK, which has no URL constant). Centralised here so the
+// probe never duplicates the literal.
+const GOOGLE_PLACES_NEARBY_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
   // FR-060 Resilient Utilities fallback
   HIFLD_TERRITORIES_URL,
+  // FR-063 source-verification probe
+  GOOGLE_PLACES_NEARBY_URL,
   // Search radii
   GROCERY_SEARCH_RADIUS_M,
   HOSPITAL_SEARCH_RADIUS_M,

@@ -142,4 +142,16 @@ async function findNearestGasStation(originLatLng, cell = null) {
   return result;
 }
 
-module.exports = { findNearestGrocery, findNearestPharmacy, findNearestGasStation };
+const SOURCES = [
+  { id: 'google-places-grocery', label: 'Google Places (nearest grocery stores)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestGrocery(`${ctx.lat},${ctx.lng}`, 'suburban', null),
+    isValid: (r) => Array.isArray(r) && r.length > 0 && typeof r[0]?.driveTimeMinutes === 'number' },
+  { id: 'google-places-pharmacy', label: 'Google Places (nearest pharmacy)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestPharmacy(`${ctx.lat},${ctx.lng}`, null),
+    isValid: (r) => r !== null && typeof r?.driveTimeMinutes === 'number' },
+  { id: 'google-places-gas', label: 'Google Places (nearest gas station)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestGasStation(`${ctx.lat},${ctx.lng}`, null),
+    isValid: (r) => r !== null && typeof r?.driveTimeMinutes === 'number' },
+];
+
+module.exports = { findNearestGrocery, findNearestPharmacy, findNearestGasStation, SOURCES };

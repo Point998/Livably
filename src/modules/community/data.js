@@ -128,6 +128,12 @@ async function getDemographics(lat, lng, fips) {
   }
 }
 
+const SOURCES = [
+  { id: 'census-acs-demographics', label: 'Census ACS5 demographics', provider: 'census', coverage: 'all', requiresKey: 'CENSUS_API_KEY',
+    run: (ctx) => getDemographics(ctx.lat, ctx.lng, ctx.fips),
+    isValid: (r) => r !== null && typeof r?.totalPop === 'number' && r.totalPop > 0 },
+];
+
 module.exports = {
   getDemographics,
   getIncomeLevel,
@@ -140,4 +146,5 @@ module.exports = {
   buildHouseholdComposition,
   buildCommuteMode,
   buildTractFips,
+  SOURCES,
 };

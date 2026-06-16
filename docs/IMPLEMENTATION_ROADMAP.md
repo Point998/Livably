@@ -60,7 +60,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 
 ### Track A — Structure / Architecture (~90% → done)
 1. **Extend the FR-060 resilience pattern** (primary → fallback → graceful link) beyond Utilities to other single-source modules — each lone API (NOAA climate, USDA soil, Google in health/reachability, etc.) is a single point of failure today. *Highest structural value.*
-2. **Source-verification harness** — a repeatable check that each live source returns real data for the 5 test addresses. The FCC 405 and NREL DNS failures both hid behind graceful fallbacks; we want dead sources surfaced, not silently masked. *(Designed as FR-063; now sequenced behind Hardening Stage 0 — CI is what turns this into a scheduled monitor. See Hardening Track.)*
+2. **Source-verification harness** — ✅ **DONE, shipped as FR-063.** `npm run verify:sources` discovers a `SOURCES` descriptor per module's `data.js` (41 descriptors across all 14 modules), runs each live against the 5 test addresses with flap tolerance (retry-once) and a per-provider concurrency cap, and renders a module × source verdict matrix (PASS/FAIL/INFO/SKIPPED). A scheduled `.github/workflows/verify-sources.yml` monitor (Mondays + manual dispatch) runs it in CI and opens/updates/closes a GitHub issue on FAIL. See `feature-requests/FR-063-source-verification-harness/summary.md`.
 3. **Production hardening** — now its own first-class workstream with teeth + ordering. **See the Hardening Track below (NR-004).**
 
 ---
@@ -112,7 +112,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 9. Measured internet speed (M-Lab/Ookla) → pairs with FR-062.
 
 ### Sequencing suggestion for future sessions
-**Hardening Stage 0 now leads** (NR-004): it's ~1 day, it's the cheapest enterprise-grade win available, and CI is what turns A2/FR-063 into a scheduled monitor instead of a manual script. Revised order: **Hardening Stage 0 → A2 (FR-063) → B1/B2 → A1 → Hardening Stage 1** (state externalization, before any B2B contract). Track B breadth items follow one FR at a time as upside. *(Prior note was A2 → B1/B2 → A1, pre-NR-004.)*
+**Hardening Stage 0 and A2 (FR-063) are both done.** Revised order: **Hardening Stage 0 → A2 (FR-063) → B1/B2 → A1 → Hardening Stage 1** (state externalization, before any B2B contract) — next up is **B1/B2** (FR-062 FCC broadband repair + NREL per-address electric rate verification). Track B breadth items follow one FR at a time as upside. *(Prior note was A2 → B1/B2 → A1, pre-NR-004.)*
 
 ---
 

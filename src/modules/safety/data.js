@@ -39,8 +39,15 @@ async function getEmergencyServices(lat, lng, originLatLng) {
   return { police, fire };
 }
 
+const SOURCES = [
+  { id: 'google-places-safety', label: 'Google Places (police + fire stations)', provider: 'google', coverage: 'all',
+    run: (ctx) => getEmergencyServices(ctx.lat, ctx.lng, `${ctx.lat},${ctx.lng}`),
+    isValid: (r) => r !== null && (r?.police !== null || r?.fire !== null) },
+];
+
 module.exports = {
   getEmergencyServices,
   getSafetyLocationContext,
   estimateResponseTime,
+  SOURCES,
 };

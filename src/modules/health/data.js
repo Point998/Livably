@@ -268,4 +268,19 @@ async function getHealthcareDepth(hospital, locationInfo) {
   };
 }
 
-module.exports = { findNearestHospital, findNearestUrgentCare, getCMSHospitalType, getPrimaryCareCount, getHealthcareDepth };
+const SOURCES = [
+  { id: 'google-places-hospital', label: 'Google Places (nearest hospital by drive time)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestHospital(`${ctx.lat},${ctx.lng}`, ctx.state, null),
+    isValid: (r) => r !== null && typeof r?.name === 'string' && typeof r?.driveTimeMinutes === 'number' },
+  { id: 'google-places-urgentcare', label: 'Google Places (nearest urgent care by drive time)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestUrgentCare(`${ctx.lat},${ctx.lng}`, ctx.state, null),
+    isValid: (r) => r !== null && typeof r?.name === 'string' && typeof r?.driveTimeMinutes === 'number' },
+  { id: 'cms-hospital-type', label: 'CMS hospital type lookup', provider: 'cms', coverage: 'some',
+    run: async (ctx) => { const zip = (ctx.address || '').match(/\b(\d{5})\b/)?.[1]; if (!zip) return null; return getCMSHospitalType(`${ctx.county || ''} ${zip}`); },
+    isValid: (r) => r !== null && typeof r?.label === 'string' },
+  { id: 'npi-primary-care', label: 'NPI Registry primary care count', provider: 'npi', coverage: 'all',
+    run: (ctx) => getPrimaryCareCount(ctx.county?.replace(/\s+County\s*$/i, '') || ctx.state, ctx.state),
+    isValid: (r) => r !== null && typeof r === 'number' },
+];
+
+module.exports = { findNearestHospital, findNearestUrgentCare, getCMSHospitalType, getPrimaryCareCount, getHealthcareDepth, SOURCES };

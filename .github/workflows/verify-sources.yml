@@ -1,0 +1,75 @@
+name: Source Health
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20.x, cache: npm }
+      - run: npm ci
+
+      - name: Run source verification
+        id: verify
+        run: |
+          set +e   # don't let bash -e abort before we capture the exit code
+          node scripts/verify-sources.js --json > source-health.json   # node direct: no npm banner polluting the JSON
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+        env:
+          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          NOAA_CDO_API_KEY:    ${{ secrets.NOAA_CDO_API_KEY }}
+          NREL_API_KEY:        ${{ secrets.NREL_API_KEY }}
+          EIA_API_KEY:         ${{ secrets.EIA_API_KEY }}
+          CENSUS_API_KEY:      ${{ secrets.CENSUS_API_KEY }}
+          AIRNOW_API_KEY:      ${{ secrets.AIRNOW_API_KEY }}
+          OPENCHARGEMAP_API_KEY: ${{ secrets.OPENCHARGEMAP_API_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with: { name: source-health, path: source-health.json }
+
+      - name: Open/update or resolve the source-health issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('source-health.json', 'utf8'));
+            const failed = report.sources.filter(s => s.verdict === 'FAIL');
+            const TITLE = 'Source health: dead data source(s) detected';
+            const { owner, repo } = context.repo;
+            const existing = (await github.rest.issues.listForRepo({
+              owner, repo, state: 'open', labels: 'source-health',
+            })).data[0];
+
+            if (failed.length === 0) {
+              if (existing) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: existing.number,
+                  body: `✅ Recovered — all sources healthy as of ${report.generatedAt} (run ${context.runId}).` });
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+              }
+              return;
+            }
+
+            const body = [
+              `Source verification FAILED at ${report.generatedAt} (run ${context.runId}).`, '',
+              ...failed.map(s => `- **${s.module}/${s.id}** → ${s.verdict}`),
+              '', 'See the `source-health` artifact for full per-address detail.',
+            ].join('\n');
+
+            if (existing) {
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ owner, repo, title: TITLE, body, labels: ['source-health'] });
+            }
+
+      - name: Fail the job if any source FAILed
+        if: steps.verify.outputs.exit != '0'
+        run: exit 1
