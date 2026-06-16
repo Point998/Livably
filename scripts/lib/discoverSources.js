@@ -6,7 +6,9 @@ const path = require('path');
 // (tagging each entry with its module). Modules without SOURCES are warned, not fatal.
 function discoverSources(modulesDir, logger = console) {
   const out = [];
-  for (const name of fs.readdirSync(modulesDir)) {
+  for (const dirent of fs.readdirSync(modulesDir, { withFileTypes: true })) {
+    if (!dirent.isDirectory()) continue;
+    const name = dirent.name;
     const dataPath = path.join(modulesDir, name, 'data.js');
     if (!fs.existsSync(dataPath)) continue;
     const mod = require(dataPath);
