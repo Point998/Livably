@@ -312,6 +312,39 @@ async function getEJScreen(lat, lng) {
   }
 }
 
+const SOURCES = [
+  { id: 'airnow-aqi', label: 'AirNow API current AQI', provider: 'airnow', coverage: 'some', requiresKey: 'AIRNOW_API_KEY',
+    run: (ctx) => getAirQuality(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.aqi === 'number' },
+  { id: 'fema-flood', label: 'FEMA NFHL flood zone', provider: 'fema', coverage: 'all',
+    run: (ctx) => getFloodRisk(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.zone === 'string' },
+  { id: 'google-places-airports', label: 'Google Places (airports within 20 miles)', provider: 'google', coverage: 'some',
+    run: (ctx) => getAirportData(ctx.lat, ctx.lng),
+    isValid: (r) => Array.isArray(r) && r.length > 0,
+    probe: async (ctx) => { const { googleMapsApiKey } = require('../../shared/google/client'); const resp = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${ctx.lat},${ctx.lng}&radius=1000&type=restaurant&key=${googleMapsApiKey}`, { signal: AbortSignal.timeout(8000) }); return resp.status; } },
+  { id: 'bts-road-noise', label: 'BTS National Transportation Noise Map (OSM fallback)', provider: 'bts', coverage: 'all',
+    run: (ctx) => getRoadNoise(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.dnl === 'number' },
+  { id: 'osm-rail', label: 'OSM Overpass rail proximity', provider: 'osm', coverage: 'some',
+    run: (ctx) => getRailProximity(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.distanceMiles === 'number',
+    probe: async (ctx) => { const base = OVERPASS_ENDPOINTS[0]; const q = encodeURIComponent(`[out:json][timeout:5];(way(around:100,${ctx.lat},${ctx.lng})["railway"~"rail"];);out 1;`); const resp = await fetch(`${base}?data=${q}`, { signal: AbortSignal.timeout(8000) }); return resp.status; } },
+  { id: 'census-acs-lightpollution', label: 'Census ACS5 population (Bortle estimate)', provider: 'census', coverage: 'all', requiresKey: 'CENSUS_API_KEY',
+    run: (ctx) => getLightPollution(ctx.lat, ctx.lng, ctx.fips),
+    isValid: (r) => r !== null && typeof r?.bortle === 'number' },
+  { id: 'osm-landuse', label: 'OSM Overpass land use (light pollution context)', provider: 'osm', coverage: 'some',
+    run: (ctx) => fetchLanduseOSM(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null,
+    probe: async (ctx) => { const base = OVERPASS_ENDPOINTS[0]; const q = encodeURIComponent(`[out:json][timeout:5];(way(around:100,${ctx.lat},${ctx.lng})["landuse"];);out 1;`); const resp = await fetch(`${base}?data=${q}`, { signal: AbortSignal.timeout(8000) }); return resp.status; } },
+  { id: 'epa-echo-water', label: 'EPA ECHO SDWIS water quality', provider: 'epa', coverage: 'some',
+    run: (ctx) => getWaterQuality(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.systemName === 'string' },
+  { id: 'epa-ejscreen', label: 'EPA EJScreen environmental indicators', provider: 'epa', coverage: 'all',
+    run: (ctx) => getEJScreen(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.superfundPct === 'number' },
+];
+
 module.exports = {
   getEnvironmentalData,
   getAirQuality,
@@ -321,9 +354,11 @@ module.exports = {
   getRoadNoise,
   getRailProximity,
   getLightPollution,
+  fetchLanduseOSM,
   getWaterQuality,
   getRadonZone,
   getEJScreen,
   getDNLCategory,
   getBortleDescription,
+  SOURCES,
 };

@@ -241,4 +241,24 @@ async function getUtilitiesData(lat, lng, originLatLng, getDriveTime, cell = nul
   return result;
 }
 
-module.exports = { getElectricFromNREL, getElectricFromHIFLD, getElectricData, getEvFromNREL, getEvFromOpenChargeMap, getEvChargingData, getBroadbandData, getUtilitiesData };
+const SOURCES = [
+  { id: 'nrel-electric-rate', label: 'NREL utility rates', provider: 'nrel', coverage: 'some', requiresKey: 'NREL_API_KEY',
+    run: (ctx) => getElectricFromNREL(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.residentialRate === 'number' && r.residentialRate > 0 },
+  { id: 'hifld-electric-territory', label: 'HIFLD electric retail service territories', provider: 'hifld', coverage: 'some',
+    run: (ctx) => getElectricFromHIFLD(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.utilityName === 'string' },
+  { id: 'nrel-ev-charging', label: 'NREL alternative fuel stations (EV charging)', provider: 'nrel', coverage: 'some', requiresKey: 'NREL_API_KEY',
+    run: (ctx) => getEvFromNREL(ctx.lat, ctx.lng, `${ctx.lat},${ctx.lng}`, async () => null, null),
+    isValid: (r) => r !== null && (r?.level2 !== null || r?.dcFast !== null) },
+  { id: 'openchargemap-ev', label: 'OpenChargeMap EV charging stations', provider: 'openchargemap', coverage: 'some', requiresKey: 'OPENCHARGEMAP_API_KEY',
+    run: (ctx) => getEvFromOpenChargeMap(ctx.lat, ctx.lng, `${ctx.lat},${ctx.lng}`, async () => null, null),
+    isValid: (r) => r !== null && (r?.level2 !== null || r?.dcFast !== null) },
+  { id: 'fcc-broadband', label: 'FCC National Broadband Map availability', provider: 'fcc', coverage: 'some',
+    // live endpoint exists but its repair is tracked by FR-062; deferred so a known-dead source doesn't make the monitor permanently red
+    status: 'deferred',
+    run: (ctx) => getBroadbandData(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && Array.isArray(r?.providers) && r.providers.length > 0 },
+];
+
+module.exports = { getElectricFromNREL, getElectricFromHIFLD, getElectricData, getEvFromNREL, getEvFromOpenChargeMap, getEvChargingData, getBroadbandData, getUtilitiesData, SOURCES };

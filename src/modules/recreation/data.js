@@ -137,4 +137,10 @@ async function findNearestPostOffice(originLatLng) {
   return result;
 }
 
-module.exports = { findNearestPark, findNearestCoffeeShop, findNearestLibrary, findNearestRecreationCenter, findNearestPostOffice };
+const SOURCES = [
+  { id: 'google-places-recreation', label: 'Google Places (park, coffee, library, rec center, post office)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestPark(`${ctx.lat},${ctx.lng}`),
+    isValid: (r) => r !== null && typeof r?.driveTimeMinutes === 'number' },
+];
+
+module.exports = { findNearestPark, findNearestCoffeeShop, findNearestLibrary, findNearestRecreationCenter, findNearestPostOffice, SOURCES };

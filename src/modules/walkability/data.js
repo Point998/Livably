@@ -44,4 +44,11 @@ async function getWalkabilityScore(lat, lng) {
   return { score, category: getWalkCategory(score), destinations, isProxy: true };
 }
 
-module.exports = { getWalkabilityScore };
+const SOURCES = [
+  { id: 'google-places-walkability', label: 'Google Places (walkability score proxy)', provider: 'google', coverage: 'some',
+    run: (ctx) => getWalkabilityScore(ctx.lat, ctx.lng),
+    isValid: (r) => r !== null && typeof r?.score === 'number' && r.destinations.length > 0,
+    probe: async (ctx) => { const { googleMapsApiKey } = require('../../shared/google/client'); const resp = await fetch(`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${ctx.lat},${ctx.lng}&radius=1000&type=restaurant&key=${googleMapsApiKey}`, { signal: AbortSignal.timeout(8000) }); return resp.status; } },
+];
+
+module.exports = { getWalkabilityScore, SOURCES };

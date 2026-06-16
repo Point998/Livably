@@ -99,4 +99,10 @@ async function findNearestElementarySchool(originLatLng, originState = '') {
   return result;
 }
 
-module.exports = { findNearestSchool, findNearestElementarySchool };
+const SOURCES = [
+  { id: 'google-places-school', label: 'Google Places (nearest school by drive time)', provider: 'google', coverage: 'all',
+    run: (ctx) => findNearestSchool(`${ctx.lat},${ctx.lng}`, ctx.state),
+    isValid: (r) => r !== null && typeof r?.driveTimeMinutes === 'number' },
+];
+
+module.exports = { findNearestSchool, findNearestElementarySchool, SOURCES };
