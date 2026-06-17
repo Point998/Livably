@@ -235,3 +235,21 @@ describe('buildSensoryEnvironmentalHTML — air traffic direction', () => {
     expect(violations).toBeNull();
   });
 });
+
+describe('buildSensoryEnvironmentalHTML — airport provenance label (FR-070)', () => {
+  test('Google-sourced airports label as Google Places', () => {
+    const html = buildSensoryEnvironmentalHTML(baseEnv);
+    expect(html).toMatch(/Google Places \(airports\)/);
+    expect(html).not.toMatch(/OpenStreetMap \(airports\)/);
+  });
+
+  test('OSM-fallback airports relabel as OpenStreetMap (honest provenance)', () => {
+    const env = {
+      ...baseEnv,
+      airports: [{ name: 'Regional Field', distanceMiles: 12.3, lat: 38.4, lng: -84.6, source: 'osm' }],
+    };
+    const html = buildSensoryEnvironmentalHTML(env);
+    expect(html).toMatch(/OpenStreetMap \(airports\)/);
+    expect(html).not.toMatch(/Google Places \(airports\)/);
+  });
+});

@@ -7,12 +7,24 @@ const {
   NON_AIRPORT_RE, AIRPORT_RE,
   AIRPORT_SEARCH_RADIUS_M, AIRPORT_MAX_DISTANCE_MILES,
   OSM_ROAD_NOISE_RADIUS_M, OSM_RAIL_RADIUS_M, OSM_LANDUSE_RADIUS_M,
+  OSM_AIRPORT_FILTERS,
   WATER_QUALITY_SEARCH_RADIUS_MILES,
 } = require('../../utils/constants');
 const { fetchOverpass } = require('../../shared/overpass');
+const { searchOSMPOIs } = require('../../shared/osmPlaces');
+const { sourceChain } = require('../../shared/sourceChain');
+const { logError } = require('../../logger');
 const { safeInt } = require('../../utils/text');
 const { getAQICategory, interpretFloodZone, estimateDNLFromRoad, getDNLCategory, estimateBortle, getBortleDescription, getRadonZone } = require('./logic');
 const { googlePlacesProbe } = require('../../shared/google/probe');
+
+// Adapter so sourceChain miss/error visibility flows through the structured
+// logger (NR-004 / FR-068 observability) and stays quiet in tests.
+const chainLog = (fn, origin) => (msg) => logError(fn, origin, new Error(msg));
+
+// `null` is a valid airport answer (no airports within range — common rural
+// outcome), so only a thrown error counts as a miss; null short-circuits the chain.
+const nullOrAirportArray = (r) => r === null || Array.isArray(r);
 
 // ── FR-027: Sensory & Environmental (supersedes FR-019) ──────────────────────
 
@@ -82,9 +94,22 @@ async function getFloodRisk(lat, lng) {
   return { zone, ...interpretFloodZone(zone) };
 }
 
-// Airport analysis (Google Places) ───────────────────────────────────────────
+// Airport analysis (Google Places → OSM cost-resilience fallback, FR-070) ─────
+// Both paths return the same straight-line (haversine) record shape — airports
+// never use Distance Matrix — so the OSM fallback is a drop-in: identical miles
+// basis, identical contract, only the provenance marker differs. `null` is a
+// legitimate Google answer (no airports in range), so it short-circuits the
+// chain; only a thrown Places error falls through to OSM.
 
 async function getAirportData(lat, lng) {
+  const picked = await sourceChain([
+    { name: 'google', run: () => getAirportDataGoogle(lat, lng), isValid: nullOrAirportArray },
+    { name: 'osm',    run: () => getAirportDataOSM(lat, lng),    isValid: nullOrAirportArray },
+  ], null, { label: 'sensory-airport', log: chainLog('getAirportData', `${lat},${lng}`) });
+  return picked ? picked.value : null;
+}
+
+async function getAirportDataGoogle(lat, lng) {
   const resp = await googleMapsClient.placesNearby({
     params: { key: googleMapsApiKey, location: `${lat},${lng}`, radius: AIRPORT_SEARCH_RADIUS_M, type: 'airport' },
   });
@@ -96,6 +121,21 @@ async function getAirportData(lat, lng) {
       lat: p.geometry.location.lat,
       lng: p.geometry.location.lng,
     }))
+    .filter((a) => a.distanceMiles <= AIRPORT_MAX_DISTANCE_MILES)
+    .sort((a, b) => a.distanceMiles - b.distanceMiles);
+  return airports.length ? airports : null;
+}
+
+// OSM fallback — aeroway=aerodrome within the airport radius. `source:'osm'`
+// is the provenance carrier the template flips its label on (NOT
+// 'osm-straightline' — Google is also straight-line here, so that would mislabel
+// both paths). Returns null on empty so the chain treats it as a valid no-result.
+async function getAirportDataOSM(lat, lng) {
+  const pois = await searchOSMPOIs(lat, lng, {
+    filters: OSM_AIRPORT_FILTERS, radiusM: AIRPORT_SEARCH_RADIUS_M, limit: 5,
+  });
+  const airports = pois
+    .map((p) => ({ name: p.name, distanceMiles: p.distanceMiles, lat: p.lat, lng: p.lng, source: 'osm' }))
     .filter((a) => a.distanceMiles <= AIRPORT_MAX_DISTANCE_MILES)
     .sort((a, b) => a.distanceMiles - b.distanceMiles);
   return airports.length ? airports : null;
@@ -303,12 +343,17 @@ const SOURCES = [
     run: (ctx) => getFloodRisk(ctx.lat, ctx.lng),
     isValid: (r) => r !== null && typeof r?.zone === 'string' },
   { id: 'google-places-airports', label: 'Google Places (airports within 20 miles)', provider: 'google', coverage: 'some',
-    run: (ctx) => getAirportData(ctx.lat, ctx.lng),
-    // getAirportData returns null for both "no airports within range" (legit,
-    // common for rural addresses) and failure; the probe gates Places
-    // reachability, so isValid accepts null-or-array.
+    // Targets the Google impl directly (not the full chain) so the monitor reports
+    // on Google specifically, not masked-green by the OSM fallback (FR-070).
+    run: (ctx) => getAirportDataGoogle(ctx.lat, ctx.lng),
+    // getAirportDataGoogle returns null for both "no airports within range" (legit,
+    // common for rural addresses) and never for failure (it throws); the probe gates
+    // Places reachability, so isValid accepts null-or-array.
     isValid: (r) => r === null || Array.isArray(r),
     probe: googlePlacesProbe },
+  { id: 'osm-airport-fallback', label: 'OSM Overpass aerodrome (Google fallback, straight-line)', provider: 'osm', coverage: 'some',
+    run: (ctx) => getAirportDataOSM(ctx.lat, ctx.lng),
+    isValid: (r) => r === null || Array.isArray(r) },
   { id: 'bts-road-noise', label: 'BTS National Transportation Noise Map (OSM fallback)', provider: 'bts', coverage: 'all',
     run: (ctx) => getRoadNoise(ctx.lat, ctx.lng),
     isValid: (r) => r !== null && typeof r?.dnl === 'number' },
@@ -339,6 +384,8 @@ module.exports = {
   getAQICategory,
   getFloodRisk,
   getAirportData,
+  getAirportDataGoogle,
+  getAirportDataOSM,
   getRoadNoise,
   getRailProximity,
   getLightPollution,
