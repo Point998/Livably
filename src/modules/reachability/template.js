@@ -4,6 +4,18 @@ const { CUSTOM_DEST_ICONS } = require('../../utils/constants');
 const { renderDepthSelector } = require('../../templates/components/depthSelector');
 const { computeDrivingProfile } = require('./logic');
 
+// FR-066 — a POI may come from the OSM straight-line fallback when Google is
+// down (no drive time). Render proximity honestly: minutes when we have them,
+// straight-line miles otherwise.
+function isStraightLine(r) { return !!(r && r.proximitySource === 'osm-straightline'); }
+function formatProximity(r) {
+  if (!r) return '';
+  return r.driveTimeMinutes != null ? formatDriveTime(r.driveTimeMinutes) : `~${r.distanceMiles} mi`;
+}
+function proximityPhrase(r) {
+  return isStraightLine(r) ? `about ${r.distanceMiles} miles away (straight-line)` : `${r.driveTimeMinutes} minutes away`;
+}
+
 function buildDestSection(label, result) {
   const labelHTML = `<div class="dest-label">${label}</div>`;
   if (!result) {
@@ -16,9 +28,9 @@ function buildDestSection(label, result) {
       <div class="dest-row">
         <div>
           <div class="dest-name">${escapeHtml(result.name)}</div>
-          <div class="dest-address">${escapeHtml(result.address)}</div>
+          <div class="dest-address">${escapeHtml(result.address || (isStraightLine(result) ? 'Source: OpenStreetMap · straight-line distance' : ''))}</div>
         </div>
-        <div class="drive-time">${formatDriveTime(result.driveTimeMinutes)}</div>
+        <div class="drive-time">${formatProximity(result)}</div>
       </div>
       ${noteHTML}
     </div>`;
@@ -27,6 +39,30 @@ function buildDestSection(label, result) {
 function generateDailyConveniencesNarrative(grocery, pharmacy, gasStation) {
   const g = Array.isArray(grocery) ? grocery[0] : grocery;
   const stores = Array.isArray(grocery) ? grocery : (grocery ? [grocery] : []);
+
+  // FR-066 — OSM straight-line fallback: Google (and its drive times) was down.
+  // Render a concise, honest distance-based narrative instead of the minutes prose.
+  if (isStraightLine(g) || isStraightLine(pharmacy) || isStraightLine(gasStation)) {
+    const opening = 'Live drive times were unavailable for this address, so the figures below are straight-line distances (as-the-crow-flies) from OpenStreetMap — a rough sense of proximity, not road miles.';
+    const paragraphs = [];
+    if (g) {
+      let gPara = `Your nearest grocery option is ${g.name}, ${proximityPhrase(g)}.`;
+      if (stores.length > 1 && stores[1]) gPara += ` ${stores[1].name} is another option, ${proximityPhrase(stores[1])}.`;
+      paragraphs.push(gPara);
+    }
+    const p2 = [];
+    if (pharmacy) p2.push(`The nearest pharmacy is ${pharmacy.name}, ${proximityPhrase(pharmacy)}.`);
+    if (gasStation) p2.push(`The nearest gas station is ${gasStation.name}, ${proximityPhrase(gasStation)}.`);
+    if (p2.length) paragraphs.push(p2.join(' '));
+    paragraphs.push('These come from OpenStreetMap. Actual road distance and drive time will run somewhat longer than the straight-line figure.');
+    const items = [
+      g ? { label: 'Grocery', name: g.name, display: formatProximity(g) } : null,
+      pharmacy ? { label: 'Pharmacy', name: pharmacy.name, display: formatProximity(pharmacy) } : null,
+      gasStation ? { label: 'Gas', name: gasStation.name, display: formatProximity(gasStation) } : null,
+    ].filter(Boolean);
+    return { opening, paragraphs, items };
+  }
+
   const times = [g, pharmacy, gasStation].filter(Boolean).map((s) => s.driveTimeMinutes);
   if (!times.length) return null;
   const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
@@ -174,7 +210,7 @@ function buildInsightItemsHTML(items) {
         <div class="insight-item">
           <span class="item-label">${escapeHtml(item.label)}</span>
           <span class="item-place">${escapeHtml(item.name)}</span>
-          <span class="item-time">${item.time} min</span>
+          <span class="item-time">${item.display != null ? escapeHtml(item.display) : (item.time != null ? item.time + ' min' : '')}</span>
         </div>`).join('');
 }
 
@@ -202,10 +238,14 @@ function buildInsightSectionHTML(icon, title, subtitle, narrative) {
 
 function buildDailyGlanceHTML(grocery, pharmacy, hospital) {
   const g = Array.isArray(grocery) ? grocery[0] : grocery;
+  const glanceVal = (label, r) =>
+    r?.driveTimeMinutes != null ? `${label}: ${r.driveTimeMinutes} min`
+    : r?.distanceMiles != null  ? `${label}: ~${r.distanceMiles} mi`
+    : null;
   const times = [
-    g?.driveTimeMinutes != null        ? `Grocery: ${g.driveTimeMinutes} min`        : null,
-    pharmacy?.driveTimeMinutes != null ? `Pharmacy: ${pharmacy.driveTimeMinutes} min` : null,
-    hospital?.driveTimeMinutes != null ? `ER: ${hospital.driveTimeMinutes} min`      : null,
+    glanceVal('Grocery', g),
+    glanceVal('Pharmacy', pharmacy),
+    hospital?.driveTimeMinutes != null ? `ER: ${hospital.driveTimeMinutes} min` : null,
   ].filter(Boolean);
 
   if (!times.length) return '';

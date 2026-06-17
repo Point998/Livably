@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { DRIVETIME_CELL_TTL_DAYS, UTILITIES_CELL_TTL_DAYS, RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS, SEISMIC_CACHE_TTL_DAYS } = require('./utils/constants');
+const { DRIVETIME_CELL_TTL_DAYS, UTILITIES_CELL_TTL_DAYS, RATES_GAS_TTL_DAYS, RATES_IRS_TTL_DAYS, SEISMIC_CACHE_TTL_DAYS, PLACES_OSM_TTL_HOURS } = require('./utils/constants');
 
 const CACHE_DIR = path.join(__dirname, '../.cache');
 
@@ -72,6 +72,10 @@ class Cache {
 
 const geocodeCache  = new Cache('geocode',   60 * 60 * 24 * 90); // 90 days
 const placesCache   = new Cache('places',    60 * 60 * 24 * 7);  // 7 days
+// FR-066: OSM POI fallback results — short TTL so a cell recovers to Google
+// quickly once quota resets; distinct namespace so straight-line distances
+// never linger in the 7-day `places` cache after Google is healthy again.
+const placesOsmCache = new Cache('places_osm', 60 * 60 * PLACES_OSM_TTL_HOURS); // 1 hour
 const driveTimeCache = new Cache('drivetime', 60 * 60 * 24);     // 24 hours
 // FR-058: cell-keyed lifestyle drive times surface as stable rungs, so they
 // cache far longer than per-address exact times. Safety exactDriveMinutes uses
@@ -104,6 +108,7 @@ function cacheStats() {
       breakdown: {
         geocode:       files.filter((f) => geocodeCache._ownsFile(f)).length,
         places:        files.filter((f) => placesCache._ownsFile(f)).length,
+        placesOsm:     files.filter((f) => placesOsmCache._ownsFile(f)).length,
         drivetime:     files.filter((f) => driveTimeCache._ownsFile(f)).length,
         drivetimeCell: files.filter((f) => driveTimeCellCache._ownsFile(f)).length,
         watershed:     files.filter((f) => watershedCache._ownsFile(f)).length,
@@ -117,4 +122,4 @@ function cacheStats() {
   }
 }
 
-module.exports = { Cache, geocodeCache, placesCache, driveTimeCache, driveTimeCellCache, watershedCache, utilitiesCache, ratesCache, seismicCache, cacheStats, CACHE_DIR };
+module.exports = { Cache, geocodeCache, placesCache, placesOsmCache, driveTimeCache, driveTimeCellCache, watershedCache, utilitiesCache, ratesCache, seismicCache, cacheStats, CACHE_DIR };

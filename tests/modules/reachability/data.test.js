@@ -25,13 +25,18 @@ jest.mock('../../../src/shared/validate', () => ({
   checkDriveTimeCoherence: mockCheckDriveTimeCoherence,
   classifyBand: mockClassifyBand,
 }));
-jest.mock('../../../src/cache', () => ({ placesCache: mockPlacesCache }));
+const mockPlacesOsmCache = makeMockCache();
+const mockSearchOSMPOIs = jest.fn();
+jest.mock('../../../src/cache', () => ({ placesCache: mockPlacesCache, placesOsmCache: mockPlacesOsmCache }));
 jest.mock('../../../src/errorMemory', () => ({ getMitigation: (_fn, _key, def) => def }));
 jest.mock('../../../src/logger', () => ({ logError: jest.fn() }));
+jest.mock('../../../src/shared/osmPlaces', () => ({ searchOSMPOIs: (...a) => mockSearchOSMPOIs(...a) }));
 jest.mock('../../../src/utils/constants', () => ({
   GROCERY_SEARCH_RADIUS_M: 5000,
   GROCERY_CANDIDATE_COUNT: 5,
   GROCERY_EXCLUDED_TYPES: ['gas_station', 'convenience_store', 'lodging'],
+  OSM_POI_FILTERS: { grocery: ['["shop"~"supermarket|grocery"]'], pharmacy: ['["amenity"="pharmacy"]'], gas: ['["amenity"="fuel"]'] },
+  OSM_POI_RADIUS_M: 8000,
 }));
 
 const { findNearestGrocery, findNearestPharmacy, findNearestGasStation } =
@@ -47,6 +52,10 @@ const makePlace = (name, types = ['grocery_or_supermarket'], lat = 38.3, lng = -
 beforeEach(() => {
   jest.clearAllMocks();
   mockPlacesCache.clear();
+  mockPlacesOsmCache.clear();
+  // Default: OSM fallback finds nothing — so when Google fails, the function
+  // throws as before. Overridden in the FR-066 fallback tests.
+  mockSearchOSMPOIs.mockResolvedValue([]);
   // Default: coherent result. Overridden in coherence-warning tests.
   mockCheckDriveTimeCoherence.mockReturnValue({ ok: true, reason: '' });
   // Sentinel rung — band classification is unit-tested in validate.test.js; here
@@ -171,5 +180,44 @@ describe('cell-based keying (FR-058)', () => {
     expect(mockClient.placesNearby).toHaveBeenCalledWith(
       expect.objectContaining({ params: expect.objectContaining({ location: CENTROID_STR }) }),
     );
+  });
+});
+
+// ── FR-066: OSM cost-resilience fallback (non-safety POIs) ────────────────────
+
+describe('OSM fallback when Google is down (FR-066)', () => {
+  test('grocery: Google failure → OSM straight-line records (no minutes)', async () => {
+    mockClient.textSearch.mockRejectedValue(new Error('OVER_QUERY_LIMIT'));
+    mockSearchOSMPOIs.mockResolvedValue([
+      { name: 'OSM Grocer A', lat: 38.31, lng: -84.41, distanceMiles: 1.2 },
+      { name: 'OSM Grocer B', lat: 38.33, lng: -84.43, distanceMiles: 2.4 },
+    ]);
+    const result = await findNearestGrocery('38.2,-84.3', 'suburban');
+    expect(result[0]).toMatchObject({
+      name: 'OSM Grocer A', driveTimeMinutes: null, distanceMiles: 1.2, proximitySource: 'osm-straightline',
+    });
+    expect(result[0].location).toEqual({ lat: 38.31, lng: -84.41 });
+    expect(result).toHaveLength(2);
+  });
+
+  test('grocery: Google success → OSM is never queried', async () => {
+    mockClient.textSearch.mockResolvedValue({ data: { results: [makePlace('Real Grocer', ['supermarket'])] } });
+    mockGetDriveTime.mockResolvedValue(9);
+    const result = await findNearestGrocery('38.2,-84.3', 'suburban');
+    expect(result[0].name).toBe('Real Grocer');
+    expect(mockSearchOSMPOIs).not.toHaveBeenCalled();
+  });
+
+  test('pharmacy: Google failure → single nearest OSM record', async () => {
+    mockClient.placesNearby.mockRejectedValue(new Error('quota'));
+    mockSearchOSMPOIs.mockResolvedValue([{ name: 'OSM Rx', lat: 38.30, lng: -84.40, distanceMiles: 0.8 }]);
+    const result = await findNearestPharmacy('38.2,-84.3');
+    expect(result).toMatchObject({ name: 'OSM Rx', driveTimeMinutes: null, distanceMiles: 0.8, proximitySource: 'osm-straightline' });
+  });
+
+  test('gas: both Google and OSM fail → throws (link floor)', async () => {
+    mockClient.placesNearby.mockRejectedValue(new Error('quota'));
+    mockSearchOSMPOIs.mockResolvedValue([]);
+    await expect(findNearestGasStation('38.2,-84.3')).rejects.toThrow();
   });
 });

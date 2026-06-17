@@ -531,6 +531,18 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.openstreetmap.fr/api/interpreter',
 ];
 
+// FR-066 — OSM POI fallback (non-safety) when Google Places/Distance Matrix is
+// down (quota/spend). Tag-only filters (CONSTRAINT-004: no brand/name logic).
+const OSM_POI_FILTERS = {
+  grocery:  ['["shop"~"supermarket|grocery"]'],
+  pharmacy: ['["amenity"="pharmacy"]'],
+  gas:      ['["amenity"="fuel"]'],
+};
+const OSM_POI_RADIUS_M = 8000;
+// Short TTL so a cell recovers to Google quickly once quota resets, while an
+// outage doesn't re-hammer Overpass.
+const PLACES_OSM_TTL_HOURS = 1;
+
 // ── Development Discovery Constants ──────────────────────────────────────────
 
 const DEV_CACHE_TTL_MS     = 7 * 24 * 60 * 60 * 1000;
@@ -898,6 +910,9 @@ module.exports = {
   BROADBAND_TECH_CODES,
   // OSM
   OVERPASS_ENDPOINTS,
+  OSM_POI_FILTERS,
+  OSM_POI_RADIUS_M,
+  PLACES_OSM_TTL_HOURS,
   // Development discovery
   DEV_CACHE_TTL_MS,
   DEV_REQUEST_DELAY_MS,
