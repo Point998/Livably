@@ -38,6 +38,15 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - **Architecture posture: Tier-2 single-instance monolith with Tier-3/4 discipline** — substrate (state/deploy/security/ops) not yet B2B-ready. Hardening plan in NR-004 → see "Hardening Track" below. **Stage 0 (CI, config validation, admin auth, rate-limit) leads the queue.**
 
 ## Active Work
+
+### ▶ Session hand-off — 2026-06-17 (read first)
+- **State:** `main` clean @ `b3af9e8`, **1,516 tests / 81 suites** green, CI on every push, working tree clean. No open PRs awaiting action.
+- **Shipped this session:** FR-065 (PR #30 — reusable `sourceChain` resilience primitive + NOAA→Open-Meteo climate-normals fallback; honest-provenance principle), FR-066 (PR #32 — Google-POI→OSM cost-resilience fallback for Reachability + shared `overpass.js`/`osmPlaces.js`; fixed a latent Overpass-406 bug that was also silently degrading Sensory's OSM features). B1/B2 re-confirmed deferred (PR #29); roadmap kept current (#31, #33).
+- **NEXT UP (no blockers, highest value): continue A1 — extend the OSM fallback to the remaining single-source Google modules**, each a cheap reuse of `searchOSMPOIs` (same pattern as FR-066; full 4-phase workflow; none are safety tier): **(1) Walkability** (smallest, 1 call) → **(2) Recreation** (park/coffee/library/rec/post office) → **(3) Sensory airports** (OSM tag `aeroway=aerodrome`, not shop/amenity) → **(4) Growth commercial**. Then non-Google single sources: USDA soil, USGS elevation, Census vintage.
+- **Watch-items:** observability debt (silent failures keep surfacing only when a path is forced — no dashboard yet, Hardening Stage 2); single-instance state ceiling (Stage 1, the B2B gate); carryover — cell-cache the FR-065 modeled-normals result (Open-Meteo per-minute rate limit).
+- **Deferred (human-in-loop):** B1 FR-062 (FCC BDC token), B2 NREL per-address rate (deploy-time verify).
+- **Reminders:** test-first, all 5 addresses; **doc PRs stay open for Nathan's review**; Overpass needs the UA header (now in place) and rate-limits rapid calls (space live checks); prefer keyless live verification.
+
 - **Active branch:** `FR-032-utilities-intelligence` — Utilities & Power chapter built (PR pending).
 - **FR-032 (Utilities & Power): ✅ BUILT on branch** — new chapter (electric provider + rate-vs-state, state-level reliability, well/septic-vs-municipal inference, EV charging), cell-cached (FR-058 parity), placed after Costs. Full suite green (1,289 / 68). ⏳ **Populated live-data acceptance (Georgetown→Kentucky Utilities, Bozeman→NorthWestern Energy) deferred** — NREL was unreachable from the build sandbox; verify where NREL resolves. See `feature-requests/FR-032-utilities-intelligence/`.
 - **Most recent (main):** FR-066 (Google-POI cost-resilience fallback — Reachability → OSM straight-line; + Overpass User-Agent fix) — **merged (PR #32, squash).** Second slice of Track A1; see Track A item 1 + `feature-requests/FR-066-google-poi-fallback/`. Full suite 1,516 / 81.
