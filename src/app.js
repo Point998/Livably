@@ -21,6 +21,7 @@ const { generateComparisonData } = require('./services/compareBuilder');
 const { buildErrorHTML, buildLoadingHTML } = require('./templates/pages/errorPage');
 const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML } = require('./templates/pages/comparePage');
 const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
+const { buildDegradationSummary } = require('./services/degradationReport');
 
 const { validateConfig } = require('./config');
 const { makeRequireAdmin } = require('./middleware/adminAuth');
@@ -135,8 +136,10 @@ app.get('/admin/health', (req, res) => {
   const mitigations = loadMitigations();
   const recentErrors = readRecentLogs(1).filter((e) => e.type === 'error').slice(-20).reverse();
   const usage = getUsageStats();
+  // FR-068 — source-chain degradation panel (7-day window).
+  const degradation = buildDegradationSummary(readRecentLogs(7).filter((e) => e.type === 'degradation'));
 
-  return res.send(buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage }));
+  return res.send(buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degradation }));
 });
 
 app.get('/admin/api-usage', (req, res) => res.json(getUsageStats()));
