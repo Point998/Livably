@@ -34,6 +34,12 @@ function logError(fn, address, error) {
   });
 }
 
+// FR-068 — one structured line per report that ran on at least one fallback.
+// summary is degradationLedger.summarize(...): { total, fallbacks, exhausted, byLabel }.
+function logDegradation(address, summary) {
+  append({ type: 'degradation', ts: new Date().toISOString(), address, ...summary });
+}
+
 function readRecentLogs(windowDays = 7) {
   const entries = [];
   try {
@@ -64,4 +70,4 @@ function logAnalysis() {
   });
 }
 
-module.exports = { logRequest, logError, logAnalysis, readRecentLogs };
+module.exports = { logRequest, logError, logDegradation, logAnalysis, readRecentLogs };

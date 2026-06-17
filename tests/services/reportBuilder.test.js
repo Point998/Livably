@@ -21,6 +21,7 @@ const mockGetChapterData = jest.fn();
 const mockSaveReport = jest.fn();
 const mockLogRequest = jest.fn();
 const mockLogError = jest.fn();
+const mockLogDegradation = jest.fn();
 const mockLogAnalysis = jest.fn();
 const mockBuildReportHTML = jest.fn();
 const mockBuildChaptersHTML = jest.fn();
@@ -38,7 +39,7 @@ jest.mock('../../src/modules/schools/data', () => ({ findNearestSchool: mockFind
 jest.mock('../../src/modules/recreation/data', () => ({ findNearestPark: mockFindNearestPark, findNearestCoffeeShop: mockFindNearestCoffeeShop, findNearestLibrary: mockFindNearestLibrary, findNearestRecreationCenter: mockFindNearestRecreationCenter, findNearestPostOffice: mockFindNearestPostOffice }));
 jest.mock('../../src/chapters', () => ({ getChapterData: mockGetChapterData, buildChaptersHTML: mockBuildChaptersHTML }));
 jest.mock('../../src/services/reportStore', () => ({ saveReport: mockSaveReport }));
-jest.mock('../../src/logger', () => ({ logRequest: mockLogRequest, logError: mockLogError, logAnalysis: mockLogAnalysis }));
+jest.mock('../../src/logger', () => ({ logRequest: mockLogRequest, logError: mockLogError, logDegradation: mockLogDegradation, logAnalysis: mockLogAnalysis }));
 jest.mock('../../src/templates/pages/reportPage', () => ({ buildReportHTML: mockBuildReportHTML }));
 jest.mock('../../src/shared/census', () => ({
   getCensusFIPS: mockGetCensusFIPS,
@@ -104,6 +105,25 @@ describe('buildReport', () => {
   test('passes originState to findNearestElementarySchool (CONSTRAINT-006)', async () => {
     await buildReport('100 Main St, Georgetown, KY');
     expect(mockFindNearestElementarySchool).toHaveBeenCalledWith(expect.any(String), 'KY');
+  });
+
+  test('FR-068: does NOT emit a degradation line on a clean report (no fallback)', async () => {
+    await buildReport('100 Main St, Georgetown, KY');
+    expect(mockLogDegradation).not.toHaveBeenCalled();
+  });
+
+  test('FR-068: emits one degradation summary line when a chapter fell back', async () => {
+    const { recordDegradation } = require('../../src/shared/degradationLedger');
+    // Simulate a chapter that ran on a fallback inside the report's ledger context.
+    mockGetChapterData.mockImplementation(async () => {
+      recordDegradation({ label: 'walkability', source: 'osm', kind: 'fallback' });
+      return null;
+    });
+    await buildReport('100 Main St, Georgetown, KY');
+    expect(mockLogDegradation).toHaveBeenCalledTimes(1);
+    const [, summary] = mockLogDegradation.mock.calls[0];
+    expect(summary.fallbacks).toBe(1);
+    expect(summary.byLabel.walkability.fallback).toBe(1);
   });
 
   test('returns an object with an html property', async () => {

@@ -11,7 +11,8 @@ const { findNearestSchool, findNearestElementarySchool } = require('../modules/s
 const { findNearestPark, findNearestCoffeeShop, findNearestLibrary, findNearestRecreationCenter, findNearestPostOffice } = require('../modules/recreation/data');
 const { getChapterData } = require('../chapters');
 const { saveReport } = require('./reportStore');
-const { logRequest, logError, logAnalysis } = require('../logger');
+const { logRequest, logError, logDegradation, logAnalysis } = require('../logger');
+const { runWithLedger, getLedger, summarize } = require('../shared/degradationLedger');
 const { buildReportHTML } = require('../templates/pages/reportPage');
 const { QuotaExceededError, RateLimitError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
@@ -38,7 +39,14 @@ function classifyError(error) {
   return { type: 'SERVER_ERROR', title: 'Something went wrong', message: 'An error occurred generating your report.', retryAfter: null };
 }
 
-async function buildReport(address, options = {}) {
+// Public entry. Runs the whole report inside a request-scoped degradation ledger
+// (FR-068) so every sourceChain fallback fired anywhere in the fan-out is
+// attributed to this report — concurrency-safe via AsyncLocalStorage.
+function buildReport(address, options = {}) {
+  return runWithLedger(() => buildReportInner(address, options));
+}
+
+async function buildReportInner(address, options = {}) {
   const _reqStart = Date.now();
 
   const origin = await geocodeAddress(address);
@@ -174,6 +182,10 @@ async function buildReport(address, options = {}) {
   let reportId = null;
   try { reportId = saveReport(address); } catch {}
   logRequest(address, 'success', Date.now() - _reqStart);
+  // FR-068 — emit one degradation summary line only when this report ran on at
+  // least one fallback (signal, not noise; clean reports stay quiet).
+  const degradation = summarize(getLedger());
+  if (degradation.total > 0) logDegradation(address, degradation);
   logAnalysis();
 
   const html = buildReportHTML(address, {

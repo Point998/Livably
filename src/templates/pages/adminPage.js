@@ -2,8 +2,21 @@
 
 const { escapeHtml } = require('../../utils/text');
 
-function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage }) {
+function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degradation }) {
   const pct = (n) => (n == null ? 'N/A' : `${(n * 100).toFixed(1)}%`);
+
+  // FR-068 — source-chain degradation panel. Rows are sourceChain labels; counts
+  // are fallback (served a non-primary source) / exhausted (all sources failed).
+  const degRows = (degradation?.rows || []).map((r) => `
+      <tr style="background:${r.exhausted > 0 ? '#fff3cd' : 'transparent'}">
+        <td style="padding:6px 10px;font-family:monospace;font-size:13px">${escapeHtml(r.label)}</td>
+        <td style="padding:6px 10px;text-align:right;font-weight:${r.fallback ? '600' : '400'}">${r.fallback}</td>
+        <td style="padding:6px 10px;text-align:right;color:${r.exhausted ? '#b8922a' : '#1a1a1a'};font-weight:${r.exhausted ? '600' : '400'}">${r.exhausted}</td>
+        <td style="padding:6px 10px;text-align:right">${r.miss}</td>
+        <td style="padding:6px 10px;text-align:right">${r.error}</td>
+        <td style="padding:6px 10px;font-size:12px;color:#555">${escapeHtml((r.sources || []).join(', ') || '—')}</td>
+        <td style="padding:6px 10px;font-size:12px;color:#888">${r.lastTs ? new Date(r.lastTs).toLocaleString() : '—'}</td>
+      </tr>`).join('');
   const flagged = Object.entries(patterns?.functions || {}).filter(([, f]) => f.flagged);
 
   const fnRows = Object.entries(patterns?.functions || {})
@@ -98,6 +111,10 @@ function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage }) {
       <div class="card-value">${usage.successRate}</div>
     </div>
   </div>
+
+  <h2>Source-Chain Degradation (7d)</h2>
+  <div class="meta">${degradation ? `${degradation.reportsAffected} report${degradation.reportsAffected === 1 ? '' : 's'} ran on a fallback · ${degradation.totalFallbacks} fallback win${degradation.totalFallbacks === 1 ? '' : 's'} · ${degradation.totalExhausted} exhausted (link-floor)` : 'unavailable'}</div>
+  ${degRows ? `<table><thead><tr><th>Source chain</th><th style="text-align:right">Fallback</th><th style="text-align:right">Exhausted</th><th style="text-align:right">Miss</th><th style="text-align:right">Error</th><th>Sources seen</th><th>Last seen</th></tr></thead><tbody>${degRows}</tbody></table>` : '<p class="empty">No source-chain degradation recorded — every chain served its primary source.</p>'}
 
   <h2>Function Failure Rates (7d)</h2>
   ${fnRows ? `<table><thead><tr><th>Function</th><th style="text-align:right">Failures</th><th style="text-align:right">Rate</th><th>Top Error</th></tr></thead><tbody>${fnRows}</tbody></table>` : '<p class="empty">No function errors recorded yet.</p>'}

@@ -4,6 +4,7 @@
 // ordered try, first valid result wins, provenance tag, miss/error visibility.
 
 const { sourceChain } = require('../../src/shared/sourceChain');
+const { runWithLedger, getLedger } = require('../../src/shared/degradationLedger');
 
 const ok = (value) => ({ run: async () => value });
 
@@ -70,5 +71,46 @@ describe('sourceChain', () => {
     expect(log).toHaveBeenCalledTimes(1);
     expect(log.mock.calls[0][0]).toMatch(/climate-normals/);
     expect(log.mock.calls[0][0]).toMatch(/primary/);
+  });
+
+  // FR-068 — degradation ledger emission (the observability chokepoint).
+  describe('degradation ledger events', () => {
+    test('happy path (first source wins) records nothing', async () => {
+      const ledger = await runWithLedger(async () => {
+        await sourceChain([{ name: 'primary', run: async () => ({ t: 1 }) }], null, { label: 'demo' });
+        return getLedger();
+      });
+      expect(ledger).toEqual([]);
+    });
+
+    test('fallback win records one fallback event with the winning source', async () => {
+      const ledger = await runWithLedger(async () => {
+        await sourceChain([
+          { name: 'google', run: async () => null },
+          { name: 'osm', run: async () => ({ t: 1 }) },
+        ], null, { label: 'walkability', log: () => {} });
+        return getLedger();
+      });
+      const fb = ledger.find((e) => e.kind === 'fallback');
+      expect(fb).toMatchObject({ label: 'walkability', source: 'osm', kind: 'fallback' });
+      expect(ledger.find((e) => e.kind === 'miss')).toMatchObject({ source: 'google' });
+    });
+
+    test('fully exhausted chain records an exhausted event', async () => {
+      const ledger = await runWithLedger(async () => {
+        await sourceChain([
+          { name: 'a', run: async () => null },
+          { name: 'b', run: async () => { throw new Error('x'); } },
+        ], null, { label: 'demo', log: () => {} });
+        return getLedger();
+      });
+      expect(ledger.find((e) => e.kind === 'exhausted')).toMatchObject({ kind: 'exhausted', source: null });
+      expect(ledger.find((e) => e.kind === 'error')).toMatchObject({ source: 'b', reason: 'x' });
+    });
+
+    test('records nothing and returns normally with no active ledger context', async () => {
+      const result = await sourceChain([{ name: 'primary', run: async () => ({ t: 1 }) }], null, { label: 'demo' });
+      expect(result).toEqual({ value: { t: 1 }, source: 'primary' });
+    });
   });
 });

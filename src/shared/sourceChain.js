@@ -14,17 +14,35 @@
 
 const DEFAULT_VALID = (r) => r != null;
 
+const { recordDegradation } = require('./degradationLedger');
+
+// FR-068 — records degradation events to the request-scoped ledger directly (not
+// via the injected `log` sink, which stays for console/log visibility), so every
+// current and future caller of sourceChain gets observability with zero wiring.
+// A non-first source winning is a `fallback` (the path is running degraded); a
+// fully exhausted chain is `exhausted` (the link floor). First-source success
+// records nothing — the happy path stays free.
 async function sourceChain(sources, ctx, { label = 'source-chain', isValid = DEFAULT_VALID, log = console.warn } = {}) {
+  let degraded = false; // a prior source missed/errored → the next win is a fallback
   for (const source of sources) {
     const valid = source.isValid || isValid;
     try {
       const result = await source.run(ctx);
-      if (valid(result)) return { value: result, source: source.name };
+      if (valid(result)) {
+        if (degraded) recordDegradation({ label, source: source.name, kind: 'fallback' });
+        return { value: result, source: source.name };
+      }
       log(`[sourceChain:${label}] ${source.name} miss (invalid result)`);
+      recordDegradation({ label, source: source.name, kind: 'miss' });
+      degraded = true;
     } catch (err) {
-      log(`[sourceChain:${label}] ${source.name} error: ${err && err.message ? err.message : err}`);
+      const reason = err && err.message ? err.message : String(err);
+      log(`[sourceChain:${label}] ${source.name} error: ${reason}`);
+      recordDegradation({ label, source: source.name, kind: 'error', reason });
+      degraded = true;
     }
   }
+  recordDegradation({ label, source: null, kind: 'exhausted' });
   return null;
 }
 
