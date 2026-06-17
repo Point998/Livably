@@ -3,6 +3,12 @@ const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../../templates/components/chapterCard');
 const { computeBearing, bearingToCompass } = require('../../utils/geo');
 
+// FR-070 — airports may come from the OSM fallback when Google Places is down.
+// Flip the hardcoded provenance label honestly when that happens.
+function airportSourceLabel(airports) {
+  return airports?.[0]?.source === 'osm' ? 'OpenStreetMap' : 'Google Places';
+}
+
 function buildSensoryResearchToolsTab(env) {
   const { airQuality, waterQuality, radon, ejscreen } = env || {};
   const aqiNote = airQuality ? ` (current AQI: ${airQuality.aqi} — ${escapeHtml(airQuality.category.label)})` : '';
@@ -141,7 +147,7 @@ function buildSensoryResearchHTML(env) {
       ? `<tr><td>Hazard Proximity</td><td>${ejscreen.flagged ? 'Flagged' : 'No flags'}</td><td>${ejscreen.flagged ? 'Above 75th pct on 1+ metrics' : 'Below 75th pct all metrics'}</td><td>EPA EJSCREEN</td></tr>`
       : null,
     airports?.length
-      ? `<tr><td>Nearest Airport</td><td>${airports[0].distanceMiles.toFixed(1)} mi</td><td>${escapeHtml(airports[0].name)}</td><td>Google Places</td></tr>`
+      ? `<tr><td>Nearest Airport</td><td>${airports[0].distanceMiles.toFixed(1)} mi</td><td>${escapeHtml(airports[0].name)}</td><td>${airportSourceLabel(airports)}</td></tr>`
       : null,
   ].filter(Boolean).join('');
 
@@ -363,7 +369,7 @@ function buildSensoryEnvironmentalHTML(env) {
   }
 
   const sources = [
-    airports   && 'Google Places (airports)',
+    airports   && `${airportSourceLabel(airports)} (airports)`,
     roadNoise  && 'BTS National Transportation Noise Map / OpenStreetMap (road noise)',
     rail       && 'OpenStreetMap (rail)',
     lightPollution && 'U.S. Census ACS / OpenStreetMap (light pollution, estimated)',

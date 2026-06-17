@@ -561,6 +561,18 @@ const OSM_RECREATION_FILTERS = {
   postOffice: ['["amenity"="post_office"]'],
 };
 
+// FR-070 — Sensory airport OSM fallback. Tag-only (CONSTRAINT-004). aeroway=
+// aerodrome is the airfield polygon; `out center` → centroid. Exclude private-type
+// and private/no-access strips (matches the Google AIRPORT_RE intent of audible
+// public/GA/military traffic). Military airbases are KEPT — AIRPORT_RE includes
+// "air force base"/"afb" and they are very much audible. Overpass `!~`/`!=` also
+// match elements lacking the tag, so the common untagged aerodrome is included;
+// only explicitly private ones drop. Searched at AIRPORT_SEARCH_RADIUS_M (32 km),
+// not the 8 km OSM_POI_RADIUS_M.
+const OSM_AIRPORT_FILTERS = [
+  '["aeroway"="aerodrome"]["aerodrome:type"!~"private"]["access"!~"private|no"]',
+];
+
 // Short TTL so a cell recovers to Google quickly once quota resets, while an
 // outage doesn't re-hammer Overpass.
 const PLACES_OSM_TTL_HOURS = 1;
@@ -936,6 +948,7 @@ module.exports = {
   OSM_POI_RADIUS_M,
   OSM_WALK_FILTERS,
   OSM_RECREATION_FILTERS,
+  OSM_AIRPORT_FILTERS,
   PLACES_OSM_TTL_HOURS,
   // Development discovery
   DEV_CACHE_TTL_MS,
