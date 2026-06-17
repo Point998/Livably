@@ -123,6 +123,38 @@ describe('buildWalkabilityHTML — L3 deep dive', () => {
   });
 });
 
+describe('buildWalkabilityHTML — FR-067 provenance + degradation', () => {
+  test('Google source → Google Places disclaimer (default)', () => {
+    const html = buildWalkabilityHTML({ ...baseWalk, source: 'google' });
+    expect(html).toMatch(/Google Places data/);
+    expect(html).not.toMatch(/OpenStreetMap \(community-mapped\)/);
+  });
+
+  test('OSM source → OpenStreetMap disclaimer, no Google claim', () => {
+    const html = buildWalkabilityHTML({ ...baseWalk, source: 'osm' });
+    expect(html).toMatch(/OpenStreetMap \(community-mapped\)/);
+    expect(html).not.toMatch(/using Google Places data/);
+  });
+
+  test('unavailable source → no fabricated band, actionable Walk Score pointer', () => {
+    const html = buildWalkabilityHTML({ score: null, category: { label: 'Walkability Unavailable', color: 'gold', description: 'x' }, destinations: [], source: 'unavailable' });
+    expect(html).not.toMatch(/walk-verdict-block/);
+    expect(html).toMatch(/walkscore\.com/);
+    expect(html).toMatch(/temporary data gap/i);
+  });
+
+  test('unavailable when score is null even without explicit source', () => {
+    const html = buildWalkabilityHTML({ score: null, category: { label: 'x', color: 'gold', description: 'x' }, destinations: [] });
+    expect(html).toMatch(/walkscore\.com/);
+  });
+
+  test('no inline styles in unavailable card (CONSTRAINT-008)', () => {
+    const html = buildWalkabilityHTML({ score: null, category: { label: 'x', color: 'gold', description: 'x' }, destinations: [], source: 'unavailable' });
+    const violations = html.match(/style="(?!--)[^"]+"/g);
+    expect(violations).toBeNull();
+  });
+});
+
 describe('buildWalkabilityHTML — L4 research', () => {
   test('depth-l4 wrapper present when destinations exist', () => {
     const html = buildWalkabilityHTML(baseWalk);

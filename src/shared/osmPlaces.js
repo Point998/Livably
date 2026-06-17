@@ -9,8 +9,11 @@
 const { fetchOverpass } = require('./overpass');
 const { haversineDistance } = require('../utils/geo');
 
-// searchOSMPOIs(lat, lng, { filters, radiusM, limit }) -> [{ name, lat, lng, distanceMiles }]
-async function searchOSMPOIs(lat, lng, { filters, radiusM, limit = 8 } = {}) {
+// searchOSMPOIs(lat, lng, { filters, radiusM, limit, withTags }) -> [{ name, lat, lng, distanceMiles, tags? }]
+// withTags (FR-067): include the raw OSM tags on each record so a caller making a
+// single union query can re-derive which filter a POI matched (Overpass doesn't
+// label the matching clause). Default false → fully backward-compatible.
+async function searchOSMPOIs(lat, lng, { filters, radiusM, limit = 8, withTags = false } = {}) {
   const clauses = (filters || []).map((f) => `nwr(around:${radiusM},${lat},${lng})${f};`).join('');
   const query = `[out:json][timeout:15];(${clauses});out center tags;`;
   const resp = await fetchOverpass(query);
@@ -25,7 +28,9 @@ async function searchOSMPOIs(lat, lng, { filters, radiusM, limit = 8 } = {}) {
     .map((el) => {
       const eLat = el.center?.lat ?? el.lat;
       const eLng = el.center?.lon ?? el.lon;
-      return { name: el.tags.name, lat: eLat, lng: eLng, distanceMiles: haversineDistance(lat, lng, eLat, eLng) };
+      const rec = { name: el.tags.name, lat: eLat, lng: eLng, distanceMiles: haversineDistance(lat, lng, eLat, eLng) };
+      if (withTags) rec.tags = el.tags;
+      return rec;
     })
     .filter((p) => p.lat != null && p.lng != null)
     .sort((a, b) => a.distanceMiles - b.distanceMiles)
