@@ -402,22 +402,28 @@ function buildCustomDestinationsCardHTML(customDestinations) {
 }
 
 function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop, library, recCenter, postOffice) {
+  // FR-069 — each item may be an OSM straight-line fallback (no drive time);
+  // carry the source record so the time cell renders honestly via formatProximity.
   const civicItems = [
-    library    ? { label: 'Public Library',    name: library.name,    driveTimeMinutes: library.driveTimeMinutes    } : null,
-    recCenter  ? { label: 'Recreation Center', name: recCenter.name,  driveTimeMinutes: recCenter.driveTimeMinutes  } : null,
-    postOffice ? { label: 'Post Office',        name: postOffice.name, driveTimeMinutes: postOffice.driveTimeMinutes } : null,
+    library    ? { label: 'Public Library',    name: library.name,    src: library    } : null,
+    recCenter  ? { label: 'Recreation Center', name: recCenter.name,  src: recCenter  } : null,
+    postOffice ? { label: 'Post Office',        name: postOffice.name, src: postOffice } : null,
   ].filter(Boolean);
 
   if (!elementarySchool && !park && !coffeeShop && !civicItems.length) return '';
 
   const narrativeParts = [];
   if (coffeeShop) {
-    narrativeParts.push(coffeeShop.driveTimeMinutes <= 5
+    narrativeParts.push(isStraightLine(coffeeShop)
+      ? `There's coffee nearby at ${coffeeShop.name}, ${proximityPhrase(coffeeShop)}.`
+      : coffeeShop.driveTimeMinutes <= 5
       ? `${coffeeShop.name} is ${coffeeShop.driveTimeMinutes} minutes away—close enough to become a morning habit.`
       : `There's coffee nearby at ${coffeeShop.name}, ${coffeeShop.driveTimeMinutes} minutes out.`);
   }
   if (park) {
-    narrativeParts.push(park.driveTimeMinutes <= 5
+    narrativeParts.push(isStraightLine(park)
+      ? `${park.name} is ${proximityPhrase(park)} for outdoor time.`
+      : park.driveTimeMinutes <= 5
       ? `${park.name} is ${park.driveTimeMinutes} minutes away—the kind of proximity that actually changes how you use your weekends.`
       : `${park.name} is ${park.driveTimeMinutes} minutes away for outdoor time.`);
   }
@@ -437,7 +443,7 @@ function buildAdditionalServicesCardHTML(elementarySchool, park, coffeeShop, lib
         <div class="civic-item">
           <span class="civic-item-label">${escapeHtml(c.label)}</span>
           <span class="civic-item-name">${escapeHtml(c.name)}</span>
-          <span class="civic-item-time">${c.driveTimeMinutes} min</span>
+          <span class="civic-item-time">${formatProximity(c.src)}</span>
         </div>`).join('')}
     </div>` : '';
 

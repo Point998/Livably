@@ -551,6 +551,16 @@ const OSM_WALK_FILTERS = {
   pharmacy:   ['["amenity"="pharmacy"]'],
 };
 
+// FR-069 — recreation OSM fallback. Tag-only (CONSTRAINT-004), nearest single
+// amenity per category (8 km radius via OSM_POI_RADIUS_M, like reachability).
+const OSM_RECREATION_FILTERS = {
+  park:       ['["leisure"="park"]'],
+  coffee:     ['["amenity"="cafe"]'],
+  library:    ['["amenity"="library"]'],
+  recCenter:  ['["leisure"="sports_centre"]', '["amenity"="community_centre"]'],
+  postOffice: ['["amenity"="post_office"]'],
+};
+
 // Short TTL so a cell recovers to Google quickly once quota resets, while an
 // outage doesn't re-hammer Overpass.
 const PLACES_OSM_TTL_HOURS = 1;
@@ -925,6 +935,7 @@ module.exports = {
   OSM_POI_FILTERS,
   OSM_POI_RADIUS_M,
   OSM_WALK_FILTERS,
+  OSM_RECREATION_FILTERS,
   PLACES_OSM_TTL_HOURS,
   // Development discovery
   DEV_CACHE_TTL_MS,

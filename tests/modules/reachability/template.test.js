@@ -118,6 +118,35 @@ describe('buildAdditionalServicesCardHTML — civic infrastructure', () => {
   });
 });
 
+describe('buildAdditionalServicesCardHTML — FR-069 OSM straight-line fallback', () => {
+  const osmPark = { name: 'Riverside Park', location: {}, driveTimeMinutes: null, distanceMiles: 1.2, proximitySource: 'osm-straightline' };
+  const osmLib  = { name: 'OSM Library', location: {}, driveTimeMinutes: null, distanceMiles: 0.8, proximitySource: 'osm-straightline' };
+  const osmCoffee = { name: 'OSM Cafe', location: {}, driveTimeMinutes: null, distanceMiles: 0.5, proximitySource: 'osm-straightline' };
+
+  test('park narrative uses straight-line miles, never "null minutes"', () => {
+    const html = buildAdditionalServicesCardHTML(null, osmPark, null, null, null, null);
+    expect(html).toMatch(/1\.2 miles away \(straight-line\)/);
+    expect(html).not.toMatch(/null min/);
+  });
+
+  test('coffee narrative uses straight-line phrase, never "null minutes"', () => {
+    const html = buildAdditionalServicesCardHTML(null, null, osmCoffee, null, null, null);
+    expect(html).toMatch(/straight-line/);
+    expect(html).not.toMatch(/null min/);
+  });
+
+  test('civic item renders ~mi for an OSM record, not "null min"', () => {
+    const html = buildAdditionalServicesCardHTML(null, null, null, osmLib, null, null);
+    expect(html).toMatch(/~0\.8 mi/);
+    expect(html).not.toMatch(/null min/);
+  });
+
+  test('Google civic record still renders minutes (no regression)', () => {
+    const html = buildAdditionalServicesCardHTML(null, null, null, baseLib, null, null);
+    expect(html).toMatch(/4 min/);
+  });
+});
+
 const { buildInsightsCardHTML: buildIC, buildLifeCalculatorHTML } = require('../../../src/modules/reachability/template');
 
 const LIFECALC = {
