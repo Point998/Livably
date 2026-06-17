@@ -573,6 +573,17 @@ const OSM_AIRPORT_FILTERS = [
   '["aeroway"="aerodrome"]["aerodrome:type"!~"private"]["access"!~"private|no"]',
 ];
 
+// FR-071 — Growth commercial OSM fallback. Tag-only (CONSTRAINT-004), keyed to
+// COMMERCIAL_DEV_TYPES so the OSM path reuses the same labels/icons via
+// categorizeOSMCommercialPOI. Searched at DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M
+// (2.4 km), not the 8 km generic OSM_POI_RADIUS_M. gym is unioned across the three
+// tags OSM uses inconsistently for it.
+const OSM_COMMERCIAL_FILTERS = [
+  '["shop"="mall"]', '["shop"="supermarket"]', '["shop"="department_store"]',
+  '["leisure"="fitness_centre"]', '["sport"="fitness"]', '["amenity"="gym"]',
+  '["amenity"="cinema"]', '["amenity"="bank"]',
+];
+
 // Short TTL so a cell recovers to Google quickly once quota resets, while an
 // outage doesn't re-hammer Overpass.
 const PLACES_OSM_TTL_HOURS = 1;
@@ -949,6 +960,7 @@ module.exports = {
   OSM_WALK_FILTERS,
   OSM_RECREATION_FILTERS,
   OSM_AIRPORT_FILTERS,
+  OSM_COMMERCIAL_FILTERS,
   PLACES_OSM_TTL_HOURS,
   // Development discovery
   DEV_CACHE_TTL_MS,

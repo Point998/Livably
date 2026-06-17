@@ -2,6 +2,12 @@
 const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../../templates/components/chapterCard');
 
+// FR-071 — commercial establishments may come from the OSM fallback when Google
+// Places is down. Flip the hardcoded provenance label honestly when that happens.
+function commercialSourceLabel(establishments) {
+  return establishments?.[0]?.source === 'osm' ? 'OpenStreetMap' : 'Google Places';
+}
+
 function buildGrowthPermitTrendsTab(permits, newConstruction, locationInfo) {
   const county = locationInfo?.county || 'this county';
 
@@ -380,7 +386,7 @@ function buildGrowthAndDevelopmentHTML(growth) {
   if (namedProjects.length) sources.push('Livably Development Intelligence (manually verified)');
   if (permits) sources.push('U.S. Census Bureau Building Permits Survey');
   else if (newConstruction) sources.push('U.S. Census ACS 5-year estimates');
-  if (establishments?.length) sources.push('Google Places');
+  if (establishments?.length) sources.push(commercialSourceLabel(establishments));
   const today = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
   const body = `
