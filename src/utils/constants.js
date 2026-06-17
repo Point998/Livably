@@ -539,6 +539,18 @@ const OSM_POI_FILTERS = {
   gas:      ['["amenity"="fuel"]'],
 };
 const OSM_POI_RADIUS_M = 8000;
+
+// FR-067 — walkability OSM fallback. Tag-only (CONSTRAINT-004), keyed 1:1 to
+// WALK_TYPES so the existing weights/labels/icons are reused. Searched at the
+// 800 m walk radius (WALKABILITY_SEARCH_RADIUS_M), not the 8 km drive radius.
+const OSM_WALK_FILTERS = {
+  grocery:    ['["shop"~"supermarket|grocery"]'],
+  restaurant: ['["amenity"="restaurant"]'],
+  transit:    ['["public_transport"~"station|platform"]', '["highway"="bus_stop"]', '["railway"~"station|tram_stop"]'],
+  park:       ['["leisure"="park"]'],
+  pharmacy:   ['["amenity"="pharmacy"]'],
+};
+
 // Short TTL so a cell recovers to Google quickly once quota resets, while an
 // outage doesn't re-hammer Overpass.
 const PLACES_OSM_TTL_HOURS = 1;
@@ -912,6 +924,7 @@ module.exports = {
   OVERPASS_ENDPOINTS,
   OSM_POI_FILTERS,
   OSM_POI_RADIUS_M,
+  OSM_WALK_FILTERS,
   PLACES_OSM_TTL_HOURS,
   // Development discovery
   DEV_CACHE_TTL_MS,

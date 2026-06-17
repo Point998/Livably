@@ -2,6 +2,15 @@
 const { escapeHtml } = require('../../utils/text');
 const { renderChapterCard } = require('../../templates/components/chapterCard');
 
+// FR-067 — provenance-aware disclaimer source phrase. OSM data is community-
+// mapped and may be less complete than commercial data; say so plainly rather
+// than implying Google-grade precision (honest-provenance principle).
+function walkSourcePhrase(source) {
+  return source === 'osm'
+    ? 'OpenStreetMap (community-mapped) data — may be less complete than commercial sources'
+    : 'Google Places data';
+}
+
 function getPedestrianFeatures(score) {
   if (score >= 90) return {
     present: ['Well-connected sidewalk network', 'Marked crosswalks throughout', 'Pedestrian signals at intersections', 'Street lighting on main routes'],
@@ -155,7 +164,7 @@ function buildWalkResearchHTML(walk) {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <p class="prem-disclaimer">Walk times estimated from straight-line distance at average pedestrian pace. Not based on official Walk Score® data. Source: Google Places API.</p>
+      <p class="prem-disclaimer">Walk times estimated from straight-line distance at average pedestrian pace. Not based on official Walk Score® data. Source: ${escapeHtml(walkSourcePhrase(walk.source))}.</p>
     </div>`;
 }
 
@@ -187,8 +196,22 @@ function buildWalkDeepDiveHTML(walk) {
     </div>`;
 }
 
+// FR-067 — both data sources down. Render an actionable card (no fabricated
+// score band) pointing at the research tools, per CONSTRAINT-015.
+function buildWalkabilityUnavailableHTML(walk) {
+  const walkSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M8 22l2-7 3 3 3-4 2 8"/><path d="M7.5 13.5L9 11l4 1 2-3.5"/></svg>`;
+  const leftHTML = `
+    <div class="prem-narrative">
+      <p class="prem-narrative-lead">We couldn't retrieve nearby-amenity data for this address right now, so we can't estimate walkability automatically. This is a temporary data gap, not a finding about the location.</p>
+      <p class="prem-narrative-body">You can get an authoritative walkability read in a couple of minutes using the tools below — Walk Score covers any US address, and Google Street View lets you preview specific routes from the front door.</p>
+    </div>
+    <div class="depth-l3">${buildWalkResearchToolsTab()}</div>`;
+  return renderChapterCard('walk', '13', walkSvg, 'Getting Around on Foot', 'What\'s reachable without a car — and what that means for daily life.', null, leftHTML, null, null, null, null);
+}
+
 function buildWalkabilityHTML(walk) {
   if (!walk) return '';
+  if (walk.source === 'unavailable' || walk.score == null) return buildWalkabilityUnavailableHTML(walk);
   const { score, category, destinations } = walk;
 
   const verdictMod = ['green', 'lightgreen', 'gold', 'orange', 'red'].includes(category.color) ? category.color : 'gold';
@@ -283,7 +306,7 @@ function buildWalkabilityHTML(walk) {
     </div>
     ${destHTML}
     ${featHTML}
-    <p class="prem-disclaimer">Walkability is estimated from nearby amenities within 0.5 miles using Google Places data. Not an official Walk Score®.</p>`;
+    <p class="prem-disclaimer">Walkability is estimated from nearby amenities within 0.5 miles using ${escapeHtml(walkSourcePhrase(walk.source))}. Not an official Walk Score®.</p>`;
 
   const walkSvg = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4" r="2"/><path d="M8 22l2-7 3 3 3-4 2 8"/><path d="M7.5 13.5L9 11l4 1 2-3.5"/></svg>`;
   const deepDiveHTML = buildWalkDeepDiveHTML(walk);
