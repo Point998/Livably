@@ -8,8 +8,8 @@ const {
   AIRPORT_SEARCH_RADIUS_M, AIRPORT_MAX_DISTANCE_MILES,
   OSM_ROAD_NOISE_RADIUS_M, OSM_RAIL_RADIUS_M, OSM_LANDUSE_RADIUS_M,
   WATER_QUALITY_SEARCH_RADIUS_MILES,
-  OVERPASS_ENDPOINTS,
 } = require('../../utils/constants');
+const { fetchOverpass } = require('../../shared/overpass');
 const { safeInt } = require('../../utils/text');
 const { getAQICategory, interpretFloodZone, estimateDNLFromRoad, getDNLCategory, estimateBortle, getBortleDescription, getRadonZone } = require('./logic');
 const { googlePlacesProbe } = require('../../shared/google/probe');
@@ -123,24 +123,6 @@ async function getRoadNoise(lat, lng) {
   } catch {
     return null;
   }
-}
-
-async function fetchOverpass(query, timeoutMs = 15000) {
-  for (let i = 0; i < OVERPASS_ENDPOINTS.length; i++) {
-    const base = OVERPASS_ENDPOINTS[i];
-    try {
-      const resp = await fetch(
-        `${base}?data=${encodeURIComponent(query)}`,
-        { signal: AbortSignal.timeout(timeoutMs) },
-      );
-      if (resp.ok) return resp;
-      // 429 = rate limited, 406 = blocked — try next endpoint after brief pause
-      if (resp.status === 429 || resp.status === 406) {
-        if (i < OVERPASS_ENDPOINTS.length - 1) await new Promise((r) => setTimeout(r, 300));
-      }
-    } catch {}
-  }
-  return null;
 }
 
 async function getRoadNoiseOSM(lat, lng) {

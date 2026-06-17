@@ -3,13 +3,35 @@ const { googleMapsClient, googleMapsApiKey } = require('../../shared/google/clie
 const { getDriveTime } = require('../../shared/google/distanceMatrix');
 const { checkDriveTimeCoherence, classifyBand } = require('../../shared/validate');
 const { cellSearchOrigin, cellDriveOpts } = require('../../shared/spatial');
-const { placesCache } = require('../../cache');
+const { sourceChain } = require('../../shared/sourceChain');
+const { searchOSMPOIs } = require('../../shared/osmPlaces');
+const { placesCache, placesOsmCache } = require('../../cache');
 const { getMitigation } = require('../../errorMemory');
 const { logError } = require('../../logger');
 const {
   GROCERY_SEARCH_RADIUS_M, GROCERY_CANDIDATE_COUNT,
+  OSM_POI_FILTERS, OSM_POI_RADIUS_M,
 } = require('../../utils/constants');
 const { isExcludedGroceryType } = require('./logic');
+
+// FR-066 — shape an OSM POI into the reachability record contract. No routing
+// (Google Distance Matrix is down in a quota outage), so proximity is the
+// straight-line distance, flagged for honest rendering. No cell band fields:
+// bandRung is drive-time-based, and there are no minutes here.
+function osmRecord(p) {
+  return {
+    name: p.name,
+    address: null,
+    location: { lat: p.lat, lng: p.lng },
+    driveTimeMinutes: null,
+    distanceMiles: Math.round(p.distanceMiles * 10) / 10,
+    proximitySource: 'osm-straightline',
+  };
+}
+
+// Adapter so sourceChain miss/error visibility flows through the structured
+// logger (NR-004 observability) rather than console — and stays quiet in tests.
+const chainLog = (fn, origin) => (msg) => logError(fn, origin, new Error(msg));
 
 // FR-058 cell helpers (cellSearchOrigin / cellDriveOpts) live in shared/spatial.js.
 // Attach the cell data-contract fields (R4) onto a finished record. The drive
@@ -34,7 +56,31 @@ function withCellFields(record, driveTimeMinutes, cell) {
 // ruralMode: 'urban'|'suburban'|'rural'|'remote' from detectRuralMode().
 // cell: FR-058 spatial cell (optional). CONSTRAINT-010: Results >45 min are
 // flagged with coherenceWarning for non-rural addresses.
+// Public entry: Google primary → OSM straight-line fallback → throw (link floor).
+// Google short-circuits the chain (no Overpass call) whenever it succeeds.
 async function findNearestGrocery(originLatLng, ruralMode = 'suburban', cell = null) {
+  const picked = await sourceChain([
+    { name: 'google', run: () => findNearestGroceryGoogle(originLatLng, ruralMode, cell), isValid: (r) => Array.isArray(r) && r.length > 0 },
+    { name: 'osm',    run: () => findNearestGroceryOSM(originLatLng, cell),                isValid: (r) => Array.isArray(r) && r.length > 0 },
+  ], null, { label: 'reachability-grocery', log: chainLog('findNearestGrocery', originLatLng) });
+  if (!picked) throw new Error('No grocery stores found near that address.');
+  return picked.value;
+}
+
+async function findNearestGroceryOSM(originLatLng, cell = null) {
+  const cacheKey = cell ? `grocery:osm:${cell.cellId}` : `grocery:osm:${originLatLng}`;
+  const cached = placesOsmCache.get(cacheKey);
+  if (cached) return cached;
+  const searchOrigin = cellSearchOrigin(originLatLng, cell);
+  const [sLat, sLng] = searchOrigin.split(',').map(Number);
+  const pois = await searchOSMPOIs(sLat, sLng, { filters: OSM_POI_FILTERS.grocery, radiusM: OSM_POI_RADIUS_M, limit: 3 });
+  if (!pois.length) return null;
+  const records = pois.map(osmRecord);
+  placesOsmCache.set(cacheKey, records);
+  return records;
+}
+
+async function findNearestGroceryGoogle(originLatLng, ruralMode = 'suburban', cell = null) {
   const cacheKey = cell ? `grocery:${cell.cellId}` : `grocery:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -85,6 +131,28 @@ async function findNearestGrocery(originLatLng, ruralMode = 'suburban', cell = n
 }
 
 async function findNearestPharmacy(originLatLng, cell = null) {
+  const picked = await sourceChain([
+    { name: 'google', run: () => findNearestPharmacyGoogle(originLatLng, cell), isValid: (r) => r != null },
+    { name: 'osm',    run: () => findNearestPharmacyOSM(originLatLng, cell),    isValid: (r) => r != null },
+  ], null, { label: 'reachability-pharmacy', log: chainLog('findNearestPharmacy', originLatLng) });
+  if (!picked) throw new Error('No pharmacy found near that address.');
+  return picked.value;
+}
+
+async function findNearestPharmacyOSM(originLatLng, cell = null) {
+  const cacheKey = cell ? `pharmacy:osm:${cell.cellId}` : `pharmacy:osm:${originLatLng}`;
+  const cached = placesOsmCache.get(cacheKey);
+  if (cached) return cached;
+  const searchOrigin = cellSearchOrigin(originLatLng, cell);
+  const [sLat, sLng] = searchOrigin.split(',').map(Number);
+  const pois = await searchOSMPOIs(sLat, sLng, { filters: OSM_POI_FILTERS.pharmacy, radiusM: OSM_POI_RADIUS_M, limit: 1 });
+  if (!pois.length) return null;
+  const record = osmRecord(pois[0]);
+  placesOsmCache.set(cacheKey, record);
+  return record;
+}
+
+async function findNearestPharmacyGoogle(originLatLng, cell = null) {
   const cacheKey = cell ? `pharmacy:${cell.cellId}` : `pharmacy:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -116,6 +184,28 @@ async function findNearestPharmacy(originLatLng, cell = null) {
 }
 
 async function findNearestGasStation(originLatLng, cell = null) {
+  const picked = await sourceChain([
+    { name: 'google', run: () => findNearestGasStationGoogle(originLatLng, cell), isValid: (r) => r != null },
+    { name: 'osm',    run: () => findNearestGasStationOSM(originLatLng, cell),    isValid: (r) => r != null },
+  ], null, { label: 'reachability-gas', log: chainLog('findNearestGasStation', originLatLng) });
+  if (!picked) throw new Error('No gas station found near that address.');
+  return picked.value;
+}
+
+async function findNearestGasStationOSM(originLatLng, cell = null) {
+  const cacheKey = cell ? `gasstation:osm:${cell.cellId}` : `gasstation:osm:${originLatLng}`;
+  const cached = placesOsmCache.get(cacheKey);
+  if (cached) return cached;
+  const searchOrigin = cellSearchOrigin(originLatLng, cell);
+  const [sLat, sLng] = searchOrigin.split(',').map(Number);
+  const pois = await searchOSMPOIs(sLat, sLng, { filters: OSM_POI_FILTERS.gas, radiusM: OSM_POI_RADIUS_M, limit: 1 });
+  if (!pois.length) return null;
+  const record = osmRecord(pois[0]);
+  placesOsmCache.set(cacheKey, record);
+  return record;
+}
+
+async function findNearestGasStationGoogle(originLatLng, cell = null) {
   const cacheKey = cell ? `gasstation:${cell.cellId}` : `gasstation:${originLatLng}`;
   const cached = placesCache.get(cacheKey);
   if (cached) { console.log('[CACHE HIT] places:', cacheKey); return cached; }
@@ -143,15 +233,33 @@ async function findNearestGasStation(originLatLng, cell = null) {
 }
 
 const SOURCES = [
+  // Google descriptors target the Google impl directly so the monitor reports on
+  // Google specifically (not masked green by the OSM fallback).
   { id: 'google-places-grocery', label: 'Google Places (nearest grocery stores)', provider: 'google', coverage: 'all',
-    run: (ctx) => findNearestGrocery(`${ctx.lat},${ctx.lng}`, 'suburban', null),
+    run: (ctx) => findNearestGroceryGoogle(`${ctx.lat},${ctx.lng}`, 'suburban', null),
     isValid: (r) => Array.isArray(r) && r.length > 0 && typeof r[0]?.driveTimeMinutes === 'number' },
   { id: 'google-places-pharmacy', label: 'Google Places (nearest pharmacy)', provider: 'google', coverage: 'all',
-    run: (ctx) => findNearestPharmacy(`${ctx.lat},${ctx.lng}`, null),
+    run: (ctx) => findNearestPharmacyGoogle(`${ctx.lat},${ctx.lng}`, null),
     isValid: (r) => r !== null && typeof r?.driveTimeMinutes === 'number' },
   { id: 'google-places-gas', label: 'Google Places (nearest gas station)', provider: 'google', coverage: 'all',
-    run: (ctx) => findNearestGasStation(`${ctx.lat},${ctx.lng}`, null),
+    run: (ctx) => findNearestGasStationGoogle(`${ctx.lat},${ctx.lng}`, null),
     isValid: (r) => r !== null && typeof r?.driveTimeMinutes === 'number' },
+  // FR-066 OSM fallbacks (non-safety POIs). coverage 'some' — Overpass data is
+  // sparser than Google in places; a miss is informational, not a failure.
+  { id: 'osm-grocery-fallback', label: 'OSM Overpass grocery (Google fallback, straight-line)', provider: 'osm', coverage: 'some',
+    run: (ctx) => findNearestGroceryOSM(`${ctx.lat},${ctx.lng}`, null),
+    isValid: (r) => Array.isArray(r) && r.length > 0 && typeof r[0]?.distanceMiles === 'number' },
+  { id: 'osm-pharmacy-fallback', label: 'OSM Overpass pharmacy (Google fallback, straight-line)', provider: 'osm', coverage: 'some',
+    run: (ctx) => findNearestPharmacyOSM(`${ctx.lat},${ctx.lng}`, null),
+    isValid: (r) => r !== null && typeof r?.distanceMiles === 'number' },
+  { id: 'osm-gas-fallback', label: 'OSM Overpass fuel (Google fallback, straight-line)', provider: 'osm', coverage: 'some',
+    run: (ctx) => findNearestGasStationOSM(`${ctx.lat},${ctx.lng}`, null),
+    isValid: (r) => r !== null && typeof r?.distanceMiles === 'number' },
 ];
 
-module.exports = { findNearestGrocery, findNearestPharmacy, findNearestGasStation, SOURCES };
+module.exports = {
+  findNearestGrocery, findNearestPharmacy, findNearestGasStation,
+  findNearestGroceryGoogle, findNearestPharmacyGoogle, findNearestGasStationGoogle,
+  findNearestGroceryOSM, findNearestPharmacyOSM, findNearestGasStationOSM,
+  SOURCES,
+};

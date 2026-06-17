@@ -12,6 +12,36 @@ const baseLib  = { name: 'Scott County Public Library', address: '104 S Bradford
 const baseRec  = { name: 'Georgetown Recreation Center', address: '100 Rec Dr', location: {}, driveTimeMinutes: 6 };
 const basePost = { name: 'Georgetown Main Post Office', address: '200 Main St', location: {}, driveTimeMinutes: 3 };
 
+// FR-066 — OSM straight-line fallback rendering (Google down). Records carry
+// distanceMiles + driveTimeMinutes:null + proximitySource:'osm-straightline'.
+describe('buildInsightsCardHTML — FR-066 OSM straight-line fallback', () => {
+  const osmGrocery = [{ name: 'OSM Kroger', address: null, location: {}, driveTimeMinutes: null, distanceMiles: 1.2, proximitySource: 'osm-straightline' }];
+  const osmPharmacy = { name: 'OSM CVS', address: null, location: {}, driveTimeMinutes: null, distanceMiles: 0.8, proximitySource: 'osm-straightline' };
+
+  test('renders straight-line distance, never "null min"', () => {
+    const html = buildInsightsCardHTML(osmGrocery, osmPharmacy, hospital, urgentCare, highwayRamp, gasStation);
+    expect(html).toMatch(/~1\.2 mi/);
+    expect(html).not.toMatch(/null min/);
+  });
+
+  test('shows the honest straight-line / OpenStreetMap caveat', () => {
+    const html = buildInsightsCardHTML(osmGrocery, osmPharmacy, hospital, urgentCare, highwayRamp, gasStation);
+    expect(html).toMatch(/straight-line/i);
+    expect(html).toMatch(/OpenStreetMap/);
+  });
+
+  test('glance bar shows grocery distance when no drive time', () => {
+    const html = buildInsightsCardHTML(osmGrocery, osmPharmacy, hospital, urgentCare, highwayRamp, gasStation);
+    expect(html).toMatch(/Grocery: ~1\.2 mi/);
+  });
+
+  test('Google path still renders minutes unchanged', () => {
+    const html = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
+    expect(html).toMatch(/Grocery: 6 min/);
+    expect(html).not.toMatch(/straight-line/i);
+  });
+});
+
 describe('buildInsightsCardHTML — FR-045 depth system', () => {
   test('section has data-depth="overview"', () => {
     const html = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
