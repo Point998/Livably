@@ -1,6 +1,6 @@
 'use strict';
 
-const { calcPermitPercentChange, classifyPermitTrend } = require('../../../src/modules/growth/logic');
+const { calcPermitPercentChange, classifyPermitTrend, categorizeOSMCommercialPOI } = require('../../../src/modules/growth/logic');
 
 describe('calcPermitPercentChange', () => {
   test('returns null when prior is null', () => {
@@ -54,5 +54,30 @@ describe('classifyPermitTrend', () => {
     expect(classifyPermitTrend(0)).toBe('stable');
     expect(classifyPermitTrend(9)).toBe('stable');
     expect(classifyPermitTrend(-9)).toBe('stable');
+  });
+});
+
+describe('categorizeOSMCommercialPOI (FR-071)', () => {
+  test('maps each of the 6 commercial types from tags', () => {
+    expect(categorizeOSMCommercialPOI({ shop: 'mall' })).toMatchObject({ type: 'shopping_mall', label: 'Shopping Center', icon: '🏬' });
+    expect(categorizeOSMCommercialPOI({ shop: 'supermarket' })).toMatchObject({ type: 'supermarket', label: 'Grocery Store' });
+    expect(categorizeOSMCommercialPOI({ shop: 'department_store' })).toMatchObject({ type: 'department_store', label: 'Major Retail' });
+    expect(categorizeOSMCommercialPOI({ amenity: 'cinema' })).toMatchObject({ type: 'movie_theater', label: 'Entertainment' });
+    expect(categorizeOSMCommercialPOI({ amenity: 'bank' })).toMatchObject({ type: 'bank', label: 'Financial' });
+  });
+
+  test('gym is unioned across the three inconsistent OSM tags', () => {
+    expect(categorizeOSMCommercialPOI({ leisure: 'fitness_centre' })).toMatchObject({ type: 'gym' });
+    expect(categorizeOSMCommercialPOI({ sport: 'fitness' })).toMatchObject({ type: 'gym' });
+    expect(categorizeOSMCommercialPOI({ amenity: 'gym' })).toMatchObject({ type: 'gym' });
+  });
+
+  test('returns null for unmatched, missing, or non-operational tags', () => {
+    expect(categorizeOSMCommercialPOI(null)).toBeNull();
+    expect(categorizeOSMCommercialPOI({})).toBeNull();
+    expect(categorizeOSMCommercialPOI({ amenity: 'restaurant' })).toBeNull();
+    expect(categorizeOSMCommercialPOI({ shop: 'bakery' })).toBeNull();
+    expect(categorizeOSMCommercialPOI({ 'disused:amenity': 'bank' })).toBeNull();
+    expect(categorizeOSMCommercialPOI({ 'abandoned:shop': 'mall' })).toBeNull();
   });
 });

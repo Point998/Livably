@@ -8,9 +8,18 @@ const { discoverDevelopments, GOOGLE_NEWS_RSS_URL } = require('../../development
 const {
   COMMERCIAL_DEV_TYPES,
   DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M,
+  OSM_COMMERCIAL_FILTERS,
 } = require('../../utils/constants');
-const { calcPermitPercentChange, classifyPermitTrend } = require('./logic');
+const { calcPermitPercentChange, classifyPermitTrend, categorizeOSMCommercialPOI } = require('./logic');
 const { googlePlacesProbe } = require('../../shared/google/probe');
+const { sourceChain } = require('../../shared/sourceChain');
+const { searchOSMPOIs } = require('../../shared/osmPlaces');
+const { placesOsmCache } = require('../../cache');
+const { logError } = require('../../logger');
+
+// Adapter so sourceChain miss/error visibility flows through the structured
+// logger (NR-004 / FR-068 observability) and stays quiet in tests.
+const chainLog = (fn, origin) => (msg) => logError(fn, origin, new Error(msg));
 
 // ── FR-025: Growth & Development ─────────────────────────────────────────────
 
@@ -86,7 +95,20 @@ async function getNewConstructionContext(fips) {
   } catch { return null; }
 }
 
+// Commercial activity (Google Places union → OSM cost-resilience fallback, FR-071).
+// Both paths return the same straight-line (haversine) record shape, so the OSM
+// fallback is a drop-in: identical miles basis, identical contract, only the
+// per-record `source:'osm'` provenance marker differs. Returns [] (not throw) when
+// both miss, keeping the renderer's "lower commercial density" empty-state intact.
 async function getRecentDevelopmentActivity(lat, lng) {
+  const picked = await sourceChain([
+    { name: 'google', run: () => getRecentDevelopmentActivityGoogle(lat, lng), isValid: Array.isArray },
+    { name: 'osm',    run: () => getRecentDevelopmentActivityOSM(lat, lng),    isValid: Array.isArray },
+  ], null, { label: 'growth-commercial', log: chainLog('getRecentDevelopmentActivity', `${lat},${lng}`) });
+  return picked ? picked.value : [];
+}
+
+async function getRecentDevelopmentActivityGoogle(lat, lng) {
   const results = await Promise.allSettled(
     COMMERCIAL_DEV_TYPES.map(({ type }) =>
       googleMapsClient.placesNearby({
@@ -94,6 +116,11 @@ async function getRecentDevelopmentActivity(lat, lng) {
       })
     )
   );
+  // Outage signature: if EVERY Places call rejected, this is a dead endpoint, not
+  // an empty commercial area — return null so the chain falls through to OSM and
+  // the monitor sees a genuine failure (FR-067; was swallowed to [] before).
+  if (!results.some((r) => r.status === 'fulfilled')) return null;
+
   const seen = new Set();
   const establishments = [];
   for (let i = 0; i < COMMERCIAL_DEV_TYPES.length; i++) {
@@ -111,6 +138,42 @@ async function getRecentDevelopmentActivity(lat, lng) {
     }
   }
   return establishments.sort((a, b) => a.distanceMiles - b.distanceMiles).slice(0, 6);
+}
+
+// FR-071 — keyless fallback. One Overpass union call across the commercial tag
+// filters, then re-categorize each POI by its tags (Overpass doesn't label the
+// matching clause). Mirrors the Google path's top-2-per-type → top-6 variety so
+// the displayed set isn't dominated by one category.
+async function getRecentDevelopmentActivityOSM(lat, lng) {
+  const cacheKey = `commercial:osm:${lat},${lng}`;
+  const cached = placesOsmCache.get(cacheKey);
+  if (cached) return cached;
+
+  const pois = await searchOSMPOIs(lat, lng, {
+    filters: OSM_COMMERCIAL_FILTERS, radiusM: DEVELOPMENT_ACTIVITY_SEARCH_RADIUS_M, withTags: true, limit: 40,
+  });
+
+  // Group categorized POIs by type (nearest-first; searchOSMPOIs already sorted),
+  // dedupe by name, take top 2 per type.
+  const byType = {};
+  const seenNames = new Set();
+  for (const p of pois) {
+    const cat = categorizeOSMCommercialPOI(p.tags);
+    if (!cat) continue;
+    const nameKey = p.name.toLowerCase();
+    if (seenNames.has(nameKey)) continue;
+    seenNames.add(nameKey);
+    const group = (byType[cat.type] ||= []);
+    if (group.length >= 2) continue;
+    group.push({ name: p.name, label: cat.label, icon: cat.icon, distanceMiles: p.distanceMiles, source: 'osm' });
+  }
+
+  const establishments = Object.values(byType).flat()
+    .sort((a, b) => a.distanceMiles - b.distanceMiles)
+    .slice(0, 6);
+
+  placesOsmCache.set(cacheKey, establishments);
+  return establishments;
 }
 
 async function getGrowthAndDevelopment(lat, lng, fips, locationInfo) {
@@ -137,11 +200,16 @@ const SOURCES = [
     run: (ctx) => getNewConstructionContext(ctx.fips),
     isValid: (r) => r !== null && typeof r?.newConstructionPct === 'number' },
   { id: 'google-places-development', label: 'Google Places nearby (commercial development)', provider: 'google', coverage: 'some',
-    run: (ctx) => getRecentDevelopmentActivity(ctx.lat, ctx.lng),
-    // Swallow-to-empty (Promise.allSettled → [] on total failure); probe gates
-    // reachability, so isValid accepts an empty (no nearby development) result.
+    // Targets the Google impl directly (not the chain) so the monitor reports on
+    // Google specifically, not masked-green by the OSM fallback (FR-071). isValid
+    // now fails meaningfully on outage because the impl returns null when all calls
+    // reject (was swallowed to [] → green before).
+    run: (ctx) => getRecentDevelopmentActivityGoogle(ctx.lat, ctx.lng),
     isValid: (r) => Array.isArray(r),
     probe: googlePlacesProbe },
+  { id: 'osm-commercial-fallback', label: 'OSM Overpass commercial (Google fallback, straight-line)', provider: 'osm', coverage: 'some',
+    run: (ctx) => getRecentDevelopmentActivityOSM(ctx.lat, ctx.lng),
+    isValid: (r) => Array.isArray(r) },
   { id: 'google-news-rss', label: 'Google News RSS (development news)', provider: 'google-news', coverage: 'some',
     run: (ctx) => discoverDevelopments(ctx.county?.replace(/\s+County\s*$/i, '') || ctx.state, ctx.state),
     // News results are legitimately empty for many areas; probe gates reachability.
@@ -154,5 +222,7 @@ module.exports = {
   getBuildingPermitTrend,
   getNewConstructionContext,
   getRecentDevelopmentActivity,
+  getRecentDevelopmentActivityGoogle,
+  getRecentDevelopmentActivityOSM,
   SOURCES,
 };

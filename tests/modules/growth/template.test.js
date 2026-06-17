@@ -26,6 +26,23 @@ const fullGrowth = {
   locationInfo: { county: 'Scott County', city: 'Georgetown' },
 };
 
+describe('buildGrowthAndDevelopmentHTML — commercial provenance label (FR-071)', () => {
+  test('Google-sourced establishments label as Google Places', () => {
+    const html = buildGrowthAndDevelopmentHTML(fullGrowth);
+    expect(html).toMatch(/Google Places/);
+    expect(html).not.toMatch(/OpenStreetMap/);
+  });
+
+  test('OSM-fallback establishments relabel as OpenStreetMap (honest provenance)', () => {
+    const growth = {
+      ...fullGrowth,
+      establishments: [{ name: 'Regional Mall', icon: '🏬', label: 'Shopping Center', distanceMiles: 0.3, source: 'osm' }],
+    };
+    const html = buildGrowthAndDevelopmentHTML(growth);
+    expect(html).toMatch(/OpenStreetMap/);
+  });
+});
+
 describe('buildGrowthAndDevelopmentHTML — FR-045 glance bar', () => {
   test('renders chapter-glance in depth-l1', () => {
     const html = buildGrowthAndDevelopmentHTML(baseGrowth);
