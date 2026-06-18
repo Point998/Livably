@@ -6,7 +6,7 @@ const { logError } = require('../../logger');
 const {
   NOAA_CDO_BASE_URL, NOAA_CDO_NORMALS_DATASET, NOAA_CDO_NORMALS_ANN,
   NOAA_STATION_SEARCH_RADII,
-  FEMA_DECLARATIONS_URL, USGS_ELEVATION_URL,
+  FEMA_DECLARATIONS_URL,
   CLIMATE_STORM_LOOKBACK_YEARS, CLIMATE_FEMA_LOOKBACK_YEARS,
   WATERSHED_CELL_RESOLUTION,
   SEISMIC_DESIGNMAPS_URL,
@@ -14,6 +14,7 @@ const {
 } = require('../../utils/constants');
 const { snapToCellAtResolution } = require('../../shared/spatial');
 const { sourceChain } = require('../../shared/sourceChain');
+const { fetchElevationsFeet, fetchElevationWithRetry } = require('../../shared/elevation');
 const { watershedCache, seismicCache } = require('../../cache');
 const {
   getEmergencySystem,
@@ -235,25 +236,6 @@ async function getClimateNormals(lat, lng) {
   return { ...picked.value, normalsSource: picked.source };
 }
 
-async function fetchElevationWithRetry(url, maxRetries = 2) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      const value = data?.value ?? null;
-      if (value === null) throw new Error('null value in response');
-      return value;
-    } catch (err) {
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } else {
-        return null;
-      }
-    }
-  }
-}
-
 const WBD_BASE = 'https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer';
 
 // Query one WBD layer at a point; return the watershed unit's `name` or null.
@@ -328,25 +310,14 @@ async function getSeismicHazard(lat, lng) {
 
 async function getWatershedContext(lat, lng) {
   const offsets = [[0, 0], [0.0036, 0], [-0.0036, 0], [0, 0.0045], [0, -0.0045]];
-  const urls = offsets.map(([dlat, dlng]) =>
-    `${USGS_ELEVATION_URL}?x=${(lng + dlng).toFixed(6)}&y=${(lat + dlat).toFixed(6)}&units=Feet&wkid=4326&includeDate=false`
-  );
+  const points = offsets.map(([dlat, dlng]) => [lat + dlat, lng + dlng]);
 
-  const results = await Promise.all(urls.map(url => fetchElevationWithRetry(url)));
+  // FR-073 — resilient + observable: EPQS → OpenTopoData NED 10 m → null, with the
+  // degradation recorded in the FR-068 ledger (was per-point logError only).
+  const results = await fetchElevationsFeet(points);
 
-  // Log any point that exhausted all retries
-  results.forEach((val, i) => {
-    if (val === null) {
-      logError(
-        'getWatershedContext',
-        `${lat},${lng}`,
-        new Error(`elevation point ${i} (offset ${JSON.stringify(offsets[i])}) exhausted all retries`)
-      );
-    }
-  });
-
-  const centerElevation = results[0];
-  if (centerElevation === null) return null;
+  const centerElevation = results?.[0];
+  if (centerElevation == null) return null;
 
   // Fill failed surrounding points with center elevation (flat-terrain approximation)
   const elevations = results.map((val, i) => (i === 0 ? centerElevation : (val ?? centerElevation)));

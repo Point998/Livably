@@ -349,18 +349,16 @@ describe('getWatershedContext', () => {
     // Surrounding points should be filled with center value
     expect(result.elevations.slice(1).every(e => e === 900)).toBe(true);
     expect(result.position).toBe('midslope');
-    // logError must be called once per exhausted surrounding point (4 points failed)
-    expect(logError).toHaveBeenCalledWith('getWatershedContext', expect.stringContaining(','), expect.any(Error));
-    expect(logError).toHaveBeenCalledTimes(4);
+    // FR-073: EPQS center succeeded → no chain miss → no degradation logged.
   }, 30000);
 
-  test('returns null when center point fails after all retries', async () => {
+  test('returns null when center point fails after all retries (EPQS + OpenTopoData both down)', async () => {
+    // global.fetch rejects for both EPQS and the OpenTopoData fallback.
     global.fetch = jest.fn().mockRejectedValue(new Error('network failure'));
     const result = await getWatershedContext(38.25, -85.75);
     expect(result).toBeNull();
-    // All 5 points failed — logError called for each null result
-    expect(logError).toHaveBeenCalledWith('getWatershedContext', expect.stringContaining(','), expect.any(Error));
-    expect(logError).toHaveBeenCalledTimes(5);
+    // FR-073: degradation now flows through the shared helper's sourceChain log.
+    expect(logError).toHaveBeenCalledWith('fetchElevationsFeet', expect.stringContaining(','), expect.any(Error));
   }, 30000);
 });
 
