@@ -14,7 +14,7 @@ const { saveReport } = require('./reportStore');
 const { logRequest, logError, logDegradation, logAnalysis } = require('../logger');
 const { runWithLedger, getLedger, summarize } = require('../shared/degradationLedger');
 const { buildReportHTML } = require('../templates/pages/reportPage');
-const { QuotaExceededError, RateLimitError } = require('../rateLimit');
+const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
 const { snapToCell } = require('../shared/spatial');
@@ -22,6 +22,9 @@ const { getDrivingRates } = require('../shared/rates');
 const { DEFAULT_PROFILE, PROFILE_BOUNDS } = require('../utils/constants');
 
 function classifyError(error) {
+  if (error instanceof BudgetExceededError) {
+    return { type: 'QUOTA_EXCEEDED', title: 'Service at capacity', message: "We've reached today's data-fetch limit. Please try again later.", retryAfter: null };
+  }
   if (error instanceof QuotaExceededError) {
     return { type: 'QUOTA_EXCEEDED', title: 'Quota limit reached', message: error.message, retryAfter: null };
   }
