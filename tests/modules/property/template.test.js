@@ -154,6 +154,17 @@ describe('buildPropertyIntelligenceHTML — L3 deep dive', () => {
     expect(html).toMatch(/not available/i);
   });
 
+  test('FR-072: soil-null floor links the coordinate-specific SoilWeb survey', () => {
+    const noSoil = {
+      ...basePropIntelWithBands,
+      soil: null,
+      soilwebUrl: 'https://casoilresource.lawr.ucdavis.edu/gmap/?loc=38.2,-84.5',
+    };
+    const html = buildPropertyIntelligenceHTML(noSoil);
+    expect(html).toMatch(/casoilresource\.lawr\.ucdavis\.edu\/gmap\/\?loc=38\.2,-84\.5/);
+    expect(html).toMatch(/SoilWeb/);
+  });
+
   test('no inline styles (CONSTRAINT-008)', () => {
     const html = buildPropertyIntelligenceHTML(basePropIntelWithBands);
     const violations = html.match(/style="(?!--)[^"]+"/g);
