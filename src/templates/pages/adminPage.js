@@ -52,8 +52,8 @@ function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degr
       <tr style="background:${b.tripped ? '#fff3cd' : 'transparent'}">
         <td style="padding:6px 10px;font-family:monospace;font-size:13px">${b.key}</td>
         <td style="padding:6px 10px;text-align:right;font-weight:${b.tripped ? '600' : '400'};color:${b.tripped ? '#b8922a' : '#1a1a1a'}">${b.used} / ${b.cap}</td>
-        <td style="padding:6px 10px;text-align:right">${(b.pct * 100).toFixed(0)}%</td>
-        <td style="padding:6px 10px;text-align:right">$${b.estCostUsd.toFixed(2)}</td>
+        <td style="padding:6px 10px;text-align:right">${((b.pct ?? 0) * 100).toFixed(0)}%</td>
+        <td style="padding:6px 10px;text-align:right">$${(b.estCostUsd ?? 0).toFixed(2)}</td>
         <td style="padding:6px 10px;text-align:center">${b.tripped ? '⛔ tripped' : 'ok'}</td>
       </tr>`).join('');
 
