@@ -9,8 +9,8 @@ const {
   INAT_REPTILES_RADIUS_KM, INAT_REPTILES_PER_PAGE,
   INAT_INSECTS_RADIUS_KM, INAT_INSECTS_PER_PAGE,
   INAT_BUTTERFLIES_RADIUS_KM, INAT_BUTTERFLIES_PER_PAGE,
-  USGS_ELEVATION_URL,
 } = require('../../utils/constants');
+const { fetchElevationFeet } = require('../../shared/elevation');
 
 const {
   filterNativePlants, filterInvasivePlants, filterWildlife, filterBirds,
@@ -95,18 +95,9 @@ async function getMicroclimateData(lat, lng) {
   const summerDeg = Math.round(90 - Math.abs(lat - 23.5));
   const winterDeg = Math.round(90 - Math.abs(lat + 23.5));
 
-  let elevationFt = null;
-  try {
-    const url = `${USGS_ELEVATION_URL}?x=${lng.toFixed(6)}&y=${lat.toFixed(6)}&units=Feet&wkid=4326&includeDate=false`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (resp.ok) {
-      const data = await resp.json();
-      const v = data?.value ?? null;
-      if (v !== null && v > -1000) elevationFt = Math.round(v);
-    }
-  } catch {
-    // elevation is optional — solar angles are always returned
-  }
+  // FR-073 — resilient + observable elevation via the shared helper
+  // (EPQS → OpenTopoData → null). Solar angles are always returned regardless.
+  const elevationFt = await fetchElevationFeet(lat, lng);
 
   return { lat, elevationFt, solarSummerDeg: summerDeg, solarWinterDeg: winterDeg };
 }

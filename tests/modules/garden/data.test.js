@@ -245,21 +245,32 @@ describe('getMicroclimateData', () => {
     expect(result.lat).toBe(38);
   });
 
-  test('returns null elevationFt when USGS fails, solar angles still computed', async () => {
+  test('returns null elevationFt when EPQS + OpenTopoData both fail, solar angles still computed', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
     const result = await getMicroclimateData(38, -84.5);
     expect(result.elevationFt).toBeNull();
     expect(result.solarSummerDeg).toBe(76);
     expect(result.solarWinterDeg).toBe(29);
     expect(result.lat).toBe(38);
-  });
+  }, 15000);
 
-  test('returns null elevationFt when USGS returns ok:false', async () => {
+  test('returns null elevationFt when both sources return ok:false', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503 });
     const result = await getMicroclimateData(38, -84.5);
     expect(result.elevationFt).toBeNull();
     expect(result.solarSummerDeg).toBe(76);
-  });
+  }, 15000);
+
+  test('FR-073: falls back to OpenTopoData (meters→feet) when EPQS is down', async () => {
+    global.fetch = jest.fn()
+      // EPQS (epqs.nationalmap.gov) fails on every attempt; OpenTopoData succeeds.
+      .mockImplementation((url) => {
+        if (String(url).includes('epqs.nationalmap.gov')) return Promise.reject(new Error('EPQS down'));
+        return Promise.resolve({ ok: true, json: async () => ({ results: [{ elevation: 258.6 }] }) });
+      });
+    const result = await getMicroclimateData(38, -84.5);
+    expect(result.elevationFt).toBe(848); // 258.6 m × 3.28084 ≈ 848 ft
+  }, 15000);
 
   test('solar angles at Bozeman MT latitude (46°)', async () => {
     global.fetch = jest.fn().mockResolvedValue({
@@ -279,7 +290,7 @@ describe('getMicroclimateData', () => {
     });
     const result = await getMicroclimateData(38, -84.5);
     expect(result.elevationFt).toBeNull();
-  });
+  }, 15000);
 
   test('returns null elevationFt when USGS value is -9999 (no-data sentinel)', async () => {
     global.fetch = jest.fn().mockResolvedValue({
@@ -288,5 +299,5 @@ describe('getMicroclimateData', () => {
     });
     const result = await getMicroclimateData(38, -84.5);
     expect(result.elevationFt).toBeNull();
-  });
+  }, 15000);
 });

@@ -681,6 +681,8 @@ const OPEN_METEO_ARCHIVE_URL         = 'https://archive-api.open-meteo.com/v1/ar
 const CLIMATE_NORMALS_MODEL_PERIOD   = { start: '1991-01-01', end: '2020-12-31' };
 const FEMA_DECLARATIONS_URL          = 'https://www.fema.gov/api/open/v2/disasterDeclarations';
 const USGS_ELEVATION_URL             = 'https://epqs.nationalmap.gov/v1/json';
+// FR-073 — independent fallback DEM (same USGS NED 10 m data, different host).
+const OPENTOPODATA_NED10M_URL        = 'https://api.opentopodata.org/v1/ned10m';
 const CLIMATE_STORM_LOOKBACK_YEARS   = 30;
 const CLIMATE_FEMA_LOOKBACK_YEARS    = 20;
 const CLIMATE_SIGNIFICANT_DAMAGE_USD = 100_000;
@@ -990,6 +992,7 @@ module.exports = {
   CLIMATE_NORMALS_MODEL_PERIOD,
   FEMA_DECLARATIONS_URL,
   USGS_ELEVATION_URL,
+  OPENTOPODATA_NED10M_URL,
   CLIMATE_STORM_LOOKBACK_YEARS,
   CLIMATE_FEMA_LOOKBACK_YEARS,
   CLIMATE_SIGNIFICANT_DAMAGE_USD,
