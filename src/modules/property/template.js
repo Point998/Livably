@@ -3,9 +3,12 @@ const { escapeHtml } = require('../../utils/text');
 const { badgeClass, renderChapterCard } = require('../../templates/components');
 
 
-function buildSoilTab(soil) {
+function buildSoilTab(soil, soilwebUrl) {
   if (!soil) {
-    return `<p class="prem-narrative-body">USDA soil data was not available for this location. For site-specific drainage information, request a geotechnical report or ask the seller about any known drainage issues.</p>`;
+    const lookup = soilwebUrl
+      ? ` You can also look up this exact location in the <a href="${soilwebUrl}" target="_blank" rel="noopener noreferrer">UC-Davis SoilWeb survey</a>.`
+      : '';
+    return `<p class="prem-narrative-body">USDA soil data was not available for this location. For site-specific drainage information, request a geotechnical report or ask the seller about any known drainage issues.${lookup}</p>`;
   }
 
   const drainClass = soil.drainageCategory
@@ -175,7 +178,7 @@ function buildPropertyDeepDiveHTML(propIntel) {
   if (!propIntel) return '';
 
   const tabs = [
-    { id: 'soil',        label: 'Soil & Foundation',  content: buildSoilTab(propIntel.soil) },
+    { id: 'soil',        label: 'Soil & Foundation',  content: buildSoilTab(propIntel.soil, propIntel.soilwebUrl) },
     { id: 'buildingage', label: 'Building Age',        content: buildHousingAgeTab(propIntel.housingAgeBands, propIntel.era) },
   ];
 
@@ -202,12 +205,13 @@ function buildPropertyDeepDiveHTML(propIntel) {
 function buildPropertyResearchHTML(propIntel) {
   if (!propIntel) return '';
 
-  const { soil, housingAgeBands, locationInfo } = propIntel;
+  const { soil, soilwebUrl, housingAgeBands, locationInfo } = propIntel;
   const county = locationInfo?.county || 'this county';
 
   const assessorUrl   = `https://www.google.com/search?q=${encodeURIComponent(`${county} county assessor property records`)}`;
   const buildingUrl   = `https://www.google.com/search?q=${encodeURIComponent(`${county} county building department permit records`)}`;
-  const soilSurveyUrl = `https://websoilsurvey.sc.egov.usda.gov/`;
+  // FR-072 — point-specific SoilWeb AOI when available; WSS homepage otherwise.
+  const soilSurveyUrl = soilwebUrl || `https://websoilsurvey.sc.egov.usda.gov/`;
   const censusUrl     = `https://data.census.gov/table?id=B25034`;
 
   const soilSection = soil ? `
@@ -223,7 +227,7 @@ function buildPropertyResearchHTML(propIntel) {
           </tbody>
         </table>
       </div>
-      <p class="prem-disclaimer">Full soil data: <a href="${soilSurveyUrl}" target="_blank" rel="noopener noreferrer">USDA Web Soil Survey</a></p>
+      <p class="prem-disclaimer">Full soil data: <a href="${soilSurveyUrl}" target="_blank" rel="noopener noreferrer">${soilwebUrl ? 'this location in UC-Davis SoilWeb' : 'USDA Web Soil Survey'}</a></p>
     </div>` : '';
 
   const ageTable = housingAgeBands?.bands?.length ? `
