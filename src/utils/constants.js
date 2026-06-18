@@ -683,6 +683,9 @@ const FEMA_DECLARATIONS_URL          = 'https://www.fema.gov/api/open/v2/disaste
 const USGS_ELEVATION_URL             = 'https://epqs.nationalmap.gov/v1/json';
 // FR-073 — independent fallback DEM (same USGS NED 10 m data, different host).
 const OPENTOPODATA_NED10M_URL        = 'https://api.opentopodata.org/v1/ned10m';
+// FR-074 — ACS5 vintages tried newest-first. Bump the head as new releases land;
+// older entries stay as the resilience floor (a missing/retired vintage falls back).
+const CENSUS_ACS_VINTAGES            = [2024, 2023, 2022];
 const CLIMATE_STORM_LOOKBACK_YEARS   = 30;
 const CLIMATE_FEMA_LOOKBACK_YEARS    = 20;
 const CLIMATE_SIGNIFICANT_DAMAGE_USD = 100_000;
@@ -993,6 +996,7 @@ module.exports = {
   FEMA_DECLARATIONS_URL,
   USGS_ELEVATION_URL,
   OPENTOPODATA_NED10M_URL,
+  CENSUS_ACS_VINTAGES,
   CLIMATE_STORM_LOOKBACK_YEARS,
   CLIMATE_FEMA_LOOKBACK_YEARS,
   CLIMATE_SIGNIFICANT_DAMAGE_USD,
