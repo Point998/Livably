@@ -7,4 +7,5 @@ test('BudgetExceededError classifies as a graceful capacity page', () => {
   expect(out.type).toBe('QUOTA_EXCEEDED');
   expect(out.retryAfter).toBeNull();
   expect(out.title).toMatch(/capacity/i);
+  expect(out.message).toBe("We've reached today's data-fetch limit. Please try again later.");
 });

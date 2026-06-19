@@ -34,7 +34,7 @@ describe('costBreaker', () => {
     cb.record('placesNearby');
     cb.record('placesNearby');
     expect(() => cb.check('placesNearby')).toThrow(cb.BudgetExceededError);
-    try { cb.check('placesNearby'); } catch (e) { expect(e.bucket).toBe('places_nearby'); }
+    try { cb.check('placesNearby'); } catch (e) { expect(e.bucket).toBe('places_nearby'); expect(e.retryable).toBe(false); }
   });
 
   test('rolling expiry frees budget after 24h', () => {
