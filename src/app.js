@@ -23,6 +23,7 @@ const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML }
 const { buildAdminHealthHTML } = require('./templates/pages/adminPage');
 const { buildDegradationSummary } = require('./services/degradationReport');
 
+const costBreaker = require('./costBreaker');
 const { validateConfig } = require('./config');
 const { makeRequireAdmin } = require('./middleware/adminAuth');
 const { globalLimiter, meteredLimiter } = require('./middleware/rateLimiters');
@@ -34,6 +35,8 @@ try {
   console.error(`[config] FATAL: ${err.message}`);
   process.exit(1);
 }
+
+costBreaker.configure(config.costBreaker); // FR-075 — apply env caps + enabled flag
 
 const app = express();
 // app.set('trust proxy', 1); // Stage 1: enable when running behind a load balancer/proxy
@@ -139,7 +142,7 @@ app.get('/admin/health', (req, res) => {
   // FR-068 — source-chain degradation panel (7-day window).
   const degradation = buildDegradationSummary(readRecentLogs(7).filter((e) => e.type === 'degradation'));
 
-  return res.send(buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degradation }));
+  return res.send(buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degradation, costBreaker: costBreaker.status() }));
 });
 
 app.get('/admin/api-usage', (req, res) => res.json(getUsageStats()));
@@ -152,6 +155,9 @@ app.post('/admin/clear-cache', (req, res) => {
 });
 
 app.get('/admin/cache-stats', (req, res) => res.json(cacheStats()));
+
+app.post('/admin/cost-breaker/trip', (req, res) => { costBreaker.forceTrip(); res.json({ forced: true }); });
+app.post('/admin/cost-breaker/reset', (req, res) => { costBreaker.reset(); res.json({ forced: false }); });
 
 // ── History ───────────────────────────────────────────────────────────────────
 

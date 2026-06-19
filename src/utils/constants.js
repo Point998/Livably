@@ -872,6 +872,19 @@ const HIFLD_TERRITORIES_URL = 'https://services3.arcgis.com/OYP7N6mAJJCyH6hd/arc
 // probe never duplicates the literal.
 const GOOGLE_PLACES_NEARBY_URL = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json';
 
+// ── FR-075 — Cost circuit-breaker per-SKU budgets ──────────────────────────
+// dailyCap = round(freeMonthly / 30 * safetyMargin); 30 days at cap stays under monthly free.
+// Pricing/tier are ESTIMATES (Google Maps Platform, confirmed 2026-06-18); env-overridable.
+const COST_BREAKER = { safetyMargin: 0.6, warnThreshold: 0.8, avgElementsPerCall: 5 };
+
+const GOOGLE_SKU_BUDGETS = {
+  geocoding:      { tier: 'Essentials', freeMonthly: 10000, pricePerCall: 0.005, dailyCap: 200 },
+  distancematrix: { tier: 'Essentials', freeMonthly: 10000, pricePerCall: 0.005, dailyCap: 200 },
+  places_nearby:  { tier: 'Pro',        freeMonthly: 5000,  pricePerCall: 0.032, dailyCap: 100 },
+  places_text:    { tier: 'Pro',        freeMonthly: 5000,  pricePerCall: 0.032, dailyCap: 100 },
+  other:          { tier: 'Unknown',    freeMonthly: 1500,  pricePerCall: 0.010, dailyCap: 50  },
+};
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -1017,4 +1030,7 @@ module.exports = {
   SEISMIC_DESIGNMAPS_URL,
   SEISMIC_CACHE_TTL_DAYS,
   PGA_BAND_THRESHOLDS,
+  // FR-075: Cost circuit-breaker
+  GOOGLE_SKU_BUDGETS,
+  COST_BREAKER,
 };

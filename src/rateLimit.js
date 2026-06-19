@@ -36,6 +36,8 @@ class RateLimitError extends Error {
   }
 }
 
+const costBreaker = require('./costBreaker');
+
 const rateLimiter = new RateLimiter(5, 50);
 
 // Rolling 24-hour log of API calls (in-memory, resets on server restart)
@@ -67,11 +69,13 @@ function getUsageStats() {
 }
 
 async function makeGoogleMapsRequest(fn, endpoint = 'unknown', maxRetries = 3) {
+  costBreaker.check(endpoint); // FR-075 — throws BudgetExceededError before billing; not retried
   let lastError;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const result = await rateLimiter.execute(fn);
       logApiCall(endpoint, true);
+      costBreaker.record(endpoint); // FR-075 — count billed successes only
       return result;
     } catch (error) {
       lastError = error;
@@ -101,4 +105,4 @@ async function makeGoogleMapsRequest(fn, endpoint = 'unknown', maxRetries = 3) {
   throw lastError;
 }
 
-module.exports = { makeGoogleMapsRequest, QuotaExceededError, RateLimitError, getUsageStats };
+module.exports = { makeGoogleMapsRequest, QuotaExceededError, RateLimitError, BudgetExceededError: costBreaker.BudgetExceededError, getUsageStats };

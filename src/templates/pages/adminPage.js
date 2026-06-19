@@ -2,7 +2,7 @@
 
 const { escapeHtml } = require('../../utils/text');
 
-function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degradation }) {
+function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degradation, costBreaker }) {
   const pct = (n) => (n == null ? 'N/A' : `${(n * 100).toFixed(1)}%`);
 
   // FR-068 — source-chain degradation panel. Rows are sourceChain labels; counts
@@ -46,6 +46,16 @@ function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degr
       <td style="padding:5px 10px;font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(e.address || '')}">${escapeHtml((e.address || '').slice(0, 40))}</td>
       <td style="padding:5px 10px;font-size:12px;color:#c0392b">${escapeHtml(e.errorMsg || '')}</td>
     </tr>`).join('');
+
+  const cbBuckets = costBreaker?.buckets || [];
+  const cbRows = cbBuckets.map((b) => `
+      <tr style="background:${b.tripped ? '#fff3cd' : 'transparent'}">
+        <td style="padding:6px 10px;font-family:monospace;font-size:13px">${b.key}</td>
+        <td style="padding:6px 10px;text-align:right;font-weight:${b.tripped ? '600' : '400'};color:${b.tripped ? '#b8922a' : '#1a1a1a'}">${b.used} / ${b.cap}</td>
+        <td style="padding:6px 10px;text-align:right">${((b.pct ?? 0) * 100).toFixed(0)}%</td>
+        <td style="padding:6px 10px;text-align:right">$${(b.estCostUsd ?? 0).toFixed(2)}</td>
+        <td style="padding:6px 10px;text-align:center">${b.tripped ? '⛔ tripped' : 'ok'}</td>
+      </tr>`).join('');
 
   const apiRows = Object.entries(usage.byEndpoint || {})
     .sort(([, a], [, b]) => b.total - a.total)
@@ -127,6 +137,10 @@ function buildAdminHealthHTML({ patterns, mitigations, recentErrors, usage, degr
 
   <h2>API Usage by Endpoint (24h)</h2>
   ${apiRows ? `<table><thead><tr><th>Endpoint</th><th style="text-align:right">Calls</th><th style="text-align:right">Success Rate</th></tr></thead><tbody>${apiRows}</tbody></table>` : '<p class="empty">No API calls recorded.</p>'}
+
+  <h2>Cost Breaker (24h, per Google SKU)</h2>
+  <div class="meta">${costBreaker?.forced ? '⛔ FORCE-TRIP ACTIVE — all billed Google calls are paused.' : 'Estimated spend today'} · total est. $${(costBreaker?.totalEstCostUsd || 0).toFixed(2)} · Distance Matrix est. assumes ~5 elements/call</div>
+  ${cbRows ? `<table><thead><tr><th>SKU bucket</th><th style="text-align:right">Used / Cap</th><th style="text-align:right">%</th><th style="text-align:right">Est. $</th><th style="text-align:center">State</th></tr></thead><tbody>${cbRows}</tbody></table>` : '<p class="empty">Cost breaker unavailable.</p>'}
 </body>
 </html>`;
 }

@@ -22,6 +22,24 @@ function isBlank(v) {
   return v == null || String(v).trim() === '';
 }
 
+const COST_BREAKER_BUCKETS = ['geocoding', 'distancematrix', 'places_nearby', 'places_text', 'other'];
+
+function parseCostBreaker(env, logger) {
+  const enabled = String(env.COST_BREAKER_ENABLED ?? 'true').toLowerCase() !== 'false';
+  const caps = {};
+  for (const bucket of COST_BREAKER_BUCKETS) {
+    const raw = env[`COST_BREAKER_CAP_${bucket.toUpperCase()}`];
+    if (raw == null || String(raw).trim() === '') continue;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0) {
+      logger.warn(`[config] WARN: COST_BREAKER_CAP_${bucket.toUpperCase()}="${raw}" is not a non-negative integer — using default.`);
+      continue;
+    }
+    caps[bucket] = n;
+  }
+  return { enabled, caps };
+}
+
 function validateConfig(env = process.env, logger = console) {
   const missing = REQUIRED.filter((k) => isBlank(env[k]));
   if (missing.length) {
@@ -39,6 +57,7 @@ function validateConfig(env = process.env, logger = console) {
     googleMapsApiKey: env.GOOGLE_MAPS_API_KEY,
     adminToken: isBlank(env.ADMIN_TOKEN) ? null : env.ADMIN_TOKEN,
     port: Number(env.PORT) || 3000,
+    costBreaker: parseCostBreaker(env, logger),
   };
 }
 

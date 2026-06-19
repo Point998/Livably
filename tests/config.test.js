@@ -42,3 +42,36 @@ describe('validateConfig', () => {
     expect(validateConfig({ GOOGLE_MAPS_API_KEY: 'k', ADMIN_TOKEN: 't' }, fakeLogger()).adminToken).toBe('t');
   });
 });
+
+const base = { GOOGLE_MAPS_API_KEY: 'k' };
+const silent = { warn: () => {} };
+
+describe('validateConfig costBreaker block', () => {
+  test('defaults: enabled true, empty cap overrides', () => {
+    const c = validateConfig({ ...base }, silent);
+    expect(c.costBreaker.enabled).toBe(true);
+    expect(c.costBreaker.caps).toEqual({});
+  });
+
+  test('COST_BREAKER_ENABLED=false disables', () => {
+    const c = validateConfig({ ...base, COST_BREAKER_ENABLED: 'false' }, silent);
+    expect(c.costBreaker.enabled).toBe(false);
+  });
+
+  test('valid per-bucket override is parsed as integer', () => {
+    const c = validateConfig({ ...base, COST_BREAKER_CAP_PLACES_NEARBY: '40' }, silent);
+    expect(c.costBreaker.caps.places_nearby).toBe(40);
+  });
+
+  test('malformed override warns and is ignored (no throw)', () => {
+    const warn = jest.fn();
+    const c = validateConfig({ ...base, COST_BREAKER_CAP_GEOCODING: 'abc' }, { warn });
+    expect(c.costBreaker.caps.geocoding).toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  test('cap override of 0 is preserved (block-all)', () => {
+    const c = validateConfig({ ...base, COST_BREAKER_CAP_PLACES_TEXT: '0' }, silent);
+    expect(c.costBreaker.caps.places_text).toBe(0);
+  });
+});
