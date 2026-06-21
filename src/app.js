@@ -72,7 +72,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 // billed Google path; static files carry no per-request cost.
 app.use(globalLimiter);
 
-app.use(['/report', '/compare'], meteredLimiter);
+app.use(['/report', '/compare', '/api/report.json'], meteredLimiter);
 
 // ── Report ────────────────────────────────────────────────────────────────────
 
@@ -99,6 +99,27 @@ app.get('/report', async (req, res) => {
     logRequest(address, 'error', Date.now() - _reqStart, type);
     logAnalysis();
     return res.send(buildErrorHTML(type, title, message, address, retryAfter));
+  }
+});
+
+// ── Headless report contract (FR-078) ──────────────────────────────────────────
+
+app.get('/api/report.json', async (req, res) => {
+  const address = req.query.address ? toTitleCase(req.query.address.trim()) : '';
+  if (!address) return res.status(400).json({ error: 'NO_ADDRESS', message: 'No address provided.' });
+  if (!googleMapsApiKey) return res.status(503).json({ error: 'CONFIG', message: 'Missing required API credentials.' });
+
+  const _reqStart = Date.now();
+  try {
+    const { contract } = await buildReport(address, {});
+    return res.json(contract);
+  } catch (error) {
+    const { type, message, retryAfter } = classifyError(error);
+    logError('api-report-json', address, error);
+    logRequest(address, 'error', Date.now() - _reqStart, type);
+    logAnalysis();
+    const status = type === 'RATE_LIMIT' || type === 'QUOTA_EXCEEDED' ? 429 : type === 'ADDRESS_NOT_FOUND' ? 404 : 500;
+    return res.status(status).json({ error: type, message, retryAfter });
   }
 });
 

@@ -1,0 +1,198 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildUtilitiesContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "utilities",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": {
+          "basis": "state_average",
+          "deltaPct": 0.139,
+          "direction": "above",
+          "referenceValue": 12,
+          "region": "KY",
+        },
+        "measure": {
+          "unit": "cents_per_kwh",
+          "value": 13,
+        },
+        "subject": "Residential electric rate",
+      },
+      "defaultCopy": "The residential rate here is about 13¢/kWh, above the state average.",
+      "fallbackAction": null,
+      "id": "electric-rate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NREL",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "EV charging access",
+      },
+      "defaultCopy": "A full charge costs about $5.",
+      "fallbackAction": null,
+      "id": "ev-charging",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NREL",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Home internet",
+      },
+      "defaultCopy": "Handles anything a household throws at it.",
+      "fallbackAction": null,
+      "id": "internet-band",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FCC",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "NREL",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "FCC",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildUtilitiesContract — per-address snapshots contract snapshot — harlan-ky-missing 1`] = `
+{
+  "chapterId": "utilities",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Electric provider & rate",
+      },
+      "fallbackAction": {
+        "label": "OpenEI Utility Rate Database",
+        "type": "url",
+        "value": "https://apps.openei.org/USURDB/",
+      },
+      "id": "electric-missing",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NREL",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Home internet",
+      },
+      "fallbackAction": {
+        "label": "FCC National Broadband Map",
+        "type": "url",
+        "value": "https://broadbandmap.fcc.gov/",
+      },
+      "id": "internet-missing",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FCC",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "NREL",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "FCC",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildUtilitiesContract — per-address snapshots contract snapshot — jeffersonville-in-hifld 1`] = `
+{
+  "chapterId": "utilities",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Electric provider: Duke Energy",
+      },
+      "defaultCopy": "Investor-owned utility",
+      "fallbackAction": null,
+      "id": "electric-provider",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "HIFLD",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Home internet",
+      },
+      "fallbackAction": {
+        "label": "FCC National Broadband Map",
+        "type": "url",
+        "value": "https://broadbandmap.fcc.gov/",
+      },
+      "id": "internet-missing",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FCC",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "HIFLD",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "FCC",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
