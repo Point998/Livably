@@ -15,6 +15,7 @@ const { logRequest, logError, logDegradation, logAnalysis } = require('../logger
 const { runWithLedger, getLedger, summarize } = require('../shared/degradationLedger');
 const { buildReportHTML } = require('../templates/pages/reportPage');
 const { buildUtilitiesContract } = require('../modules/utilities/contract');
+const { buildCommunityContract } = require('../modules/community/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -209,6 +210,9 @@ async function buildReportInner(address, options = {}) {
     chapters: {
       utilities: chapters?.utilities
         ? buildUtilitiesContract(chapters.utilities, { degraded: degradation.total > 0 })
+        : null,
+      community: chapters?.demographics
+        ? buildCommunityContract(chapters.demographics, { degraded: degradation.total > 0 })
         : null,
     },
   };
