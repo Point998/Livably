@@ -51,6 +51,13 @@ describe('getDemographics', () => {
     expect(result).toBeNull();
   });
 
+  // FR-077 — the demographics fetch failure path returns null without throwing; the error is
+  // routed to the structured logger (logError), not console.error.
+  test('returns null without throwing when fetchCensusACS rejects', async () => {
+    fetchCensusACS.mockRejectedValue(new Error('census down'));
+    await expect(getDemographics(38.2, -84.5, { state: '21', county: '077', tract: '0101' })).resolves.toBeNull();
+  });
+
   test('returns structured object with existing L2 fields', async () => {
     const mockMap = buildFullMockMap();
     fetchCensusACS.mockResolvedValue(mockMap);

@@ -112,6 +112,34 @@ describe('buildDemographicsHTML — FR-045 glance bar', () => {
   });
 });
 
+// FR-077 — CONSTRAINT-015: a missing income figure must offer a named actionable source,
+// not a bare "data unavailable" message.
+describe('buildDemographicsHTML — income missing (CONSTRAINT-015)', () => {
+  const noIncome = { ...baseDemographics, income: { median: null, level: { label: 'Unknown', color: 'gold' } } };
+
+  test('renders an actionable data.census.gov fallback when median is null', () => {
+    const html = buildDemographicsHTML(noIncome);
+    expect(html).toContain('data.census.gov');
+    expect(html).toMatch(/<a [^>]*href="https:\/\/data\.census\.gov"/);
+  });
+
+  test('does not render the bare "Income data unavailable" message', () => {
+    const html = buildDemographicsHTML(noIncome);
+    expect(html).not.toContain('Income data unavailable');
+  });
+
+  test('still renders the money figure when median is present (unchanged)', () => {
+    const html = buildDemographicsHTML(baseDemographics);
+    expect(html).toMatch(/\$72,000/);
+    expect(html).toContain('Median household income');
+  });
+
+  test('income fallback introduces no inline styles (CONSTRAINT-008)', () => {
+    const html = buildDemographicsHTML(noIncome);
+    expect(html.match(/style="(?!--)[^"]+"/g)).toBeNull();
+  });
+});
+
 describe('buildDemographicsHTML — L3 deep dive', () => {
   test('depth-l3 wrapper present when incomeDistribution present', () => {
     const html = buildDemographicsHTML(fullDemographics);

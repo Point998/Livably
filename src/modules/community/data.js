@@ -1,6 +1,7 @@
 'use strict';
 
 const { fetchCensusACS } = require('../../shared/census');
+const { logError } = require('../../logger');
 const { safeInt } = require('../../utils/text');
 const { getIncomeLevel, getEducationLevel, getDensityType, getCommunityType, suppressed, groupIncomeBrackets, buildEducationLadder, buildHouseholdComposition, buildCommuteMode, buildTractFips } = require('./logic');
 
@@ -123,7 +124,7 @@ async function getDemographics(lat, lng, fips) {
       tractFips:             buildTractFips(fips),
     };
   } catch (err) {
-    console.error('[Demographics]', err.message);
+    logError('getDemographics', `${lat},${lng}`, err);
     return null;
   }
 }
