@@ -1,0 +1,365 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildCommunityContract — per-address snapshots community contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "community",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "people_in_tract",
+          "value": 4200,
+        },
+        "subject": "Population density",
+      },
+      "defaultCopy": "Suburban",
+      "fallbackAction": null,
+      "id": "population-density",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Predominant age group",
+      },
+      "defaultCopy": "Established households",
+      "fallbackAction": null,
+      "id": "age-distribution",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_median",
+          "deltaPct": null,
+          "direction": "above",
+          "referenceValue": null,
+          "region": null,
+        },
+        "measure": {
+          "unit": "usd",
+          "value": 72000,
+        },
+        "subject": "Median household income",
+      },
+      "fallbackAction": null,
+      "id": "household-income",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_average",
+          "deltaPct": null,
+          "direction": "above",
+          "referenceValue": null,
+          "region": null,
+        },
+        "measure": {
+          "unit": "percent",
+          "value": 46,
+        },
+        "subject": "College-educated share of adults",
+      },
+      "fallbackAction": null,
+      "id": "educational-attainment",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "percent",
+          "value": 68,
+        },
+        "subject": "Owner-occupied housing",
+      },
+      "defaultCopy": "Mixed residential community",
+      "fallbackAction": null,
+      "id": "homeownership",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census ACS",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildCommunityContract — per-address snapshots community contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "community",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "people_in_tract",
+          "value": 4200,
+        },
+        "subject": "Population density",
+      },
+      "defaultCopy": "Urban",
+      "fallbackAction": null,
+      "id": "population-density",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Predominant age group",
+      },
+      "defaultCopy": "Established households",
+      "fallbackAction": null,
+      "id": "age-distribution",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_median",
+          "deltaPct": null,
+          "direction": "above",
+          "referenceValue": null,
+          "region": null,
+        },
+        "measure": {
+          "unit": "usd",
+          "value": 72000,
+        },
+        "subject": "Median household income",
+      },
+      "fallbackAction": null,
+      "id": "household-income",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_average",
+          "deltaPct": null,
+          "direction": "above",
+          "referenceValue": null,
+          "region": null,
+        },
+        "measure": {
+          "unit": "percent",
+          "value": 46,
+        },
+        "subject": "College-educated share of adults",
+      },
+      "fallbackAction": null,
+      "id": "educational-attainment",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "percent",
+          "value": 68,
+        },
+        "subject": "Owner-occupied housing",
+      },
+      "defaultCopy": "Mixed residential community",
+      "fallbackAction": null,
+      "id": "homeownership",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census ACS",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildCommunityContract — per-address snapshots community contract snapshot — rural-no-income 1`] = `
+{
+  "chapterId": "community",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "people_in_tract",
+          "value": 4200,
+        },
+        "subject": "Population density",
+      },
+      "defaultCopy": "Suburban",
+      "fallbackAction": null,
+      "id": "population-density",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Predominant age group",
+      },
+      "defaultCopy": "Established households",
+      "fallbackAction": null,
+      "id": "age-distribution",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Median household income",
+      },
+      "fallbackAction": {
+        "label": "data.census.gov",
+        "type": "url",
+        "value": "https://data.census.gov",
+      },
+      "id": "income-missing",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_average",
+          "deltaPct": null,
+          "direction": "above",
+          "referenceValue": null,
+          "region": null,
+        },
+        "measure": {
+          "unit": "percent",
+          "value": 46,
+        },
+        "subject": "College-educated share of adults",
+      },
+      "fallbackAction": null,
+      "id": "educational-attainment",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "percent",
+          "value": 68,
+        },
+        "subject": "Owner-occupied housing",
+      },
+      "defaultCopy": "Mixed residential community",
+      "fallbackAction": null,
+      "id": "homeownership",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census ACS",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
