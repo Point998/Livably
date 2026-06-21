@@ -14,6 +14,7 @@ const { saveReport } = require('./reportStore');
 const { logRequest, logError, logDegradation, logAnalysis } = require('../logger');
 const { runWithLedger, getLedger, summarize } = require('../shared/degradationLedger');
 const { buildReportHTML } = require('../templates/pages/reportPage');
+const { buildUtilitiesContract } = require('../modules/utilities/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -197,7 +198,22 @@ async function buildReportInner(address, options = {}) {
     healthcareDepth, customDestinations, trafficData, origin, reportId, chapters, lifeCalc,
   });
 
-  return { html, reportId, address };
+  // FR-078 — headless report contract (additive, non-breaking). Pilot: utilities migrated;
+  // other chapters follow the same per-module contract.js pattern. The chapter contract is the
+  // Zod-validated unit; the report envelope is a thin wrapper.
+  const contract = {
+    schemaVersion: '1.0',
+    address,
+    generatedAt: new Date().toISOString(),
+    degraded: degradation.total > 0,
+    chapters: {
+      utilities: chapters?.utilities
+        ? buildUtilitiesContract(chapters.utilities, { degraded: degradation.total > 0 })
+        : null,
+    },
+  };
+
+  return { html, reportId, address, contract };
 }
 
 module.exports = { buildReport, classifyError };
