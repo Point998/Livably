@@ -3,10 +3,16 @@
 const { haversineDistance } = require('../../utils/geo');
 const { cellSearchOrigin, cellDriveOpts } = require('../../shared/spatial');
 const { utilitiesCache } = require('../../cache');
+const { sourceChain } = require('../../shared/sourceChain');
+const { logError } = require('../../logger');
 const { HIFLD_TERRITORIES_URL, BROADBAND_TECH_CODES } = require('../../utils/constants');
 
 const NREL_BASE = 'https://developer.nrel.gov/api';
 function nrelKey() { return process.env.NREL_API_KEY || 'DEMO_KEY'; }
+
+// Routes sourceChain miss/error visibility through the structured logger (resilience-track
+// convention; matches reachability/property/census/etc.) instead of the default console.warn.
+const chainLog = (fn, origin) => (msg) => logError(fn, origin, new Error(msg));
 
 function titleCase(s) {
   return String(s).toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
@@ -29,7 +35,7 @@ async function getElectricFromNREL(lat, lng) {
     if (!residentialRate || residentialRate <= 0) return null;
     return { utilityName: utilityName || 'Unknown provider', residentialRate, ownership, source: 'NREL' };
   } catch (err) {
-    console.error('[NREL Utility Rates]', err.message);
+    logError('NREL Utility Rates', `${lat},${lng}`, err);
     return null;
   }
 }
@@ -54,14 +60,23 @@ async function getElectricFromHIFLD(lat, lng) {
     if (!name) return null;
     return { utilityName: titleCase(name), residentialRate: null, ownership: String(a?.TYPE || '').trim() || null, source: 'HIFLD' };
   } catch (err) {
-    console.error('[HIFLD territories]', err.message);
+    logError('HIFLD territories', `${lat},${lng}`, err);
     return null;
   }
 }
 
-// NREL primary -> HIFLD fallback. Short-circuits: no HIFLD call when NREL succeeds.
+// NREL primary -> HIFLD fallback, via sourceChain so a real-report fallback records a
+// degradation event (FR-076 / FR-068). sourceChain short-circuits on first valid source.
+// Runtime source array is purpose-built (not the verify-harness SOURCES below) — names are
+// reused for ledger/admin-panel consistency. Default validity (r != null) is correct: each
+// fetch function already gates its own validity (NREL returns null when rate <= 0; HIFLD
+// returns null with no name), so a name-only HIFLD result (residentialRate: null) is kept.
 async function getElectricData(lat, lng) {
-  return (await getElectricFromNREL(lat, lng)) || (await getElectricFromHIFLD(lat, lng));
+  const picked = await sourceChain([
+    { name: 'nrel-electric-rate',        run: () => getElectricFromNREL(lat, lng) },
+    { name: 'hifld-electric-territory',  run: () => getElectricFromHIFLD(lat, lng) },
+  ], {}, { label: 'utilities-electric', log: chainLog('getElectricData', `${lat},${lng}`) });
+  return picked ? picked.value : null;
 }
 
 // driveOrigin is the cell centroid string ("lat,lng") when a cell is present;
@@ -106,7 +121,7 @@ async function getEvFromNREL(lat, lng, driveOrigin, getDriveTime, cell = null) {
     if (!level2 && !dcFast) return null;
     return { level2, dcFast, source: 'NREL' };
   } catch (err) {
-    console.error('[NREL Alt Fuel Stations]', err.message);
+    logError('NREL Alt Fuel Stations', `${lat},${lng}`, err);
     return null;
   }
 }
@@ -153,15 +168,20 @@ async function getEvFromOpenChargeMap(lat, lng, driveOrigin, getDriveTime, cell 
     if (!level2 && !dcFast) return null;
     return { level2, dcFast, source: 'OpenChargeMap' };
   } catch (err) {
-    console.error('[OpenChargeMap]', err.message);
+    logError('OpenChargeMap', `${lat},${lng}`, err);
     return null;
   }
 }
 
-// NREL primary -> OpenChargeMap fallback.
+// NREL primary -> OpenChargeMap fallback, via sourceChain for degradation recording
+// (FR-076 / FR-068). Runtime source array threads the REAL driveOrigin/getDriveTime/cell —
+// the verify-harness SOURCES below stub getDriveTime, so they are not reused here.
 async function getEvChargingData(lat, lng, driveOrigin, getDriveTime, cell = null) {
-  return (await getEvFromNREL(lat, lng, driveOrigin, getDriveTime, cell))
-      || (await getEvFromOpenChargeMap(lat, lng, driveOrigin, getDriveTime, cell));
+  const picked = await sourceChain([
+    { name: 'nrel-ev-charging', run: () => getEvFromNREL(lat, lng, driveOrigin, getDriveTime, cell) },
+    { name: 'openchargemap-ev', run: () => getEvFromOpenChargeMap(lat, lng, driveOrigin, getDriveTime, cell) },
+  ], {}, { label: 'utilities-ev', log: chainLog('getEvChargingData', `${lat},${lng}`) });
+  return picked ? picked.value : null;
 }
 
 // FR-061: FCC National Broadband Map (keyless). Relocated from the Property
@@ -207,7 +227,7 @@ async function getBroadbandData(lat, lng) {
     providers.sort((a, b) => b.download - a.download);
     return { providers: providers.slice(0, 5), maxDownloadMbps: maxDownload, hasFiber };
   } catch (err) {
-    console.error('[FCC Broadband]', err.message);
+    logError('FCC Broadband', `${lat},${lng}`, err);
     return null;
   }
 }
