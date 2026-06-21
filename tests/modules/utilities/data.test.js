@@ -4,6 +4,7 @@ const ocmFixture = require('./fixtures/openchargemap-poi.json');
 const hifldFixture = require('./fixtures/hifld-territories.json');
 const fccFixture = require('./fixtures/fcc-broadband.json');
 const { utilitiesCache } = require('../../../src/cache');
+const { runWithLedger, getLedger, summarize } = require('../../../src/shared/degradationLedger');
 
 beforeEach(() => utilitiesCache.clear());
 afterAll(() => utilitiesCache.clear());
@@ -250,6 +251,114 @@ describe('getBroadbandData (relocated from Property)', () => {
     expect(acme.tech).toBe('Fiber');       // highest-tier row wins, not the first-listed Cable row
     expect(acme.download).toBe(1000);
     expect(r.hasFiber).toBe(true);
+  });
+});
+
+// FR-076 — runtime fallbacks must record degradation events to the FR-068 ledger.
+// sourceChain emits a `miss` for each failed source plus a `fallback` for the winning
+// non-first source, and `exhausted` when no source wins. A first-source win records nothing.
+describe('FR-076 utilities-electric degradation recording', () => {
+  afterEach(() => { global.fetch = undefined; });
+
+  const run = (fn) => runWithLedger(async () => {
+    const result = await fn();
+    return { result, ledger: getLedger() };
+  });
+
+  test('NREL miss -> HIFLD win records one fallback (+ a miss), label utilities-electric', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false })                                   // NREL fails
+      .mockResolvedValueOnce({ ok: true, json: async () => hifldFixture });   // HIFLD wins
+    const { result, ledger } = await run(() => getElectricData(38.2, -84.5));
+    expect(result.source).toBe('HIFLD');
+    expect(summarize(ledger).fallbacks).toBe(1);
+    expect(ledger.map((e) => e.kind)).toEqual(expect.arrayContaining(['miss', 'fallback']));
+    const fb = ledger.find((e) => e.kind === 'fallback');
+    expect(fb).toMatchObject({ label: 'utilities-electric', source: 'hifld-electric-territory' });
+    const miss = ledger.find((e) => e.kind === 'miss');
+    expect(miss).toMatchObject({ label: 'utilities-electric', source: 'nrel-electric-rate' });
+  });
+
+  test('both electric sources fail records one exhausted + two misses; returns null', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false });
+    const { result, ledger } = await run(() => getElectricData(38.2, -84.5));
+    expect(result).toBeNull();
+    expect(summarize(ledger).exhausted).toBe(1);
+    expect(ledger.filter((e) => e.kind === 'miss')).toHaveLength(2);
+    expect(ledger.find((e) => e.kind === 'exhausted')).toMatchObject({ label: 'utilities-electric', source: null });
+  });
+
+  test('NREL first-source success records nothing (happy path stays free)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ outputs: { utility_name: 'KU', residential: 0.13 } }) });
+    const { result, ledger } = await run(() => getElectricData(38.2, -84.5));
+    expect(result.source).toBe('NREL');
+    expect(ledger).toEqual([]);
+  });
+
+  // CONSTRAINT-011 — Jeffersonville IN (1007 Stonelilly Dr ≈ 38.30, -85.68) regression case
+  // for a location-searching module. Fallback records identically for the border-city address.
+  test('records utilities-electric fallback for Jeffersonville IN coordinates', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true, json: async () => hifldFixture });
+    const { result, ledger } = await run(() => getElectricData(38.30, -85.68));
+    expect(result.source).toBe('HIFLD');
+    expect(summarize(ledger).fallbacks).toBe(1);
+    expect(ledger.find((e) => e.kind === 'fallback')).toMatchObject({ label: 'utilities-electric' });
+  });
+});
+
+describe('FR-076 utilities-ev degradation recording', () => {
+  afterEach(() => { global.fetch = undefined; delete process.env.OPENCHARGEMAP_API_KEY; });
+  const noDrive = async () => null;
+
+  const run = (fn) => runWithLedger(async () => {
+    const result = await fn();
+    return { result, ledger: getLedger() };
+  });
+
+  test('NREL EV miss -> OCM win records one fallback, label utilities-ev', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ fuel_stations: [] }) }) // NREL no stations -> null
+      .mockResolvedValueOnce({ ok: true, json: async () => ocmFixture });             // OCM wins
+    const { result, ledger } = await run(() => getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive));
+    expect(result.source).toBe('OpenChargeMap');
+    expect(summarize(ledger).fallbacks).toBe(1);
+    expect(ledger.find((e) => e.kind === 'fallback')).toMatchObject({ label: 'utilities-ev', source: 'openchargemap-ev' });
+  });
+
+  test('both EV sources fail records exhausted; returns null', async () => {
+    process.env.OPENCHARGEMAP_API_KEY = 'test';
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ fuel_stations: [] }) }) // NREL -> null
+      .mockResolvedValueOnce({ ok: false });                                          // OCM fails
+    const { result, ledger } = await run(() => getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive));
+    expect(result).toBeNull();
+    expect(summarize(ledger).exhausted).toBe(1);
+    expect(ledger.find((e) => e.kind === 'exhausted')).toMatchObject({ label: 'utilities-ev', source: null });
+  });
+
+  test('NREL EV first-source success records nothing', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ fuel_stations: [
+      { station_name: 'NREL L2', street_address: '1 St', ev_level2_evse_num: 2, ev_dc_fast_num: 0, latitude: 38.21, longitude: -84.51, distance: 1 },
+    ] }) });
+    const { result, ledger } = await run(() => getEvChargingData(38.2, -84.5, '38.2,-84.5', noDrive));
+    expect(result.source).toBe('NREL');
+    expect(ledger).toEqual([]);
+  });
+});
+
+describe('FR-076 no-context safety (AC-8)', () => {
+  afterEach(() => { global.fetch = undefined; });
+
+  test('getElectricData fallback works identically with no active ledger (no throw)', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockResolvedValueOnce({ ok: true, json: async () => hifldFixture });
+    const r = await getElectricData(38.2, -84.5); // not wrapped in runWithLedger
+    expect(r.source).toBe('HIFLD');
+    expect(getLedger()).toEqual([]); // no context -> empty, recordDegradation no-ops
   });
 });
 
