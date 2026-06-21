@@ -278,7 +278,7 @@ function buildDemographicsHTML(d) {
       </div>
       <div class="prem-demo-card">
         <div class="prem-demo-title">💵 Income</div>
-        ${d.income.median ? `<div class="prem-demo-big">${formatMoney(d.income.median)}</div><div class="prem-demo-sub">Median household income</div>` : '<div class="prem-demo-sub">Income data unavailable</div>'}
+        ${d.income.median ? `<div class="prem-demo-big">${formatMoney(d.income.median)}</div><div class="prem-demo-sub">Median household income</div>` : '<div class="prem-demo-sub">Income wasn\'t returned for this tract — look it up at <a href="https://data.census.gov" target="_blank" rel="noopener noreferrer">data.census.gov</a>.</div>'}
         ${incomeBadge}
       </div>
       <div class="prem-demo-card">
