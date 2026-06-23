@@ -1,0 +1,337 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildSafetyContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "safety",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "response_minutes",
+          "value": 6,
+        },
+        "place": {
+          "address": "100 Court St, Georgetown, KY",
+          "name": "Georgetown Police Dept",
+        },
+        "subject": "Police response time",
+      },
+      "fallbackAction": null,
+      "id": "police-response",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Google Places + dispatch model",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "response_minutes",
+          "value": 7,
+        },
+        "place": {
+          "address": "200 Main St, Georgetown, KY",
+          "name": "Scott County Fire Station 1",
+        },
+        "subject": "Fire response time",
+      },
+      "fallbackAction": null,
+      "id": "fire-response",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Google Places + dispatch model",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "ISO fire protection class (PPC)",
+      },
+      "defaultCopy": "The ISO PPC for this address directly sets your fire-coverage premium — confirm it before you close.",
+      "fallbackAction": {
+        "label": "Ask your insurer for the ISO PPC rating",
+        "type": "instruction",
+        "value": "Ask your homeowner's insurance agent for the ISO Public Protection Classification (PPC) for this exact address. Ratings 1–4 are excellent; 8–10 mean limited coverage and higher premiums. It is address-specific and free to pull.",
+      },
+      "id": "iso-ppc",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "ISO Public Protection Classification",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Neighborhood incident research",
+      },
+      "defaultCopy": "No single database covers every block equally. Combine two or three sources for Georgetown, Scott County — CrimeMapping.com, SpotCrime.com, and your local department's own incident log — and read at the block level, not the city average.",
+      "fallbackAction": {
+        "label": "Open a neighborhood crime map",
+        "type": "url",
+        "value": "https://www.crimemapping.com/map",
+      },
+      "id": "crime-research",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Local law enforcement / CrimeMapping.com",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places + dispatch model",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "ISO Public Protection Classification",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Local law enforcement / CrimeMapping.com",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildSafetyContract — per-address snapshots contract snapshot — harlan-ky-rural-far 1`] = `
+{
+  "chapterId": "safety",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "response_minutes",
+          "value": 17,
+        },
+        "place": {
+          "address": "210 E Central St, Harlan, KY",
+          "name": "Harlan Police Dept",
+        },
+        "subject": "Police response time",
+      },
+      "fallbackAction": null,
+      "id": "police-response",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Google Places + dispatch model",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "response_minutes",
+          "value": 21,
+        },
+        "place": {
+          "address": "201 S Main St, Harlan, KY",
+          "name": "Harlan Fire Dept",
+        },
+        "subject": "Fire response time",
+      },
+      "fallbackAction": null,
+      "id": "fire-response",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Google Places + dispatch model",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "ISO fire protection class (PPC)",
+      },
+      "defaultCopy": "The ISO PPC for this address directly sets your fire-coverage premium — confirm it before you close.",
+      "fallbackAction": {
+        "label": "Ask your insurer for the ISO PPC rating",
+        "type": "instruction",
+        "value": "Ask your homeowner's insurance agent for the ISO Public Protection Classification (PPC) for this exact address. Ratings 1–4 are excellent; 8–10 mean limited coverage and higher premiums. It is address-specific and free to pull.",
+      },
+      "id": "iso-ppc",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "ISO Public Protection Classification",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Neighborhood incident research",
+      },
+      "defaultCopy": "No single database covers every block equally. Combine two or three sources for Harlan, Harlan County — CrimeMapping.com, SpotCrime.com, and your local department's own incident log — and read at the block level, not the city average.",
+      "fallbackAction": {
+        "label": "Open a neighborhood crime map",
+        "type": "url",
+        "value": "https://www.crimemapping.com/map",
+      },
+      "id": "crime-research",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Local law enforcement / CrimeMapping.com",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places + dispatch model",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "ISO Public Protection Classification",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Local law enforcement / CrimeMapping.com",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildSafetyContract — per-address snapshots contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "safety",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "response_minutes",
+          "value": 7,
+        },
+        "place": {
+          "address": "2218 E 10th St, Jeffersonville, IN",
+          "name": "Jeffersonville Police Dept",
+        },
+        "subject": "Police response time",
+      },
+      "fallbackAction": null,
+      "id": "police-response",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Google Places + dispatch model",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "response_minutes",
+          "value": 6,
+        },
+        "place": {
+          "address": "1100 Spring St, Jeffersonville, IN",
+          "name": "Jeffersonville Fire Station 4",
+        },
+        "subject": "Fire response time",
+      },
+      "fallbackAction": null,
+      "id": "fire-response",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Google Places + dispatch model",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "ISO fire protection class (PPC)",
+      },
+      "defaultCopy": "The ISO PPC for this address directly sets your fire-coverage premium — confirm it before you close.",
+      "fallbackAction": {
+        "label": "Ask your insurer for the ISO PPC rating",
+        "type": "instruction",
+        "value": "Ask your homeowner's insurance agent for the ISO Public Protection Classification (PPC) for this exact address. Ratings 1–4 are excellent; 8–10 mean limited coverage and higher premiums. It is address-specific and free to pull.",
+      },
+      "id": "iso-ppc",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "ISO Public Protection Classification",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Neighborhood incident research",
+      },
+      "defaultCopy": "No single database covers every block equally. Combine two or three sources for Jeffersonville, Clark County — CrimeMapping.com, SpotCrime.com, and your local department's own incident log — and read at the block level, not the city average.",
+      "fallbackAction": {
+        "label": "Open a neighborhood crime map",
+        "type": "url",
+        "value": "https://www.crimemapping.com/map",
+      },
+      "id": "crime-research",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Local law enforcement / CrimeMapping.com",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places + dispatch model",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "ISO Public Protection Classification",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Local law enforcement / CrimeMapping.com",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
