@@ -1,0 +1,271 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildPropertyContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "property",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "year_built",
+          "value": 1952,
+        },
+        "subject": "Median home construction year (area)",
+      },
+      "defaultCopy": "1940s–50s construction",
+      "fallbackAction": null,
+      "id": "construction-era",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Age-related material risks to inspect",
+      },
+      "defaultCopy": "Lead paint presumed in original surfaces Asbestos in insulation and building materials is common",
+      "fallbackAction": {
+        "label": "Test and inspect before closing",
+        "type": "instruction",
+        "value": "Have an inspector test for the era-typical hazards below (e.g. lead paint, asbestos, aging wiring/plumbing). Sellers must disclose known hazards, but testing is the only way to confirm presence and scope.",
+      },
+      "id": "era-health-risks",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Soil drainage (USDA)",
+      },
+      "defaultCopy": "Well drained — Water drains readily. Low risk of basement moisture from soil conditions.",
+      "fallbackAction": null,
+      "id": "soil-drainage",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USDA Soil Data Access",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "percent",
+          "value": 4,
+        },
+        "subject": "Share of nearby homes built since 2010",
+      },
+      "fallbackAction": null,
+      "id": "new-construction",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census ACS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USDA Soil Data Access",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildPropertyContract — per-address snapshots contract snapshot — harlan-ky-old-poor-drainage 1`] = `
+{
+  "chapterId": "property",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "year_built",
+          "value": 1952,
+        },
+        "subject": "Median home construction year (area)",
+      },
+      "defaultCopy": "1940s–50s construction",
+      "fallbackAction": null,
+      "id": "construction-era",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Age-related material risks to inspect",
+      },
+      "defaultCopy": "Lead paint presumed in original surfaces Asbestos in insulation and building materials is common",
+      "fallbackAction": {
+        "label": "Test and inspect before closing",
+        "type": "instruction",
+        "value": "Have an inspector test for the era-typical hazards below (e.g. lead paint, asbestos, aging wiring/plumbing). Sellers must disclose known hazards, but testing is the only way to confirm presence and scope.",
+      },
+      "id": "era-health-risks",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Soil drainage (USDA)",
+      },
+      "defaultCopy": "Poorly drained — Wet soil most of the year. High basement moisture risk — thorough foundation inspection essential. USDA classifies this soil as hydric (a potential wetland indicator) — it may affect foundation drainage, landscaping, and additions; discuss a drainage evaluation with your inspector.",
+      "fallbackAction": null,
+      "id": "soil-drainage",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USDA Soil Data Access",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "percent",
+          "value": 4,
+        },
+        "subject": "Share of nearby homes built since 2010",
+      },
+      "fallbackAction": null,
+      "id": "new-construction",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census ACS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USDA Soil Data Access",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildPropertyContract — per-address snapshots contract snapshot — jeffersonville-in-modern 1`] = `
+{
+  "chapterId": "property",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "year_built",
+          "value": 2015,
+        },
+        "subject": "Median home construction year (area)",
+      },
+      "defaultCopy": "Modern construction (2010s–present)",
+      "fallbackAction": null,
+      "id": "construction-era",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Soil drainage (USDA)",
+      },
+      "defaultCopy": "Well drained — Water drains readily. Low risk of basement moisture from soil conditions.",
+      "fallbackAction": null,
+      "id": "soil-drainage",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USDA Soil Data Access",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "percent",
+          "value": 38,
+        },
+        "subject": "Share of nearby homes built since 2010",
+      },
+      "fallbackAction": null,
+      "id": "new-construction",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census ACS",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census ACS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USDA Soil Data Access",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
