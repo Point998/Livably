@@ -46,7 +46,7 @@ jest.mock('../../src/utils/constants', () => ({
 
 const { findNearestSchool, findNearestElementarySchool } = require('../../src/modules/schools/data');
 const { findNearestHospital } = require('../../src/modules/health/data');
-const { findNearestGrocery } = require('../../src/modules/reachability/data');
+const { findNearestGrocery, findNearestPharmacy } = require('../../src/modules/reachability/data');
 
 const JEFFERSONVILLE_LATLNG = '38.2766,-85.7372';
 const ORIGIN_STATE = 'IN';
@@ -130,6 +130,34 @@ describe('Jeffersonville IN — hospital search (CONSTRAINT-006)', () => {
     expect(result).not.toBeNull();
     expect(result.crossStateWarning).toBeFalsy();
     expect(result.name).toBe('Clark Memorial Hospital');
+  });
+});
+
+// ── PM-006 regression: Pharmacy cross-state check ─────────────────────────────
+
+describe('Jeffersonville IN — pharmacy search (PM-006 / CONSTRAINT-006)', () => {
+  test('flags a KY pharmacy with crossStateWarning when originState is IN', async () => {
+    const kyPharmacy = makePlace('Louisville CVS', ['pharmacy'], 38.24, -85.75);
+    mockPlacesNearby.mockResolvedValue({ data: { results: [kyPharmacy] } });
+    mockCheckCrossState.mockResolvedValue({ valid: false, resultState: 'KY' });
+    mockGetDriveTime.mockResolvedValue(9);
+
+    const result = await findNearestPharmacy(JEFFERSONVILLE_LATLNG, null, ORIGIN_STATE);
+    expect(result).not.toBeNull();
+    expect(result.crossStateWarning).toBe(true);
+    expect(result.crossStateNote).toMatch(/KY/);
+    expect(result.name).toBe('Louisville CVS');
+  });
+
+  test('returns an IN pharmacy without warning when in-state', async () => {
+    const inPharmacy = makePlace('Clarksville Walgreens', ['pharmacy'], 38.29, -85.75);
+    mockPlacesNearby.mockResolvedValue({ data: { results: [inPharmacy] } });
+    mockCheckCrossState.mockResolvedValue({ valid: true, resultState: 'IN' });
+    mockGetDriveTime.mockResolvedValue(7);
+
+    const result = await findNearestPharmacy(JEFFERSONVILLE_LATLNG, null, ORIGIN_STATE);
+    expect(result.crossStateWarning).toBeFalsy();
+    expect(result.name).toBe('Clarksville Walgreens');
   });
 });
 

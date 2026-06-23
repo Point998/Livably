@@ -3,6 +3,7 @@ const mockClient = { textSearch: jest.fn(), placesNearby: jest.fn() };
 const mockGetDriveTime = jest.fn();
 const mockCheckDriveTimeCoherence = jest.fn();
 const mockClassifyBand = jest.fn();
+const mockCheckCrossState = jest.fn();
 
 const makeMockCache = () => {
   const store = new Map();
@@ -24,6 +25,7 @@ jest.mock('../../../src/shared/google/distanceMatrix', () => ({
 jest.mock('../../../src/shared/validate', () => ({
   checkDriveTimeCoherence: mockCheckDriveTimeCoherence,
   classifyBand: mockClassifyBand,
+  checkCrossState: mockCheckCrossState,
 }));
 const mockPlacesOsmCache = makeMockCache();
 const mockSearchOSMPOIs = jest.fn();
@@ -61,6 +63,8 @@ beforeEach(() => {
   // Sentinel rung — band classification is unit-tested in validate.test.js; here
   // we only verify the data layer wires centroidDriveMinutes + mode → bandRung.
   mockClassifyBand.mockReturnValue(2);
+  // Default: in-state / no-op. Overridden in the PM-006 cross-state tests.
+  mockCheckCrossState.mockResolvedValue({ valid: true, resultState: '' });
 });
 
 describe('findNearestGrocery', () => {
@@ -118,6 +122,51 @@ describe('findNearestPharmacy', () => {
     const result = await findNearestPharmacy('38.2,-84.3');
     expect(result).toMatchObject({ name: 'CVS', driveTimeMinutes: 8 });
     expect(result.location).toBeDefined();
+  });
+});
+
+describe('findNearestPharmacy cross-state (PM-006 / CONSTRAINT-006)', () => {
+  test('flags a cross-state pharmacy with crossStateWarning + note', async () => {
+    mockClient.placesNearby.mockResolvedValue({ data: { results: [makePlace('Louisville CVS', ['pharmacy'])] } });
+    mockGetDriveTime.mockResolvedValue(9);
+    mockCheckCrossState.mockResolvedValue({ valid: false, resultState: 'KY' });
+    const result = await findNearestPharmacy('38.2,-84.3', null, 'IN');
+    expect(result.crossStateWarning).toBe(true);
+    expect(result.crossStateNote).toContain('KY');
+    expect(result.name).toBe('Louisville CVS');
+    expect(mockCheckCrossState).toHaveBeenCalledWith(expect.anything(), 'IN');
+  });
+
+  test('does not flag an in-state pharmacy', async () => {
+    mockClient.placesNearby.mockResolvedValue({ data: { results: [makePlace('Clarksville CVS', ['pharmacy'])] } });
+    mockGetDriveTime.mockResolvedValue(7);
+    mockCheckCrossState.mockResolvedValue({ valid: true, resultState: 'IN' });
+    const result = await findNearestPharmacy('38.2,-84.3', null, 'IN');
+    expect(result.crossStateWarning).toBeUndefined();
+    expect(result.crossStateNote).toBeUndefined();
+  });
+
+  test('no-op when originState is omitted (preserves compareBuilder path)', async () => {
+    mockClient.placesNearby.mockResolvedValue({ data: { results: [makePlace('CVS', ['pharmacy'])] } });
+    mockGetDriveTime.mockResolvedValue(8);
+    const result = await findNearestPharmacy('38.2,-84.3');
+    expect(result.crossStateWarning).toBeUndefined();
+    expect(result).toMatchObject({ name: 'CVS', driveTimeMinutes: 8 });
+  });
+
+  test('does not poison the cell cache across states (per-address determination)', async () => {
+    mockClient.placesNearby.mockResolvedValue({ data: { results: [makePlace('Shared Cell Rx', ['pharmacy'])] } });
+    mockGetDriveTime.mockResolvedValue(6);
+    // First buyer: IN origin — the shared pharmacy is across the river in KY → flagged.
+    mockCheckCrossState.mockResolvedValueOnce({ valid: false, resultState: 'KY' });
+    const inResult = await findNearestPharmacy('38.2101,-84.5447', CELL, 'IN');
+    // Second buyer shares the same cell but is a KY origin — same pharmacy is in-state.
+    mockCheckCrossState.mockResolvedValueOnce({ valid: true, resultState: 'KY' });
+    const kyResult = await findNearestPharmacy('38.2110,-84.5447', CELL, 'KY');
+    expect(inResult.crossStateWarning).toBe(true);
+    expect(kyResult.crossStateWarning).toBeUndefined();
+    // Selection fetch is cell-shared — only one Google call despite two addresses.
+    expect(mockClient.placesNearby).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,7 +1,7 @@
 'use strict';
 const { googleMapsClient, googleMapsApiKey } = require('../../shared/google/client');
 const { getDriveTime } = require('../../shared/google/distanceMatrix');
-const { checkDriveTimeCoherence, classifyBand } = require('../../shared/validate');
+const { checkDriveTimeCoherence, classifyBand, checkCrossState } = require('../../shared/validate');
 const { cellSearchOrigin, cellDriveOpts } = require('../../shared/spatial');
 const { sourceChain } = require('../../shared/sourceChain');
 const { searchOSMPOIs } = require('../../shared/osmPlaces');
@@ -130,13 +130,29 @@ async function findNearestGroceryGoogle(originLatLng, ruralMode = 'suburban', ce
   return top3;
 }
 
-async function findNearestPharmacy(originLatLng, cell = null) {
+// CONSTRAINT-006 (PM-006): pharmacy is a jurisdiction-sensitive finding. The cross-state
+// determination depends on the ASKING address's originState, not the cell — an H3 cell can
+// straddle a state border, so we never bake the flag into the cell-cached selection. We layer
+// it per-address on the FINAL selection (Google or OSM), returning a NEW object so a shared
+// cell cache is not poisoned for the next address. Policy mirrors the health safety tier
+// (finalizeSafetyRecord): warn, don't reject — the nearest pharmacy is still the best result.
+async function finalizePharmacyRecord(record, originState) {
+  const { valid: sameState, resultState } = await checkCrossState(record.location, originState);
+  if (sameState) return record;
+  return {
+    ...record,
+    crossStateWarning: true,
+    crossStateNote: `This pharmacy is in ${resultState}. No in-state pharmacy was found within the search radius.`,
+  };
+}
+
+async function findNearestPharmacy(originLatLng, cell = null, originState = '') {
   const picked = await sourceChain([
     { name: 'google', run: () => findNearestPharmacyGoogle(originLatLng, cell), isValid: (r) => r != null },
     { name: 'osm',    run: () => findNearestPharmacyOSM(originLatLng, cell),    isValid: (r) => r != null },
   ], null, { label: 'reachability-pharmacy', log: chainLog('findNearestPharmacy', originLatLng) });
   if (!picked) throw new Error('No pharmacy found near that address.');
-  return picked.value;
+  return finalizePharmacyRecord(picked.value, originState);
 }
 
 async function findNearestPharmacyOSM(originLatLng, cell = null) {
