@@ -51,7 +51,10 @@ function generateDailyConveniencesNarrative(grocery, pharmacy, gasStation) {
       paragraphs.push(gPara);
     }
     const p2 = [];
-    if (pharmacy) p2.push(`The nearest pharmacy is ${pharmacy.name}, ${proximityPhrase(pharmacy)}.`);
+    if (pharmacy) {
+      p2.push(`The nearest pharmacy is ${pharmacy.name}, ${proximityPhrase(pharmacy)}.`);
+      if (pharmacy.crossStateNote) p2.push(pharmacy.crossStateNote); // CONSTRAINT-006 (PM-006)
+    }
     if (gasStation) p2.push(`The nearest gas station is ${gasStation.name}, ${proximityPhrase(gasStation)}.`);
     if (p2.length) paragraphs.push(p2.join(' '));
     paragraphs.push('These come from OpenStreetMap. Actual road distance and drive time will run somewhat longer than the straight-line figure.');
@@ -88,7 +91,10 @@ function generateDailyConveniencesNarrative(grocery, pharmacy, gasStation) {
   }
 
   const p2Parts = [];
-  if (pharmacy) p2Parts.push(`Pharmacy runs take ${pharmacy.driveTimeMinutes} minutes to ${pharmacy.name}—convenient for prescriptions or last-minute needs.`);
+  if (pharmacy) {
+    p2Parts.push(`Pharmacy runs take ${pharmacy.driveTimeMinutes} minutes to ${pharmacy.name}—convenient for prescriptions or last-minute needs.`);
+    if (pharmacy.crossStateNote) p2Parts.push(pharmacy.crossStateNote); // CONSTRAINT-006 (PM-006)
+  }
   if (gasStation) p2Parts.push(`The nearest gas station is ${gasStation.driveTimeMinutes} minutes at ${gasStation.name}.`);
   if (p2Parts.length) paragraphs.push(p2Parts.join(' '));
 

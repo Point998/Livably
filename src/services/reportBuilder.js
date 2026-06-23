@@ -93,7 +93,7 @@ async function buildReportInner(address, options = {}) {
 
   const results = await Promise.allSettled([
     findNearestGrocery(originLatLng, ruralMode, cell),
-    findNearestPharmacy(originLatLng, cell),
+    findNearestPharmacy(originLatLng, cell, originState),       // CONSTRAINT-006: cross-state filter
     findNearestHospital(originLatLng, originState, cell),       // CONSTRAINT-006: cross-state filter
     findNearestUrgentCare(originLatLng, originState, cell),     // CONSTRAINT-006: cross-state filter
     findNearestHighwayOnRamp(originLatLng),

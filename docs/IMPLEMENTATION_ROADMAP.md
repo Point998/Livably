@@ -39,8 +39,16 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 
 ## Active Work
 
-### ▶ Session hand-off — 2026-06-23 (session 7 — **READ FIRST: next = bounded cross-state audit, then resume rollout**)
-*Session 6 shipped FR-080 (health), FR-081 (schools) + FR-082 (PM-005 cross-state fix). All merged. This block is the live NEXT-UP; the session-6 detail below is reference.*
+### ▶ Session hand-off — 2026-06-23 (session 8 — **READ FIRST: cross-state audit DONE → next = resume contract rollout**)
+*Session 8 completed the bounded cross-state audit from session 7: shipped **FR-083** (PM-006, pharmacy cross-state filter — the real target) and confirmed the hospital-enrichment path is clean. The session-7 block below is now reference.*
+- **State:** branch `FR-083-pharmacy-crossstate-filter` (PR open — squash-merge then delete). **93 suites / 1,741 tests** green (was 1,732, +9). Verify with `git log` + `npx jest` before acting (hand-offs go stale — see [[verify-handoff-against-code]]).
+- **✅ Done — FR-083 / PM-006 (pharmacy cross-state, CONSTRAINT-006 gap):** `findNearestPharmacy(originLatLng, cell, originState)` now routes the final selection through `checkCrossState` via a new `finalizePharmacyRecord` helper — **warn-don't-reject** (mirrors the health safety tier; pharmacy is grouped with hospital/urgent care in the constraint). Applied once at the public entry → covers Google + OSM uniformly, per-address; returns a **new** object so the FR-058 cell cache isn't poisoned across border-straddling addresses. Template surfaces the note in both narrative branches; `reportBuilder` threads `originState`; `compareBuilder` left as no-op. No-op when state empty. +9 tests (data/template/Jeffersonville). See PM-006 + `feature-requests/FR-083-pharmacy-crossstate-filter/`. **Reinforces CONSTRAINT-014.**
+- **✅ Audited PASS — hospital enrichment:** `findNearestHospital`/`findNearestUrgentCare` are already drive-time-verified + cross-state-warned (`health/data.js`); `getHealthcareDepth` only *decorates that already-vetted hospital* — no independent cross-state surface. No action needed.
+- **Cross-state audit CLOSED:** CONSTRAINT-006's named list (school, hospital, urgent care, pharmacy) is now **fully guarded**. Grocery/gas/coffee remain deliberately out of scope.
+- **▶▶ DO NEXT — resume the contract rollout.** Next located-facility chapter: **safety** (fire/police — other half of the visual "Health & Safety" chapter; reuses `place{}`) or **reachability**. Same proven pattern (see "Contract rollout pattern (proven 4×)" below). 4 of 14 chapters done.
+
+### ▶ Session hand-off — 2026-06-23 (session 7 — *cross-state audit handed off; completed in session 8 above*)
+*Session 6 shipped FR-080 (health), FR-081 (schools) + FR-082 (PM-005 cross-state fix). All merged. This block is reference; session 8 above is the live NEXT-UP.*
 - **State:** `main` clean @ `aeb5072` (FR-080 #50, FR-081 #51, FR-082 #52 — all squash-merged), **1,732 tests / 93 suites** green. No open PRs. Verify with `git log` + `npx jest` before acting (hand-offs go stale — see [[verify-handoff-against-code]]).
 - **Contract rollout state: 4 of 14 chapters done** (utilities, community, health, schools). `place {name,address}` primitive (FR-080) is live and reused — use it for every located-facility chapter; do **not** re-invent or cram into `subject`/`defaultCopy`.
 

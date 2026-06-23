@@ -80,6 +80,35 @@ describe('buildInsightsCardHTML — FR-045 depth system', () => {
   });
 });
 
+describe('buildInsightsCardHTML — PM-006 cross-state pharmacy note', () => {
+  const xPharmacy = {
+    name: 'Louisville CVS', address: '200 Main St', driveTimeMinutes: 9,
+    crossStateWarning: true,
+    crossStateNote: 'This pharmacy is in KY. No in-state pharmacy was found within the search radius.',
+  };
+
+  test('renders the cross-state note when present (drive-time branch)', () => {
+    const html = buildInsightsCardHTML(grocery, xPharmacy, hospital, urgentCare, highwayRamp, gasStation);
+    expect(html).toContain('This pharmacy is in KY');
+  });
+
+  test('renders the cross-state note in the OSM straight-line branch', () => {
+    const osmGrocery = [{ name: 'OSM Kroger', address: null, location: {}, driveTimeMinutes: null, distanceMiles: 1.2, proximitySource: 'osm-straightline' }];
+    const osmXPharmacy = {
+      name: 'OSM Louisville CVS', address: null, location: {}, driveTimeMinutes: null,
+      distanceMiles: 0.8, proximitySource: 'osm-straightline',
+      crossStateWarning: true, crossStateNote: 'This pharmacy is in KY. No in-state pharmacy was found within the search radius.',
+    };
+    const html = buildInsightsCardHTML(osmGrocery, osmXPharmacy, hospital, urgentCare, highwayRamp, gasStation);
+    expect(html).toContain('This pharmacy is in KY');
+  });
+
+  test('omits any cross-state note when pharmacy is in-state', () => {
+    const html = buildInsightsCardHTML(grocery, pharmacy, hospital, urgentCare, highwayRamp, gasStation);
+    expect(html).not.toMatch(/No in-state pharmacy/);
+  });
+});
+
 describe('buildAdditionalServicesCardHTML — civic infrastructure', () => {
   test('civic section rendered when library present', () => {
     const html = buildAdditionalServicesCardHTML(null, null, null, baseLib, null, null);
