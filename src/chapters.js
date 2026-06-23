@@ -3,6 +3,7 @@
 // Chapter data module — FR-017 through FR-024
 
 const { haversineDistance } = require('./utils/geo');
+const { checkCrossState } = require('./shared/validate'); // CONSTRAINT-006 / PM-005
 
 const { getCensusFIPS } = require('./shared/census');
 const { getGardenData } = require('./modules/garden/data');
@@ -46,7 +47,30 @@ const { buildHealthSafetyChapterHTML } = require('./modules/health/template');
 
 // ── FR-017: Schools & Education ──────────────────────────────────────────────
 
-async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime) {
+// CONSTRAINT-006 / PM-005: originState (2-letter, from reverse geocoding at report start) is
+// required to filter cross-state schools. When omitted (''), checkCrossState is a no-op, so
+// behavior is unchanged for callers without a known state.
+async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime, originState = '') {
+  // Picks the nearest in-state candidate (CONSTRAINT-006). Only if NO in-state option exists
+  // does it permit the nearest cross-state one within 50 mi, explicitly flagged. Cross-state
+  // checks for the bounded candidate set run in parallel.
+  async function selectInStateSchool(candidates) {
+    const picks = candidates.slice(0, 6);
+    if (!picks.length) return null;
+    const xstates = await Promise.all(picks.map((p) => checkCrossState(p.geometry.location, originState)));
+    const inStateIdx = xstates.findIndex((s) => s.valid);
+    if (inStateIdx >= 0) return { place: picks[inStateIdx], crossState: false, resultState: '' };
+    // No in-state option — permit nearest cross-state within 50 mi, flagged (CONSTRAINT-006).
+    let bestIdx = -1, bestDist = Infinity;
+    picks.forEach((p, i) => {
+      const d = haversineDistance(lat, lng, p.geometry.location.lat, p.geometry.location.lng);
+      if (d < bestDist) { bestDist = d; bestIdx = i; }
+    });
+    if (bestIdx >= 0 && bestDist <= 50) {
+      return { place: picks[bestIdx], crossState: true, resultState: xstates[bestIdx].resultState || '' };
+    }
+    return null;
+  }
   const publicSearches = [
     { level: 'Elementary', query: 'public elementary school', exclude: ['preschool','pre-school','daycare','montessori','private'] },
     { level: 'Middle',     query: 'middle school',            exclude: ['elementary','preschool'] },
@@ -62,17 +86,23 @@ async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, google
         const places = (resp.data.results || []).filter(
           (p) => !exclude.some((ex) => (p.name || '').toLowerCase().includes(ex))
         );
-        const place = places[0];
-        if (!place) return null;
+        const selection = await selectInStateSchool(places);
+        if (!selection) return null;
+        const { place, crossState, resultState } = selection;
         let driveTimeMinutes = null;
         try { driveTimeMinutes = await getDriveTime(originLatLng, place.geometry.location); } catch {}
-        return {
+        const entry = {
           level,
           name: place.name,
           address: place.formatted_address || place.vicinity || place.name,
           distanceMiles: haversineDistance(lat, lng, place.geometry.location.lat, place.geometry.location.lng).toFixed(1),
           driveTimeMinutes,
         };
+        if (crossState) {
+          entry.crossState = true;
+          entry.crossStateNote = `The nearest public ${level.toLowerCase()} school option is in ${resultState || 'another state'} — no in-state option was found nearby. Confirm school zoning with your district.`;
+        }
+        return entry;
       })
     ),
     googleMapsClient.textSearch({
@@ -87,10 +117,14 @@ async function getSchoolRatings(lat, lng, originLatLng, googleMapsClient, google
   let privateSchools = [];
   if (privateResult.status === 'fulfilled') {
     const skipWords = ['preschool', 'pre-school', 'daycare', 'day care', 'montessori'];
-    const places = (privateResult.value.data.results || [])
+    // Take a wider candidate window (cross-state ones get dropped below) then keep ≤5 in-state.
+    const candidates = (privateResult.value.data.results || [])
       .filter((p) => !skipWords.some((w) => (p.name || '').toLowerCase().includes(w)))
-      .slice(0, 5);
-    for (const place of places) {
+      .slice(0, 10);
+    // CONSTRAINT-006 / PM-005: drop cross-state private schools (supplementary list, no flag needed).
+    const xstates = await Promise.all(candidates.map((p) => checkCrossState(p.geometry.location, originState)));
+    const inState = candidates.filter((_, i) => xstates[i].valid).slice(0, 5);
+    for (const place of inState) {
       privateSchools.push({
         name: place.name,
         address: place.formatted_address || place.vicinity || place.name,
@@ -117,7 +151,7 @@ async function getChapterData({ lat, lng, originLatLng, locationInfo, googleMaps
       getEmergencyServices(lat, lng, originLatLng),
       getEnvironmentalData(lat, lng, highwayDriveMinutes, fips),
       getSafetyLocationContext(locationInfo),
-      getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime),
+      getSchoolRatings(lat, lng, originLatLng, googleMapsClient, googleMapsApiKey, getDriveTime, locationInfo?.state || ''),
       getGrowthAndDevelopment(lat, lng, fips, locationInfo),
       getPropertyIntelligence(lat, lng, fips, locationInfo),
       getGardenData(lat, lng, locationInfo),
@@ -181,7 +215,7 @@ function buildChaptersHTML(chapters) {
 }
 
 module.exports = {
-  getChapterData, buildChaptersHTML,
+  getChapterData, getSchoolRatings, buildChaptersHTML,
   filterReptiles, filterInsects, filterButterflies,
   categorizeSeasonalBirds, categorizePlantsByForm,
   getMonarchCorridorInfo, getFireflyHabitat, getEmergencySystem,

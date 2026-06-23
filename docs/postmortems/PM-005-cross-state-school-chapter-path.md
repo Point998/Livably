@@ -19,15 +19,15 @@ Same as PM-001: **missing jurisdictional coherence layer** — but specifically,
 - Severity: medium. Affects only border addresses (Jeffersonville IN is the known case). Misleads a buyer about which schools serve the address — a Fair-Housing-adjacent, decision-relevant error.
 - Surface: the rendered Schools chapter (`getSchoolRatings`) and, now, `contract.chapters.schools` (FR-081), which faithfully serializes the unfiltered result.
 
-## Fix (planned — FR-082)
-Route every per-level public result and every private result in `getSchoolRatings` through `checkCrossState(place.geometry.location, originState)` before inclusion. Follow CONSTRAINT-006's stated policy: drop cross-state results unless no in-state option exists within 50 miles, in which case include and **explicitly flag** as cross-state. Requires threading `originState` into `getSchoolRatings` (currently not a parameter). When a cross-state result is legitimately surfaced (no in-state option), add a `crossState` marker to the chapter data shape so the FR-081 contract can flag it (today it cannot — see cause #3).
+## Fix (applied — FR-082)
+`getSchoolRatings` now takes `originState` (threaded from `locationInfo.state`) and routes every per-level public candidate and every private candidate through `checkCrossState(place.geometry.location, originState)` before inclusion (cross-state checks for the bounded candidate set run in parallel). Policy per CONSTRAINT-006: pick the nearest **in-state** candidate; only if no in-state option exists does it permit the nearest cross-state one **within 50 mi**, marked `crossState: true` + `crossStateNote` on the entry; beyond 50 mi the level is dropped. Private candidates that are cross-state are dropped (supplementary list, no flag). When `originState` is empty, `checkCrossState` is a no-op so behavior is unchanged. The FR-081 schools contract now reads the `crossState` marker and sets `tone: caution` + the note in `defaultCopy`. See `feature-requests/FR-082-schools-crossstate-filter/`.
 
 ## Constraint
 No new constraint. This is a **CONSTRAINT-006 enforcement gap**, not a new class. Reinforces **CONSTRAINT-014** (coherence belongs in validate.js and must be applied to *all* searches of a class). Action item folded into CONSTRAINT-006's scope: the cross-state filter applies to **every** school search, including `getSchoolRatings`.
 
-## Tests to Add (with FR-082)
-- `getSchoolRatings` unit test: a mocked KY result for a Jeffersonville IN origin is dropped.
-- Extend `tests/integration/jeffersonville.test.js` to assert the **chapter** path (not just `findNearestSchool`) returns only in-state schools.
+## Tests Added (FR-082)
+- `tests/chapters/schoolRatings.test.js` — PM-005 regression for the chapter path, Jeffersonville IN origin: KY result dropped for an in-state alternative; cross-state flagged within 50 mi; dropped beyond 50 mi; cross-state private schools dropped; no-op when `originState` empty.
+- `tests/modules/schools/contract.test.js` — cross-state public school → contract `tone: caution` + note.
 
 ## Class of Bug
 Jurisdictional coherence failure (same as PM-001). Lesson: when a postmortem fix is applied, audit **all** code paths in that search class — not just the function named in the bug report. Other multi-path searches to re-audit for the same gap: hospital/urgent care (`getHealthcareDepth` vs `findNearestHospital`), pharmacy, grocery.
