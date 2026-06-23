@@ -17,6 +17,7 @@ const { buildReportHTML } = require('../templates/pages/reportPage');
 const { buildUtilitiesContract } = require('../modules/utilities/contract');
 const { buildCommunityContract } = require('../modules/community/contract');
 const { buildHealthContract } = require('../modules/health/contract');
+const { buildSchoolsContract } = require('../modules/schools/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -217,6 +218,9 @@ async function buildReportInner(address, options = {}) {
         : null,
       health: (hospital || urgentCare || healthcareDepth)
         ? buildHealthContract({ hospital, urgentCare, healthcareDepth }, { degraded: degradation.total > 0 })
+        : null,
+      schools: chapters?.schools
+        ? buildSchoolsContract(chapters.schools, { degraded: degradation.total > 0 })
         : null,
     },
   };
