@@ -1,0 +1,120 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildAccessContract — per-address snapshots contract snapshot — georgetown-ky-with-note 1`] = `
+{
+  "chapterId": "access",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 6,
+        },
+        "place": {
+          "address": "I-75 near Georgetown, KY",
+          "name": "I-75",
+        },
+        "subject": "Nearest interstate access",
+      },
+      "defaultCopy": "Also within 20 minutes: I-64 (14 min)",
+      "fallbackAction": null,
+      "id": "highway-access",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google geocoding + Distance Matrix",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google geocoding + Distance Matrix",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildAccessContract — per-address snapshots contract snapshot — harlan-ky-rural-far 1`] = `
+{
+  "chapterId": "access",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 26,
+        },
+        "place": {
+          "address": "US-421 near Harlan, KY",
+          "name": "US-421",
+        },
+        "subject": "Nearest interstate access",
+      },
+      "fallbackAction": null,
+      "id": "highway-access",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google geocoding + Distance Matrix",
+      },
+      "tone": "caution",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google geocoding + Distance Matrix",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildAccessContract — per-address snapshots contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "access",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 5,
+        },
+        "place": {
+          "address": "I-65 near Jeffersonville, IN",
+          "name": "I-65",
+        },
+        "subject": "Nearest interstate access",
+      },
+      "defaultCopy": "Also within 20 minutes: I-64 (9 min), I-265 (11 min)",
+      "fallbackAction": null,
+      "id": "highway-access",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google geocoding + Distance Matrix",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google geocoding + Distance Matrix",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
