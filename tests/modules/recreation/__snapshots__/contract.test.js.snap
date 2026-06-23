@@ -1,0 +1,376 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildRecreationContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "recreation",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 4,
+        },
+        "place": {
+          "address": "1 Park Dr, Georgetown, KY",
+          "name": "Suffoletta Park",
+        },
+        "subject": "Nearest park",
+      },
+      "fallbackAction": null,
+      "id": "nearest-park",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 7,
+        },
+        "place": {
+          "address": "101 Main St, Georgetown, KY",
+          "name": "Lock & Key Coffee",
+        },
+        "subject": "Nearest coffee shop",
+      },
+      "fallbackAction": null,
+      "id": "nearest-coffee",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 5,
+        },
+        "place": {
+          "address": "104 S Bradford Ln, Georgetown, KY",
+          "name": "Scott County Public Library",
+        },
+        "subject": "Nearest public library",
+      },
+      "fallbackAction": null,
+      "id": "nearest-library",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 9,
+        },
+        "place": {
+          "address": "100 Rec Dr, Georgetown, KY",
+          "name": "Georgetown Rec Center",
+        },
+        "subject": "Nearest recreation center",
+      },
+      "fallbackAction": null,
+      "id": "nearest-recreation-center",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 3,
+        },
+        "place": {
+          "address": "200 Main St, Georgetown, KY",
+          "name": "Georgetown Post Office",
+        },
+        "subject": "Nearest post office",
+      },
+      "fallbackAction": null,
+      "id": "nearest-post-office",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildRecreationContract — per-address snapshots contract snapshot — harlan-ky-osm-and-absent 1`] = `
+{
+  "chapterId": "recreation",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 8,
+        },
+        "place": {
+          "address": "100 Park St, Harlan, KY",
+          "name": "Harlan City Park",
+        },
+        "subject": "Nearest park",
+      },
+      "fallbackAction": null,
+      "id": "nearest-park",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "straight_line_miles",
+          "value": 2.1,
+        },
+        "place": {
+          "address": "Location approximate (OpenStreetMap)",
+          "name": "OSM Cafe",
+        },
+        "subject": "Nearest coffee shop",
+      },
+      "defaultCopy": "Live drive time was unavailable, so this is a straight-line (as-the-crow-flies) distance from OpenStreetMap — a rough sense of proximity; road distance and time will run somewhat longer.",
+      "fallbackAction": null,
+      "id": "nearest-coffee",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "OpenStreetMap",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 11,
+        },
+        "place": {
+          "address": "107 N 3rd St, Harlan, KY",
+          "name": "Harlan County Public Library",
+        },
+        "subject": "Nearest public library",
+      },
+      "fallbackAction": null,
+      "id": "nearest-library",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 9,
+        },
+        "place": {
+          "address": "201 Central St, Harlan, KY",
+          "name": "Harlan Post Office",
+        },
+        "subject": "Nearest post office",
+      },
+      "fallbackAction": null,
+      "id": "nearest-post-office",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "OpenStreetMap",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildRecreationContract — per-address snapshots contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "recreation",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 6,
+        },
+        "place": {
+          "address": "1300 Spring St, Jeffersonville, IN",
+          "name": "Duffy Park",
+        },
+        "subject": "Nearest park",
+      },
+      "fallbackAction": null,
+      "id": "nearest-park",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 5,
+        },
+        "place": {
+          "address": "256 Spring St, Jeffersonville, IN",
+          "name": "Red Yeti",
+        },
+        "subject": "Nearest coffee shop",
+      },
+      "fallbackAction": null,
+      "id": "nearest-coffee",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 7,
+        },
+        "place": {
+          "address": "211 E Court Ave, Jeffersonville, IN",
+          "name": "Jeffersonville Township Public Library",
+        },
+        "subject": "Nearest public library",
+      },
+      "fallbackAction": null,
+      "id": "nearest-library",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 8,
+        },
+        "place": {
+          "address": "724 Locust St, Jeffersonville, IN",
+          "name": "Ken Ellis Center",
+        },
+        "subject": "Nearest recreation center",
+      },
+      "fallbackAction": null,
+      "id": "nearest-recreation-center",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 4,
+        },
+        "place": {
+          "address": "1401 E 10th St, Jeffersonville, IN",
+          "name": "Jeffersonville Post Office",
+        },
+        "subject": "Nearest post office",
+      },
+      "fallbackAction": null,
+      "id": "nearest-post-office",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;

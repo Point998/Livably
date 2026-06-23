@@ -20,6 +20,7 @@ const { buildHealthContract } = require('../modules/health/contract');
 const { buildSchoolsContract } = require('../modules/schools/contract');
 const { buildSafetyContract } = require('../modules/safety/contract');
 const { buildReachabilityContract } = require('../modules/reachability/contract');
+const { buildRecreationContract } = require('../modules/recreation/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -229,6 +230,9 @@ async function buildReportInner(address, options = {}) {
         : null,
       reachability: (grocery || pharmacy || gasStation)
         ? buildReachabilityContract({ grocery, pharmacy, gasStation }, { degraded: degradation.total > 0 })
+        : null,
+      recreation: (park || coffeeShop || library || recCenter || postOffice)
+        ? buildRecreationContract({ park, coffeeShop, library, recCenter, postOffice }, { degraded: degradation.total > 0 })
         : null,
     },
   };
