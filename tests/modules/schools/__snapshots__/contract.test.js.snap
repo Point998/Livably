@@ -1,0 +1,339 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildSchoolsContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "schools",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Assigned school zone",
+      },
+      "fallbackAction": {
+        "label": "Call the district office",
+        "type": "instruction",
+        "value": "Call the district office with your exact address and ask which school your parcel is zoned to at each level — attendance boundaries can split streets, so the nearest school is often not the assigned one.",
+      },
+      "id": "assigned-school",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 4,
+        },
+        "place": {
+          "address": "100 Wishing Well Path, Georgetown, KY",
+          "name": "Garth Elementary",
+        },
+        "subject": "Nearest public elementary school",
+      },
+      "fallbackAction": null,
+      "id": "nearest-public-elementary",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 12,
+        },
+        "place": {
+          "address": "1701 Cardinal Dr, Georgetown, KY",
+          "name": "Scott County Middle",
+        },
+        "subject": "Nearest public middle school",
+      },
+      "fallbackAction": null,
+      "id": "nearest-public-middle",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 23,
+        },
+        "place": {
+          "address": "200 Great Crossing Dr, Georgetown, KY",
+          "name": "Great Crossing High",
+        },
+        "subject": "Nearest public high school",
+      },
+      "fallbackAction": null,
+      "id": "nearest-public-high",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "miles",
+          "value": 1.5,
+        },
+        "place": {
+          "address": "419 W Main St, Georgetown, KY",
+          "name": "St. John School",
+        },
+        "subject": "Nearby private school",
+      },
+      "fallbackAction": null,
+      "id": "private-school-1",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "miles",
+          "value": 3.2,
+        },
+        "place": {
+          "address": "2300 Lexington Rd, Georgetown, KY",
+          "name": "Georgetown Christian Academy",
+        },
+        "subject": "Nearby private school",
+      },
+      "fallbackAction": null,
+      "id": "private-school-2",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildSchoolsContract — per-address snapshots contract snapshot — harlan-ky-rural 1`] = `
+{
+  "chapterId": "schools",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Assigned school zone",
+      },
+      "fallbackAction": {
+        "label": "Call the district office",
+        "type": "instruction",
+        "value": "Call the district office with your exact address and ask which school your parcel is zoned to at each level — attendance boundaries can split streets, so the nearest school is often not the assigned one.",
+      },
+      "id": "assigned-school",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 6,
+        },
+        "place": {
+          "address": "420 E Central St, Harlan, KY",
+          "name": "Harlan Independent Elementary",
+        },
+        "subject": "Nearest public elementary school",
+      },
+      "fallbackAction": null,
+      "id": "nearest-public-elementary",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 7,
+        },
+        "place": {
+          "address": "420 E Central St, Harlan, KY",
+          "name": "Harlan High",
+        },
+        "subject": "Nearest public high school",
+      },
+      "fallbackAction": null,
+      "id": "nearest-public-high",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildSchoolsContract — per-address snapshots contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "schools",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Assigned school zone",
+      },
+      "fallbackAction": {
+        "label": "Call the district office",
+        "type": "instruction",
+        "value": "Call the district office with your exact address and ask which school your parcel is zoned to at each level — attendance boundaries can split streets, so the nearest school is often not the assigned one.",
+      },
+      "id": "assigned-school",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 5,
+        },
+        "place": {
+          "address": "2901 Allison Ln, Jeffersonville, IN",
+          "name": "Spring Hill Elementary",
+        },
+        "subject": "Nearest public elementary school",
+      },
+      "fallbackAction": null,
+      "id": "nearest-public-elementary",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 8,
+        },
+        "place": {
+          "address": "2315 Allison Ln, Jeffersonville, IN",
+          "name": "Jeffersonville High",
+        },
+        "subject": "Nearest public high school",
+      },
+      "fallbackAction": null,
+      "id": "nearest-public-high",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "miles",
+          "value": 2,
+        },
+        "place": {
+          "address": "1842 E 8th St, Jeffersonville, IN",
+          "name": "Sacred Heart School",
+        },
+        "subject": "Nearby private school",
+      },
+      "fallbackAction": null,
+      "id": "private-school-1",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
