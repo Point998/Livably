@@ -1,0 +1,317 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildHealthContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "health",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 8,
+        },
+        "place": {
+          "address": "1740 Nicholasville Rd, Lexington, KY",
+          "name": "Baptist Health Lexington",
+        },
+        "subject": "Nearest emergency room",
+      },
+      "fallbackAction": null,
+      "id": "emergency-room",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 12,
+        },
+        "place": {
+          "address": "200 Main St, Lexington, KY",
+          "name": "Norton Immediate Care",
+        },
+        "subject": "Nearest urgent care",
+      },
+      "fallbackAction": null,
+      "id": "urgent-care",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Hospital designation",
+      },
+      "defaultCopy": "Acute Care Hospital — Equipped for most emergencies.",
+      "fallbackAction": null,
+      "id": "hospital-type",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "CMS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "physicians",
+          "value": 22,
+        },
+        "subject": "Primary care physicians in area",
+      },
+      "fallbackAction": null,
+      "id": "primary-care",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "CMS NPI Registry",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "CMS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "CMS NPI Registry",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildHealthContract — per-address snapshots contract snapshot — harlan-ky-rural-far-er 1`] = `
+{
+  "chapterId": "health",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 24,
+        },
+        "place": {
+          "address": "81 Ball Park Rd, Harlan, KY",
+          "name": "Harlan ARH Hospital",
+        },
+        "subject": "Nearest emergency room",
+      },
+      "fallbackAction": null,
+      "id": "emergency-room",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Nearest urgent care",
+      },
+      "fallbackAction": {
+        "label": "Solv Health",
+        "type": "url",
+        "value": "https://www.solvhealth.com/",
+      },
+      "id": "urgent-care-missing",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Hospital designation",
+      },
+      "defaultCopy": "Critical Access Hospital — A smaller rural hospital (typically ≤25 beds).",
+      "fallbackAction": null,
+      "id": "hospital-type",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "CMS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "physicians",
+          "value": 3,
+        },
+        "subject": "Primary care physicians in area",
+      },
+      "fallbackAction": null,
+      "id": "primary-care",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "CMS NPI Registry",
+      },
+      "tone": "caution",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "CMS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "CMS NPI Registry",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildHealthContract — per-address snapshots contract snapshot — jeffersonville-in-crossstate 1`] = `
+{
+  "chapterId": "health",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 14,
+        },
+        "place": {
+          "address": "530 S Jackson St, Louisville, KY",
+          "name": "UofL Hospital",
+        },
+        "subject": "Nearest emergency room",
+      },
+      "defaultCopy": "This hospital is in KY. No in-state hospital was found within the search radius.",
+      "fallbackAction": null,
+      "id": "emergency-room",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 9,
+        },
+        "place": {
+          "address": "1425 State St, New Albany, IN",
+          "name": "Norton Immediate Care",
+        },
+        "subject": "Nearest urgent care",
+      },
+      "fallbackAction": null,
+      "id": "urgent-care",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Hospital designation",
+      },
+      "defaultCopy": "Acute Care Hospital — Equipped for most emergencies.",
+      "fallbackAction": null,
+      "id": "hospital-type",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "CMS",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "physicians",
+          "value": 18,
+        },
+        "subject": "Primary care physicians in area",
+      },
+      "fallbackAction": null,
+      "id": "primary-care",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "CMS NPI Registry",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "CMS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "CMS NPI Registry",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;

@@ -48,10 +48,21 @@ const FallbackActionSchema = z.object({
   value: z.string(),
 }).strict();
 
+// FR-080 — located-facility payload (name + address). Optional + .strict() = additive,
+// non-breaking (schemaVersion stays '1.0'); existing chapters that don't set it validate
+// unchanged. Durable home for the recurring located-facility shape (health, schools,
+// safety, reachability). Coordinates deliberately excluded until a real FE map consumer
+// exists — they'd be a non-breaking optional add later.
+const PlaceSchema = z.object({
+  name: z.string(),
+  address: z.string(),
+}).strict();
+
 const ClaimSchema = z.object({
   subject: z.string(),
   measure: MeasureSchema.nullable(),
   comparison: ComparisonSchema.nullable(),
+  place: PlaceSchema.nullable().optional(),
 }).strict();
 
 const FindingSchema = z.object({
@@ -98,6 +109,7 @@ module.exports = {
   ComparisonSchema,
   ProvenanceSchema,
   FallbackActionSchema,
+  PlaceSchema,
   ClaimSchema,
   FindingSchema,
   ChapterContractSchema,

@@ -16,6 +16,7 @@ const { runWithLedger, getLedger, summarize } = require('../shared/degradationLe
 const { buildReportHTML } = require('../templates/pages/reportPage');
 const { buildUtilitiesContract } = require('../modules/utilities/contract');
 const { buildCommunityContract } = require('../modules/community/contract');
+const { buildHealthContract } = require('../modules/health/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -213,6 +214,9 @@ async function buildReportInner(address, options = {}) {
         : null,
       community: chapters?.demographics
         ? buildCommunityContract(chapters.demographics, { degraded: degradation.total > 0 })
+        : null,
+      health: (hospital || urgentCare || healthcareDepth)
+        ? buildHealthContract({ hospital, urgentCare, healthcareDepth }, { degraded: degradation.total > 0 })
         : null,
     },
   };
