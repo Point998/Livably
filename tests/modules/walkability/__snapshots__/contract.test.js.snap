@@ -1,0 +1,227 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildWalkabilityContract — per-address snapshots contract snapshot — car-dependent-pointer 1`] = `
+{
+  "chapterId": "walkability",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Walkable everyday destinations",
+      },
+      "defaultCopy": "Few everyday destinations appear to be within walking distance — this reads as a drive-first location. Confirm specific walk routes and times on Walk Score, and walk the block at the time of day you would actually run errands.",
+      "fallbackAction": {
+        "label": "Check this address on Walk Score",
+        "type": "url",
+        "value": "https://www.walkscore.com/",
+      },
+      "id": "walkability-pointer",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Walk Score",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Walk Score",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildWalkabilityContract — per-address snapshots contract snapshot — jeffersonville-in-osm 1`] = `
+{
+  "chapterId": "walkability",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 1,
+        },
+        "subject": "Grocery within walking distance",
+      },
+      "defaultCopy": "Nearest is Schimpff's corner store, about a 6 min walk.",
+      "fallbackAction": null,
+      "id": "walkable-grocery",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "OpenStreetMap",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 2,
+        },
+        "subject": "Dining within walking distance",
+      },
+      "defaultCopy": "Nearest is Parlour, about a 4 min walk.",
+      "fallbackAction": null,
+      "id": "walkable-dining",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "OpenStreetMap",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 1,
+        },
+        "subject": "Parks within walking distance",
+      },
+      "fallbackAction": null,
+      "id": "walkable-park",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "OpenStreetMap",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "OpenStreetMap",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildWalkabilityContract — per-address snapshots contract snapshot — urban-google 1`] = `
+{
+  "chapterId": "walkability",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 3,
+        },
+        "subject": "Grocery within walking distance",
+      },
+      "defaultCopy": "Nearest is Downtown Market, about a 4 min walk.",
+      "fallbackAction": null,
+      "id": "walkable-grocery",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 9,
+        },
+        "subject": "Dining within walking distance",
+      },
+      "defaultCopy": "Nearest is Corner Bistro, about a 2 min walk.",
+      "fallbackAction": null,
+      "id": "walkable-dining",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 2,
+        },
+        "subject": "Transit within walking distance",
+      },
+      "fallbackAction": null,
+      "id": "walkable-transit",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 4,
+        },
+        "subject": "Parks within walking distance",
+      },
+      "fallbackAction": null,
+      "id": "walkable-park",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "places_within_walk",
+          "value": 1,
+        },
+        "subject": "Pharmacy within walking distance",
+      },
+      "defaultCopy": "Nearest is Main St Rx, about a 6 min walk.",
+      "fallbackAction": null,
+      "id": "walkable-pharmacy",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;

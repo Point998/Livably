@@ -63,12 +63,16 @@ async function getWalkabilityScoreGoogle(lat, lng) {
 
   let totalScore = 0;
   const destinations = [];
+  // FR-089 — retain the true per-category count. The headless contract surfaces these
+  // factual counts instead of the composite score, which CONSTRAINT-001 forbids.
+  const counts = {};
 
   for (let i = 0; i < WALK_TYPES.length; i++) {
     const { weight, label, icon } = WALK_TYPES[i];
     const r = results[i];
     if (r.status !== 'fulfilled') continue;
     const places = r.value.data.results || [];
+    counts[label] = places.length;
     totalScore += weightForCount(places.length, weight);
 
     places.slice(0, 2).forEach((place) => {
@@ -85,7 +89,7 @@ async function getWalkabilityScoreGoogle(lat, lng) {
   destinations.sort((a, b) => a.distanceMiles - b.distanceMiles);
 
   const score = Math.min(100, totalScore);
-  return { score, category: getWalkCategory(score), destinations, isProxy: true, source: 'google' };
+  return { score, category: getWalkCategory(score), destinations, counts, isProxy: true, source: 'google' };
 }
 
 // FR-067 — keyless fallback. One Overpass union call across the 5 walk-type
@@ -113,10 +117,12 @@ async function getWalkabilityScoreOSM(lat, lng) {
 
   let totalScore = 0;
   const destinations = [];
+  const counts = {}; // FR-089 — per-category counts for the headless contract (no score).
 
   for (const { type, weight, label, icon } of WALK_TYPES) {
     const cat = OSM_CATEGORY_BY_WALK_TYPE[type];
     const group = byCategory[cat] || [];
+    counts[label] = group.length;
     totalScore += weightForCount(group.length, weight);
 
     group.slice(0, 2).forEach((p) => {
@@ -132,7 +138,7 @@ async function getWalkabilityScoreOSM(lat, lng) {
   destinations.sort((a, b) => a.distanceMiles - b.distanceMiles);
 
   const score = Math.min(100, totalScore);
-  const result = { score, category: getWalkCategory(score), destinations, isProxy: true, source: 'osm' };
+  const result = { score, category: getWalkCategory(score), destinations, counts, isProxy: true, source: 'osm' };
   placesOsmCache.set(cacheKey, result);
   return result;
 }

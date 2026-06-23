@@ -72,6 +72,15 @@ describe('getWalkabilityScoreGoogle', () => {
     expect(r.source).toBe('google');
   });
 
+  test('FR-089 — exposes per-category counts (counts map keyed by WALK_TYPE label)', async () => {
+    // Same mock applies to all 5 type calls → 3 results per category.
+    googleMapsClient.placesNearby.mockResolvedValue({
+      data: { results: [place('A'), place('B'), place('C')] },
+    });
+    const r = await getWalkabilityScoreGoogle(38.2, -84.5);
+    expect(r.counts).toMatchObject({ Grocery: 3, Dining: 3, Transit: 3, Park: 3, Pharmacy: 3 });
+  });
+
   test('partial failure (some types reject) → still non-null', async () => {
     googleMapsClient.placesNearby
       .mockRejectedValueOnce(new Error('fail'))
@@ -94,6 +103,8 @@ describe('getWalkabilityScoreOSM', () => {
     expect(r.score).toBeGreaterThan(0);
     expect(r.destinations.length).toBe(3);
     expect(r.destinations.every((d) => typeof d.walkMinutes === 'number')).toBe(true);
+    // FR-089 — per-category counts (grocery/dining/park each 1; transit/pharmacy 0).
+    expect(r.counts).toMatchObject({ Grocery: 1, Dining: 1, Park: 1, Transit: 0, Pharmacy: 0 });
   });
 
   test('Overpass returns nothing → null', async () => {
