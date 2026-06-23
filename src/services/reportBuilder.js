@@ -21,6 +21,7 @@ const { buildSchoolsContract } = require('../modules/schools/contract');
 const { buildSafetyContract } = require('../modules/safety/contract');
 const { buildReachabilityContract } = require('../modules/reachability/contract');
 const { buildRecreationContract } = require('../modules/recreation/contract');
+const { buildAccessContract } = require('../modules/access/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -233,6 +234,9 @@ async function buildReportInner(address, options = {}) {
         : null,
       recreation: (park || coffeeShop || library || recCenter || postOffice)
         ? buildRecreationContract({ park, coffeeShop, library, recCenter, postOffice }, { degraded: degradation.total > 0 })
+        : null,
+      access: highwayRamp
+        ? buildAccessContract({ highwayRamp }, { degraded: degradation.total > 0 })
         : null,
     },
   };
