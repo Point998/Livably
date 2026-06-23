@@ -1,0 +1,262 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildReachabilityContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "reachability",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 6,
+        },
+        "place": {
+          "address": "100 Main St, Georgetown, KY",
+          "name": "Kroger",
+        },
+        "subject": "Nearest grocery store",
+      },
+      "fallbackAction": null,
+      "id": "nearest-grocery",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 5,
+        },
+        "place": {
+          "address": "300 Elm St, Georgetown, KY",
+          "name": "CVS",
+        },
+        "subject": "Nearest pharmacy",
+      },
+      "fallbackAction": null,
+      "id": "nearest-pharmacy",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 4,
+        },
+        "place": {
+          "address": "400 Pine St, Georgetown, KY",
+          "name": "Casey's",
+        },
+        "subject": "Nearest gas station",
+      },
+      "fallbackAction": null,
+      "id": "nearest-gas",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildReachabilityContract — per-address snapshots contract snapshot — harlan-ky-osm-and-coherence 1`] = `
+{
+  "chapterId": "reachability",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 48,
+        },
+        "place": {
+          "address": "101 Main St, Harlan, KY",
+          "name": "Harlan IGA",
+        },
+        "subject": "Nearest grocery store",
+      },
+      "fallbackAction": null,
+      "id": "nearest-grocery",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "straight_line_miles",
+          "value": 3.4,
+        },
+        "place": {
+          "address": "Location approximate (OpenStreetMap)",
+          "name": "OSM Pharmacy",
+        },
+        "subject": "Nearest pharmacy",
+      },
+      "defaultCopy": "Live drive time was unavailable, so this is a straight-line (as-the-crow-flies) distance from OpenStreetMap — a rough sense of proximity; road distance and time will run somewhat longer.",
+      "fallbackAction": null,
+      "id": "nearest-pharmacy",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "OpenStreetMap",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 12,
+        },
+        "place": {
+          "address": "55 Hwy 421, Harlan, KY",
+          "name": "Harlan Fuel",
+        },
+        "subject": "Nearest gas station",
+      },
+      "fallbackAction": null,
+      "id": "nearest-gas",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "OpenStreetMap",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildReachabilityContract — per-address snapshots contract snapshot — jeffersonville-in-crossstate-pharmacy 1`] = `
+{
+  "chapterId": "reachability",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 7,
+        },
+        "place": {
+          "address": "2100 E 10th St, Jeffersonville, IN",
+          "name": "Kroger Jeffersonville",
+        },
+        "subject": "Nearest grocery store",
+      },
+      "fallbackAction": null,
+      "id": "nearest-grocery",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 10,
+        },
+        "place": {
+          "address": "530 S Jackson St, Louisville, KY",
+          "name": "UofL Pharmacy",
+        },
+        "subject": "Nearest pharmacy",
+      },
+      "defaultCopy": "This pharmacy is in KY. No in-state pharmacy was found within the search radius.",
+      "fallbackAction": null,
+      "id": "nearest-pharmacy",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "drive_minutes",
+          "value": 5,
+        },
+        "place": {
+          "address": "1400 E 10th St, Jeffersonville, IN",
+          "name": "Thorntons",
+        },
+        "subject": "Nearest gas station",
+      },
+      "fallbackAction": null,
+      "id": "nearest-gas",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
