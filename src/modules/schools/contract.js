@@ -57,11 +57,13 @@ function buildSchoolsContract(schools, opts = {}) {
   });
 
   // ── Nearest public school per level ─────────────────────────────────────────
+  // FR-082: a school the data layer flagged cross-state (no in-state option nearby) is a
+  // caution, with the note surfaced via defaultCopy — mirrors the health contract.
   for (const s of publicSchools) {
     push({
       id: `nearest-public-${s.level.toLowerCase()}`,
       bucket: 'consider',
-      tone: commuteTone(s.driveTimeMinutes),
+      tone: s.crossState ? 'caution' : commuteTone(s.driveTimeMinutes),
       claim: {
         subject: `Nearest public ${s.level.toLowerCase()} school`,
         measure: schoolMeasure(s),
@@ -70,7 +72,7 @@ function buildSchoolsContract(schools, opts = {}) {
       },
       provenance: prov,
       fallbackAction: null,
-    });
+    }, s.crossState ? s.crossStateNote : undefined);
   }
 
   // ── Nearby private schools (each durable for the FE) ────────────────────────

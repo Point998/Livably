@@ -78,6 +78,13 @@ describe('buildSchoolsContract', () => {
     expect(JSON.stringify(buildSchoolsContract(fullSchools, ASOF))).not.toMatch(/"color"/);
   });
 
+  test('cross-state public school -> tone caution + note in defaultCopy (FR-082)', () => {
+    const s = { public: [{ level: 'Elementary', name: 'Louisville Elementary', address: 'Louisville, KY', distanceMiles: '3.0', driveTimeMinutes: 9, crossState: true, crossStateNote: 'The nearest public elementary school option is in KY — no in-state option was found nearby. Confirm school zoning with your district.' }], private: [] };
+    const elem = buildSchoolsContract(s, ASOF).findings.find((f) => f.id === 'nearest-public-elementary');
+    expect(elem.tone).toBe('caution');
+    expect(elem.defaultCopy).toMatch(/KY/);
+  });
+
   test('private-only input still produces a valid contract', () => {
     const c = buildSchoolsContract({ public: [], private: fullSchools.private }, ASOF);
     expect(ChapterContractSchema.safeParse(c).success).toBe(true);
