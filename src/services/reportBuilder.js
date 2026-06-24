@@ -10,7 +10,7 @@ const { findNearestHospital, findNearestUrgentCare, getHealthcareDepth } = requi
 const { findNearestSchool, findNearestElementarySchool } = require('../modules/schools/data');
 const { findNearestPark, findNearestCoffeeShop, findNearestLibrary, findNearestRecreationCenter, findNearestPostOffice } = require('../modules/recreation/data');
 const { getChapterData } = require('../chapters');
-const { saveReport } = require('./reportStore');
+const { saveReport, putArtifact } = require('./reportStore');
 const { logRequest, logError, logDegradation, logAnalysis } = require('../logger');
 const { runWithLedger, getLedger, summarize } = require('../shared/degradationLedger');
 const { buildReportHTML } = require('../templates/pages/reportPage');
@@ -198,7 +198,7 @@ async function buildReportInner(address, options = {}) {
   } catch (_) { /* calculator omitted on total failure */ }
 
   let reportId = null;
-  try { reportId = saveReport(address); } catch {}
+  try { reportId = await saveReport(address); } catch {}
   logRequest(address, 'success', Date.now() - _reqStart);
   // FR-068 — emit one degradation summary line only when this report ran on at
   // least one fallback (signal, not noise; clean reports stay quiet).
@@ -268,6 +268,22 @@ async function buildReportInner(address, options = {}) {
         : null,
     },
   };
+
+  // FR-096 — persist the rendered artifact so /r/:reportId serves it directly instead of
+  // re-rendering. Non-fatal (CONSTRAINT-015): a storage hiccup must never break delivery.
+  if (reportId) {
+    try {
+      await putArtifact(reportId, {
+        html,
+        contract,
+        generatedAt: contract.generatedAt,
+        schemaVersion: contract.schemaVersion,
+        degraded: contract.degraded,
+      });
+    } catch (err) {
+      logError('putArtifact', address, err);
+    }
+  }
 
   return { html, reportId, address, contract };
 }
