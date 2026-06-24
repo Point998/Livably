@@ -4,7 +4,20 @@ const {
   STATE_ALERT_SYSTEMS,
   CLIMATE_SIGNIFICANT_DAMAGE_USD,
   PGA_BAND_THRESHOLDS,
+  TORNADO_TIER,
 } = require('../../utils/constants');
+
+// FR-094 — pure NOAA-historical tornado tier by state. Lives here (a business rule belongs in the
+// logic layer) so the climate contract can consume it.
+// shortcut: climate/template.js also defines getTornadoTier inline; logic.js is now the source for the
+// contract, but the SSR template copy was left in place (surgical, matches contract rollouts #1–14).
+// Collapse the template onto this export when template.js is next touched.
+function getTornadoTier(state) {
+  if (TORNADO_TIER.high.includes(state))     return { tier: 'High',     color: 'orange', note: `${state} averages among the highest tornado frequency in the US. Verify home has an interior shelter or basement.` };
+  if (TORNADO_TIER.moderate.includes(state)) return { tier: 'Moderate', color: 'gold',   note: `${state} sees periodic tornado activity. Most homes here are built with standard storm shutters — ask about storm shelter access.` };
+  if (TORNADO_TIER.low.includes(state))      return { tier: 'Low',      color: 'green',  note: `${state} has low historical tornado frequency.` };
+  return                                            { tier: 'Unknown',  color: 'muted',  note: 'Check NOAA Storm Events for this area.' };
+}
 
 // ── FR-043: Climate — emergency system lookup ─────────────────────────────────
 function getEmergencySystem(state, county) {
@@ -127,4 +140,5 @@ module.exports = {
   computeRarityStatement,
   classifyTopographicPosition,
   getSeismicContext,
+  getTornadoTier,
 };

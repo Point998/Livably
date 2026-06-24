@@ -28,6 +28,7 @@ const { buildEnvironmentContract } = require('../modules/sensory/contract');
 const { buildGrowthContract } = require('../modules/growth/contract');
 const { buildGardenContract } = require('../modules/garden/contract');
 const { buildCostsContract } = require('../modules/costs/contract');
+const { buildClimateContract } = require('../modules/climate/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -261,6 +262,9 @@ async function buildReportInner(address, options = {}) {
         : null,
       costs: chapters?.propertyData
         ? buildCostsContract(chapters.propertyData, { degraded: degradation.total > 0 })
+        : null,
+      climate: chapters?.climateHistory
+        ? buildClimateContract(chapters.climateHistory, { degraded: degradation.total > 0, state: chapters.locationInfo?.state, county: chapters.locationInfo?.county })
         : null,
     },
   };

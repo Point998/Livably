@@ -1,0 +1,770 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildClimateContract — per-address snapshots contract snapshot — bozeman-mt 1`] = `
+{
+  "chapterId": "climate",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "g_pga",
+          "value": 0.06,
+        },
+        "subject": "Earthquake ground motion (USGS)",
+      },
+      "defaultCopy": "USGS models low earthquake ground motion here — about 0.06g.",
+      "fallbackAction": null,
+      "id": "seismic-hazard",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS ASCE 7-16",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 18,
+        },
+        "subject": "Days per year at or above 90°F",
+      },
+      "fallbackAction": null,
+      "id": "hot-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 95,
+        },
+        "subject": "Days per year at or below 32°F",
+      },
+      "fallbackAction": null,
+      "id": "cold-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "federal_disaster_declarations",
+          "value": 3,
+        },
+        "subject": "Federal weather-disaster declarations (county)",
+      },
+      "defaultCopy": "Gallatin County has received 3 federal weather-related disaster declarations in the last 20 years — most recently Flood in 2021.",
+      "fallbackAction": null,
+      "id": "disaster-history",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FEMA",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Tornado frequency (state)",
+      },
+      "defaultCopy": "MT sees periodic tornado activity. Most homes here are built with standard storm shutters — ask about storm shelter access.",
+      "fallbackAction": null,
+      "id": "tornado-frequency",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NOAA Storm Events (state averages)",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Topographic position (drainage)",
+      },
+      "fallbackAction": {
+        "label": "Ask the seller about water intrusion",
+        "type": "instruction",
+        "value": "This address sits at a low point in the surrounding terrain — stormwater from uphill drains toward it. Ask the seller specifically whether the yard, basement, or crawlspace has taken on water during heavy rain.",
+      },
+      "id": "topographic-position",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS elevation",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Watershed (USGS)",
+      },
+      "defaultCopy": "This home sits in the Elkhorn Creek watershed, part of the Kentucky River basin.",
+      "fallbackAction": null,
+      "id": "named-watershed",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS Watershed Boundary Dataset",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Emergency alert registration",
+      },
+      "defaultCopy": "Smart911",
+      "fallbackAction": {
+        "label": "Register for emergency alerts",
+        "type": "url",
+        "value": "https://smart911.com",
+      },
+      "id": "emergency-alerts",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Local emergency management",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "USGS ASCE 7-16",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA 30-yr normals",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "FEMA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA Storm Events (state averages)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS elevation",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS Watershed Boundary Dataset",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Local emergency management",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildClimateContract — per-address snapshots contract snapshot — georgetown-ky 1`] = `
+{
+  "chapterId": "climate",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "g_pga",
+          "value": 0.06,
+        },
+        "subject": "Earthquake ground motion (USGS)",
+      },
+      "defaultCopy": "USGS models low earthquake ground motion here — about 0.06g.",
+      "fallbackAction": null,
+      "id": "seismic-hazard",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS ASCE 7-16",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 18,
+        },
+        "subject": "Days per year at or above 90°F",
+      },
+      "fallbackAction": null,
+      "id": "hot-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 95,
+        },
+        "subject": "Days per year at or below 32°F",
+      },
+      "fallbackAction": null,
+      "id": "cold-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "federal_disaster_declarations",
+          "value": 3,
+        },
+        "subject": "Federal weather-disaster declarations (county)",
+      },
+      "defaultCopy": "Scott County has received 3 federal weather-related disaster declarations in the last 20 years — most recently Flood in 2021.",
+      "fallbackAction": null,
+      "id": "disaster-history",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FEMA",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Tornado frequency (state)",
+      },
+      "defaultCopy": "KY averages among the highest tornado frequency in the US. Verify home has an interior shelter or basement.",
+      "fallbackAction": null,
+      "id": "tornado-frequency",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NOAA Storm Events (state averages)",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Topographic position (drainage)",
+      },
+      "fallbackAction": {
+        "label": "Ask the seller about water intrusion",
+        "type": "instruction",
+        "value": "This address sits at a low point in the surrounding terrain — stormwater from uphill drains toward it. Ask the seller specifically whether the yard, basement, or crawlspace has taken on water during heavy rain.",
+      },
+      "id": "topographic-position",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS elevation",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Watershed (USGS)",
+      },
+      "defaultCopy": "This home sits in the Elkhorn Creek watershed, part of the Kentucky River basin.",
+      "fallbackAction": null,
+      "id": "named-watershed",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS Watershed Boundary Dataset",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Emergency alert registration",
+      },
+      "defaultCopy": "Smart911",
+      "fallbackAction": {
+        "label": "Register for emergency alerts",
+        "type": "url",
+        "value": "https://smart911.com",
+      },
+      "id": "emergency-alerts",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Local emergency management",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "USGS ASCE 7-16",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA 30-yr normals",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "FEMA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA Storm Events (state averages)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS elevation",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS Watershed Boundary Dataset",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Local emergency management",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildClimateContract — per-address snapshots contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "climate",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "g_pga",
+          "value": 0.06,
+        },
+        "subject": "Earthquake ground motion (USGS)",
+      },
+      "defaultCopy": "USGS models low earthquake ground motion here — about 0.06g.",
+      "fallbackAction": null,
+      "id": "seismic-hazard",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS ASCE 7-16",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 18,
+        },
+        "subject": "Days per year at or above 90°F",
+      },
+      "fallbackAction": null,
+      "id": "hot-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 95,
+        },
+        "subject": "Days per year at or below 32°F",
+      },
+      "fallbackAction": null,
+      "id": "cold-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "federal_disaster_declarations",
+          "value": 3,
+        },
+        "subject": "Federal weather-disaster declarations (county)",
+      },
+      "defaultCopy": "Clark County has received 3 federal weather-related disaster declarations in the last 20 years — most recently Flood in 2021.",
+      "fallbackAction": null,
+      "id": "disaster-history",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FEMA",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Tornado frequency (state)",
+      },
+      "defaultCopy": "IN averages among the highest tornado frequency in the US. Verify home has an interior shelter or basement.",
+      "fallbackAction": null,
+      "id": "tornado-frequency",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NOAA Storm Events (state averages)",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Topographic position (drainage)",
+      },
+      "fallbackAction": {
+        "label": "Ask the seller about water intrusion",
+        "type": "instruction",
+        "value": "This address sits at a low point in the surrounding terrain — stormwater from uphill drains toward it. Ask the seller specifically whether the yard, basement, or crawlspace has taken on water during heavy rain.",
+      },
+      "id": "topographic-position",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS elevation",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Watershed (USGS)",
+      },
+      "defaultCopy": "This home sits in the Elkhorn Creek watershed, part of the Kentucky River basin.",
+      "fallbackAction": null,
+      "id": "named-watershed",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS Watershed Boundary Dataset",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Emergency alert registration",
+      },
+      "defaultCopy": "Smart911",
+      "fallbackAction": {
+        "label": "Register for emergency alerts",
+        "type": "url",
+        "value": "https://smart911.com",
+      },
+      "id": "emergency-alerts",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Local emergency management",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "USGS ASCE 7-16",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA 30-yr normals",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "FEMA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA Storm Events (state averages)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS elevation",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS Watershed Boundary Dataset",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Local emergency management",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildClimateContract — per-address snapshots contract snapshot — synthetic-ca-low-tornado-high-seismic 1`] = `
+{
+  "chapterId": "climate",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "g_pga",
+          "value": 0.42,
+        },
+        "subject": "Earthquake ground motion (USGS)",
+      },
+      "defaultCopy": "Seismically active country — about 0.42g.",
+      "fallbackAction": null,
+      "id": "seismic-hazard",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS ASCE 7-16",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 18,
+        },
+        "subject": "Days per year at or above 90°F",
+      },
+      "fallbackAction": null,
+      "id": "hot-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "days_per_year",
+          "value": 95,
+        },
+        "subject": "Days per year at or below 32°F",
+      },
+      "fallbackAction": null,
+      "id": "cold-days",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "NOAA 30-yr normals",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "federal_disaster_declarations",
+          "value": 0,
+        },
+        "subject": "Federal weather-disaster declarations (county)",
+      },
+      "defaultCopy": "No federally declared weather disasters in Santa Clara County in the last 20 years.",
+      "fallbackAction": null,
+      "id": "disaster-history",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FEMA",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Tornado frequency (state)",
+      },
+      "defaultCopy": "CA has low historical tornado frequency.",
+      "fallbackAction": null,
+      "id": "tornado-frequency",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NOAA Storm Events (state averages)",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Topographic position (drainage)",
+      },
+      "defaultCopy": "This address sits above the surrounding terrain — stormwater drains away from rather than toward the parcel, a modest advantage in heavy rain.",
+      "fallbackAction": null,
+      "id": "topographic-position",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS elevation",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Watershed (USGS)",
+      },
+      "defaultCopy": "This home sits in the Coyote Creek watershed.",
+      "fallbackAction": null,
+      "id": "named-watershed",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS Watershed Boundary Dataset",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Emergency alert registration",
+      },
+      "defaultCopy": "Smart911",
+      "fallbackAction": {
+        "label": "Register for emergency alerts",
+        "type": "url",
+        "value": "https://smart911.com",
+      },
+      "id": "emergency-alerts",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Local emergency management",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "USGS ASCE 7-16",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA 30-yr normals",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "FEMA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NOAA Storm Events (state averages)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS elevation",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS Watershed Boundary Dataset",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Local emergency management",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
