@@ -1,0 +1,205 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildGrowthContract — per-address snapshots contract snapshot — georgetown-ky-rising 1`] = `
+{
+  "chapterId": "growth",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "building_permits",
+          "value": 320,
+        },
+        "subject": "New residential building permits (area)",
+      },
+      "defaultCopy": "320 residential permits were issued in 2024. That is up 28% from 250 in 2023 — permitting is rising.",
+      "fallbackAction": null,
+      "id": "permit-trend",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census Building Permits Survey",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "count",
+          "value": 4,
+        },
+        "subject": "Recent commercial development nearby",
+      },
+      "defaultCopy": "Recently active commercial sites nearby include New Retail Plaza (Shopping), Medical Office Bldg (Office), Corner Cafe (Dining).",
+      "fallbackAction": null,
+      "id": "development-activity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "count",
+          "value": 2,
+        },
+        "subject": "Named development projects in the pipeline",
+      },
+      "defaultCopy": "Reported projects: Scott County Logistics Park — Under Construction; Downtown Mixed-Use — Approved.",
+      "fallbackAction": null,
+      "id": "named-projects",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google News",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census Building Permits Survey",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Google News",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildGrowthContract — per-address snapshots contract snapshot — harlan-ky-sparse 1`] = `
+{
+  "chapterId": "growth",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "New residential building permits (area)",
+      },
+      "fallbackAction": {
+        "label": "Ask the county planning office",
+        "type": "instruction",
+        "value": "Permit-trend data was unavailable for this area. Call the county/city planning & zoning office for recent residential permit volumes, or search the Census Building Permits Survey for the county.",
+      },
+      "id": "permit-trend-missing",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census Building Permits Survey",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "count",
+          "value": 1,
+        },
+        "subject": "Named development projects in the pipeline",
+      },
+      "defaultCopy": "Reported projects: Harlan Main St Revitalization — Approved.",
+      "fallbackAction": null,
+      "id": "named-projects",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google News",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census Building Permits Survey",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Google News",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildGrowthContract — per-address snapshots contract snapshot — jeffersonville-in-declining 1`] = `
+{
+  "chapterId": "growth",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "building_permits",
+          "value": 140,
+        },
+        "subject": "New residential building permits (area)",
+      },
+      "defaultCopy": "140 residential permits were issued in 2024. That is down 26% from 190 in 2023 — permitting is declining.",
+      "fallbackAction": null,
+      "id": "permit-trend",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Census Building Permits Survey",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "count",
+          "value": 1,
+        },
+        "subject": "Recent commercial development nearby",
+      },
+      "defaultCopy": "Recently active commercial sites nearby include Riverfront Retail (Shopping).",
+      "fallbackAction": null,
+      "id": "development-activity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "OpenStreetMap",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Census Building Permits Survey",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "OpenStreetMap",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
