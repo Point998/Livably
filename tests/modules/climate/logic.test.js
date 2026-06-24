@@ -1,5 +1,24 @@
 'use strict';
-const { getSeismicContext } = require('../../../src/modules/climate/logic');
+const { getSeismicContext, getTornadoTier } = require('../../../src/modules/climate/logic');
+
+describe('getTornadoTier (FR-094)', () => {
+  test('maps states to NOAA historical tiers', () => {
+    expect(getTornadoTier('KY').tier).toBe('High');
+    expect(getTornadoTier('IN').tier).toBe('High');
+    expect(getTornadoTier('MT').tier).toBe('Moderate');
+    expect(getTornadoTier('CA').tier).toBe('Low');
+  });
+
+  test('unknown / empty state -> Unknown', () => {
+    expect(getTornadoTier('').tier).toBe('Unknown');
+    expect(getTornadoTier('ZZ').tier).toBe('Unknown');
+  });
+
+  test('returns pure {tier, color, note}', () => {
+    const t = getTornadoTier('KY');
+    expect(t).toEqual(expect.objectContaining({ tier: expect.any(String), color: expect.any(String), note: expect.any(String) }));
+  });
+});
 
 describe('getSeismicContext', () => {
   const ctx = (pga) => getSeismicContext({ pga, ss: 0.5, s1: 0.2, sds: 0.4 });
