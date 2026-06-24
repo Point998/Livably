@@ -54,3 +54,37 @@ describe('FileReportStore core', () => {
     expect(await store.touch('unknown00')).toBe(false);
   });
 });
+
+describe('FileReportStore legacy migration', () => {
+  test('splits a legacy reports.json map into per-file records and renames it .bak', async () => {
+    const dir = tmpDir();
+    const legacy = path.join(dir, '..', 'reports.json');
+    await fsp.writeFile(legacy, JSON.stringify({
+      abc12345: { address: '100 Main St', createdAt: 't', lastAccessed: 't' },
+    }), 'utf8');
+
+    const store = new FileReportStore(dir);
+    const rec = await store.get('abc12345'); // triggers ensureMigrated
+
+    expect(rec.address).toBe('100 Main St');
+    expect(fs.existsSync(legacy)).toBe(false);
+    expect(fs.existsSync(`${legacy}.bak`)).toBe(true);
+  });
+
+  test('does not overwrite a per-file record that already exists', async () => {
+    const dir = tmpDir();
+    const legacy = path.join(dir, '..', 'reports.json');
+    await fsp.mkdir(dir, { recursive: true });
+    await fsp.writeFile(path.join(dir, 'abc12345.json'), JSON.stringify({ address: 'NEW' }), 'utf8');
+    await fsp.writeFile(legacy, JSON.stringify({ abc12345: { address: 'OLD' } }), 'utf8');
+
+    const store = new FileReportStore(dir);
+    expect((await store.get('abc12345')).address).toBe('NEW');
+  });
+
+  test('is a no-op when there is no legacy file', async () => {
+    const store = new FileReportStore(tmpDir());
+    await store.ensureMigrated();
+    expect(await store.get('whatever0')).toBeNull();
+  });
+});

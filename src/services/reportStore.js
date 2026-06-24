@@ -27,7 +27,31 @@ class FileReportStore {
 
   _file(id) { return path.join(this.baseDir, `${id}.json`); }
 
-  async ensureMigrated() { await fsp.mkdir(this.baseDir, { recursive: true }); } // replaced in Task 2
+  // Lazy, idempotent, memoized once per instance: split a legacy single-map
+  // data/reports.json into per-file records, then retire it to .bak.
+  async ensureMigrated() {
+    if (!this._migrated) this._migrated = this._migrate();
+    return this._migrated;
+  }
+
+  async _migrate() {
+    await fsp.mkdir(this.baseDir, { recursive: true });
+    let raw;
+    try {
+      raw = await fsp.readFile(this.legacyFile, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') return; // nothing to migrate
+      throw err;
+    }
+    let map;
+    try { map = JSON.parse(raw); } catch { map = {}; }
+    for (const [id, rec] of Object.entries(map)) {
+      const file = this._file(id);
+      try { await fsp.access(file); continue; } catch { /* not present -> write it */ }
+      await atomicWrite(file, JSON.stringify(rec, null, 2));
+    }
+    await fsp.rename(this.legacyFile, `${this.legacyFile}.bak`);
+  }
 
   async mintId() {
     await this.ensureMigrated();
