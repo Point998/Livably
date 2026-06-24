@@ -88,3 +88,47 @@ describe('FileReportStore legacy migration', () => {
     expect(await store.get('whatever0')).toBeNull();
   });
 });
+
+describe('public wrappers (singleton, temp dir via env)', () => {
+  let mod;
+  let dir;
+  beforeEach(() => {
+    dir = tmpDir();
+    process.env.LIVABLY_REPORTS_DIR = dir;
+    jest.resetModules();
+    mod = require('../../src/services/reportStore');
+  });
+  afterEach(() => { delete process.env.LIVABLY_REPORTS_DIR; });
+
+  test('saveReport returns an 8-char hex id and persists the address', async () => {
+    const id = await mod.saveReport('100 Main St, Louisville, KY');
+    expect(id).toMatch(/^[0-9a-f]{8}$/);
+    expect((await mod.getReport(id)).address).toBe('100 Main St, Louisville, KY');
+  });
+
+  test('updateReportAccess returns true for a known id, false otherwise', async () => {
+    const id = await mod.saveReport('a');
+    expect(await mod.updateReportAccess(id)).toBe(true);
+    expect(await mod.updateReportAccess('nope00000')).toBe(false);
+  });
+
+  test('putArtifact merges html + contract while preserving address', async () => {
+    const id = await mod.saveReport('a');
+    await mod.putArtifact(id, { html: '<h1>hi</h1>', contract: { schemaVersion: '1.0' }, generatedAt: 't', schemaVersion: '1.0', degraded: false });
+    const rec = await mod.getReport(id);
+    expect(rec.address).toBe('a');
+    expect(rec.html).toBe('<h1>hi</h1>');
+    expect(rec.contract.schemaVersion).toBe('1.0');
+  });
+
+  test('resolveSharedReport: html hit, redirect fallback, not found', async () => {
+    const withHtml = await mod.saveReport('a');
+    await mod.putArtifact(withHtml, { html: '<h1>x</h1>', contract: {}, generatedAt: 't', schemaVersion: '1.0', degraded: false });
+    expect(await mod.resolveSharedReport(withHtml)).toEqual({ kind: 'html', html: '<h1>x</h1>' });
+
+    const addressOnly = await mod.saveReport('456 Rural Route 1, Harlan, KY');
+    expect(await mod.resolveSharedReport(addressOnly)).toEqual({ kind: 'redirect', address: '456 Rural Route 1, Harlan, KY' });
+
+    expect(await mod.resolveSharedReport('missing00')).toEqual({ kind: 'notFound' });
+  });
+});

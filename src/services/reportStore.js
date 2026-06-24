@@ -92,4 +92,35 @@ class FileReportStore {
   }
 }
 
-module.exports = { atomicWrite, FileReportStore };
+const store = new FileReportStore();
+
+async function saveReport(address) {
+  const id = await store.mintId();
+  const now = new Date().toISOString();
+  await store.put(id, { address, createdAt: now, lastAccessed: now });
+  return id;
+}
+
+function getReport(id) { return store.get(id); }
+
+function updateReportAccess(id) { return store.touch(id); }
+
+async function putArtifact(id, artifact) {
+  const now = new Date().toISOString();
+  const rec = (await store.get(id)) || { createdAt: now, lastAccessed: now };
+  await store.put(id, { ...rec, ...artifact });
+}
+
+async function resolveSharedReport(id) {
+  const rec = await store.get(id);
+  if (!rec) return { kind: 'notFound' };
+  store.touch(id).catch(() => {}); // fire-and-forget; access bookkeeping must never block serving
+  if (rec.html) return { kind: 'html', html: rec.html };
+  if (rec.address) return { kind: 'redirect', address: rec.address };
+  return { kind: 'notFound' };
+}
+
+module.exports = {
+  atomicWrite, FileReportStore, store,
+  saveReport, getReport, updateReportAccess, putArtifact, resolveSharedReport,
+};
