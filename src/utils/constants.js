@@ -418,6 +418,11 @@ const FIREFLY_STATES = new Set([
 
 // ── State Financial Tables ────────────────────────────────────────────────────
 
+// FR-093 — national effective property-tax rate (Lincoln Institute ~1.0%); equals the
+// getPropertyData `?? 1.00` default. The named reference for the costs contract's
+// `comparison.basis: 'national_average'`. Tax-rate comparison only — never income (CONSTRAINT-002).
+const NATIONAL_AVG_PROPERTY_TAX_RATE = 1.0;
+
 const STATE_TAX_RATES = {
   AL:0.39,AK:1.04,AZ:0.60,AR:0.62,CA:0.73,CO:0.49,CT:1.73,DE:0.55,FL:0.80,GA:0.83,
   HI:0.28,ID:0.56,IL:2.07,IN:0.83,IA:1.46,KS:1.30,KY:0.83,LA:0.56,ME:1.09,MD:1.02,
@@ -964,6 +969,7 @@ module.exports = {
   MILKWEED_BY_STATE,
   FIREFLY_STATES,
   // State data
+  NATIONAL_AVG_PROPERTY_TAX_RATE,
   STATE_TAX_RATES,
   STATE_INSURANCE_ANNUAL,
   STATE_UTILITIES_MONTHLY,

@@ -1,0 +1,526 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildCostsContract — per-address snapshots contract snapshot — bozeman-mt 1`] = `
+{
+  "chapterId": "costs",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_average",
+          "deltaPct": -26,
+          "direction": "below",
+          "referenceValue": 1,
+          "region": "MT",
+        },
+        "measure": {
+          "unit": "percent_effective",
+          "value": 0.74,
+        },
+        "subject": "Effective property tax rate (state average)",
+      },
+      "fallbackAction": {
+        "label": "Look up the actual parcel tax bill",
+        "type": "instruction",
+        "value": "Search "[county] assessor" or "[county] property tax records" for the exact assessed value and tax history for this specific parcel — often available free online. The rate shown is a state average.",
+      },
+      "id": "property-tax-rate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Lincoln Institute",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 129,
+        },
+        "subject": "Estimated homeowners insurance (state average)",
+      },
+      "fallbackAction": {
+        "label": "Get at least 3 quotes",
+        "type": "instruction",
+        "value": "Rates for the same home can differ 30–50% by age, construction, roof condition, and proximity to fire stations. Get at least 3 quotes before closing.",
+      },
+      "id": "insurance-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NAIC",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 165,
+        },
+        "subject": "Estimated monthly utilities (state average)",
+      },
+      "fallbackAction": {
+        "label": "Request 12 months of utility bills",
+        "type": "instruction",
+        "value": "Ask the seller's agent for the last 12 months of electric, gas, and water bills — seasonal swings matter, especially in older homes with original HVAC or limited insulation.",
+      },
+      "id": "utilities-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "EIA",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month_at_300k_ref",
+          "value": 479,
+        },
+        "subject": "Estimated monthly carrying cost at $300k reference price (excludes mortgage)",
+      },
+      "fallbackAction": {
+        "label": "Add your mortgage and a maintenance reserve",
+        "type": "instruction",
+        "value": "This is taxes + insurance + utilities only. Add your mortgage payment and a maintenance reserve (≈1%/yr, more for older homes) for the true monthly cost.",
+      },
+      "id": "carrying-cost-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Livably estimate (state averages)",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Lincoln Institute",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NAIC",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EIA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Livably estimate (state averages)",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildCostsContract — per-address snapshots contract snapshot — georgetown-ky 1`] = `
+{
+  "chapterId": "costs",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_average",
+          "deltaPct": -17,
+          "direction": "below",
+          "referenceValue": 1,
+          "region": "KY",
+        },
+        "measure": {
+          "unit": "percent_effective",
+          "value": 0.83,
+        },
+        "subject": "Effective property tax rate (state average)",
+      },
+      "fallbackAction": {
+        "label": "Look up the actual parcel tax bill",
+        "type": "instruction",
+        "value": "Search "[county] assessor" or "[county] property tax records" for the exact assessed value and tax history for this specific parcel — often available free online. The rate shown is a state average.",
+      },
+      "id": "property-tax-rate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Lincoln Institute",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 140,
+        },
+        "subject": "Estimated homeowners insurance (state average)",
+      },
+      "fallbackAction": {
+        "label": "Get at least 3 quotes",
+        "type": "instruction",
+        "value": "Rates for the same home can differ 30–50% by age, construction, roof condition, and proximity to fire stations. Get at least 3 quotes before closing.",
+      },
+      "id": "insurance-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NAIC",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 190,
+        },
+        "subject": "Estimated monthly utilities (state average)",
+      },
+      "fallbackAction": {
+        "label": "Request 12 months of utility bills",
+        "type": "instruction",
+        "value": "Ask the seller's agent for the last 12 months of electric, gas, and water bills — seasonal swings matter, especially in older homes with original HVAC or limited insulation.",
+      },
+      "id": "utilities-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "EIA",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month_at_300k_ref",
+          "value": 538,
+        },
+        "subject": "Estimated monthly carrying cost at $300k reference price (excludes mortgage)",
+      },
+      "fallbackAction": {
+        "label": "Add your mortgage and a maintenance reserve",
+        "type": "instruction",
+        "value": "This is taxes + insurance + utilities only. Add your mortgage payment and a maintenance reserve (≈1%/yr, more for older homes) for the true monthly cost.",
+      },
+      "id": "carrying-cost-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Livably estimate (state averages)",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Homestead exemption available",
+      },
+      "defaultCopy": "Kentucky offers a homestead exemption ($46,350 off assessed value) for homeowners 65+ or permanently disabled.",
+      "fallbackAction": null,
+      "id": "homestead-exemption",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "State homestead statute",
+      },
+      "tone": "favorable",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Lincoln Institute",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NAIC",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EIA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Livably estimate (state averages)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "State homestead statute",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildCostsContract — per-address snapshots contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "costs",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": {
+          "basis": "national_average",
+          "deltaPct": -17,
+          "direction": "below",
+          "referenceValue": 1,
+          "region": "IN",
+        },
+        "measure": {
+          "unit": "percent_effective",
+          "value": 0.83,
+        },
+        "subject": "Effective property tax rate (state average)",
+      },
+      "fallbackAction": {
+        "label": "Look up the actual parcel tax bill",
+        "type": "instruction",
+        "value": "Search "[county] assessor" or "[county] property tax records" for the exact assessed value and tax history for this specific parcel — often available free online. The rate shown is a state average.",
+      },
+      "id": "property-tax-rate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Lincoln Institute",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 107,
+        },
+        "subject": "Estimated homeowners insurance (state average)",
+      },
+      "fallbackAction": {
+        "label": "Get at least 3 quotes",
+        "type": "instruction",
+        "value": "Rates for the same home can differ 30–50% by age, construction, roof condition, and proximity to fire stations. Get at least 3 quotes before closing.",
+      },
+      "id": "insurance-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NAIC",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 195,
+        },
+        "subject": "Estimated monthly utilities (state average)",
+      },
+      "fallbackAction": {
+        "label": "Request 12 months of utility bills",
+        "type": "instruction",
+        "value": "Ask the seller's agent for the last 12 months of electric, gas, and water bills — seasonal swings matter, especially in older homes with original HVAC or limited insulation.",
+      },
+      "id": "utilities-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "EIA",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month_at_300k_ref",
+          "value": 510,
+        },
+        "subject": "Estimated monthly carrying cost at $300k reference price (excludes mortgage)",
+      },
+      "fallbackAction": {
+        "label": "Add your mortgage and a maintenance reserve",
+        "type": "instruction",
+        "value": "This is taxes + insurance + utilities only. Add your mortgage payment and a maintenance reserve (≈1%/yr, more for older homes) for the true monthly cost.",
+      },
+      "id": "carrying-cost-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Livably estimate (state averages)",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Lincoln Institute",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NAIC",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EIA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Livably estimate (state averages)",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildCostsContract — per-address snapshots contract snapshot — synthetic-nj-high-tax 1`] = `
+{
+  "chapterId": "costs",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": {
+          "basis": "national_average",
+          "deltaPct": 113,
+          "direction": "above",
+          "referenceValue": 1,
+          "region": "NJ",
+        },
+        "measure": {
+          "unit": "percent_effective",
+          "value": 2.13,
+        },
+        "subject": "Effective property tax rate (state average)",
+      },
+      "fallbackAction": {
+        "label": "Look up the actual parcel tax bill",
+        "type": "instruction",
+        "value": "Search "[county] assessor" or "[county] property tax records" for the exact assessed value and tax history for this specific parcel — often available free online. The rate shown is a state average.",
+      },
+      "id": "property-tax-rate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Lincoln Institute",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 120,
+        },
+        "subject": "Estimated homeowners insurance (state average)",
+      },
+      "fallbackAction": {
+        "label": "Get at least 3 quotes",
+        "type": "instruction",
+        "value": "Rates for the same home can differ 30–50% by age, construction, roof condition, and proximity to fire stations. Get at least 3 quotes before closing.",
+      },
+      "id": "insurance-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "NAIC",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month",
+          "value": 210,
+        },
+        "subject": "Estimated monthly utilities (state average)",
+      },
+      "fallbackAction": {
+        "label": "Request 12 months of utility bills",
+        "type": "instruction",
+        "value": "Ask the seller's agent for the last 12 months of electric, gas, and water bills — seasonal swings matter, especially in older homes with original HVAC or limited insulation.",
+      },
+      "id": "utilities-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "EIA",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "usd_per_month_at_300k_ref",
+          "value": 863,
+        },
+        "subject": "Estimated monthly carrying cost at $300k reference price (excludes mortgage)",
+      },
+      "fallbackAction": {
+        "label": "Add your mortgage and a maintenance reserve",
+        "type": "instruction",
+        "value": "This is taxes + insurance + utilities only. Add your mortgage payment and a maintenance reserve (≈1%/yr, more for older homes) for the true monthly cost.",
+      },
+      "id": "carrying-cost-estimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Livably estimate (state averages)",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "Lincoln Institute",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "NAIC",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EIA",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Livably estimate (state averages)",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
