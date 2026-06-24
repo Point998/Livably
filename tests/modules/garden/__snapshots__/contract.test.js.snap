@@ -1,0 +1,517 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildGardenContract — per-address snapshots contract snapshot — bozeman-mt-different-zone 1`] = `
+{
+  "chapterId": "garden",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "growing_season_days",
+          "value": 113,
+        },
+        "subject": "Plant hardiness zone",
+      },
+      "defaultCopy": "USDA hardiness zone 5a. Last spring frost lands around May 25 and first fall frost around September 15 — a growing season of roughly 113 days.",
+      "fallbackAction": null,
+      "id": "hardiness-zone",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USDA Plant Hardiness Zone Map",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 2,
+        },
+        "subject": "Native plant species documented nearby",
+      },
+      "defaultCopy": "Native species observed nearby include Arrowleaf Balsamroot, Blue Flax.",
+      "fallbackAction": null,
+      "id": "native-plants",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 1,
+        },
+        "subject": "Invasive plant species documented nearby",
+      },
+      "defaultCopy": "Invasive species reported nearby include Spotted Knapweed. Worth identifying and managing early — they spread into gardens and crowd out natives.",
+      "fallbackAction": null,
+      "id": "invasive-plants",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 1,
+        },
+        "subject": "Bird species documented nearby",
+      },
+      "defaultCopy": "Birds observed nearby include Mountain Bluebird.",
+      "fallbackAction": null,
+      "id": "local-birds",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 1,
+        },
+        "subject": "Wildlife documented nearby",
+      },
+      "defaultCopy": "Wildlife observed nearby includes Mule Deer. Deer are active nearby — plan vegetable or ornamental plantings with deer-resistant species or fencing.",
+      "fallbackAction": null,
+      "id": "local-wildlife",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "feet",
+          "value": 4820,
+        },
+        "subject": "Site elevation & sun exposure",
+      },
+      "defaultCopy": "This address sits at roughly 4820 feet elevation. The midday sun reaches about 67° above the horizon in late June and 21° in late December — the low winter angle means south-side fences and hedges cast long midday shadows across a garden.",
+      "fallbackAction": null,
+      "id": "microclimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS elevation",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "USDA Plant Hardiness Zone Map",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "iNaturalist",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS elevation",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildGardenContract — per-address snapshots contract snapshot — georgetown-ky-full 1`] = `
+{
+  "chapterId": "garden",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "growing_season_days",
+          "value": 188,
+        },
+        "subject": "Plant hardiness zone",
+      },
+      "defaultCopy": "USDA hardiness zone 6b. Last spring frost lands around April 15 and first fall frost around October 20 — a growing season of roughly 188 days.",
+      "fallbackAction": null,
+      "id": "hardiness-zone",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USDA Plant Hardiness Zone Map",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 5,
+        },
+        "subject": "Native plant species documented nearby",
+      },
+      "defaultCopy": "Native species observed nearby include Purple Coneflower, Butterfly Weed, Wild Bergamot, Black-eyed Susan.",
+      "fallbackAction": null,
+      "id": "native-plants",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 2,
+        },
+        "subject": "Invasive plant species documented nearby",
+      },
+      "defaultCopy": "Invasive species reported nearby include Bush Honeysuckle, Garlic Mustard. Worth identifying and managing early — they spread into gardens and crowd out natives.",
+      "fallbackAction": null,
+      "id": "invasive-plants",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 3,
+        },
+        "subject": "Bird species documented nearby",
+      },
+      "defaultCopy": "Birds observed nearby include Northern Cardinal, American Robin, Carolina Wren.",
+      "fallbackAction": null,
+      "id": "local-birds",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 2,
+        },
+        "subject": "Butterfly species documented nearby",
+      },
+      "defaultCopy": "Butterflies and pollinators observed nearby include Monarch, Eastern Tiger Swallowtail.",
+      "fallbackAction": null,
+      "id": "butterflies",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 2,
+        },
+        "subject": "Wildlife documented nearby",
+      },
+      "defaultCopy": "Wildlife observed nearby includes White-tailed Deer, Eastern Gray Squirrel. Deer are active nearby — plan vegetable or ornamental plantings with deer-resistant species or fencing.",
+      "fallbackAction": null,
+      "id": "local-wildlife",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "On the monarch migration corridor",
+      },
+      "defaultCopy": "This address sits within the monarch butterfly migration corridor. Milkweed species that support them here: Common Milkweed, Butterfly Weed.",
+      "fallbackAction": null,
+      "id": "monarch-corridor",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Xerces Society (state range)",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Firefly habitat range",
+      },
+      "defaultCopy": "This region is within firefly habitat range — leaving leaf litter and limiting outdoor lighting helps them thrive.",
+      "fallbackAction": null,
+      "id": "firefly-habitat",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Firefly range (state)",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "feet",
+          "value": 910,
+        },
+        "subject": "Site elevation & sun exposure",
+      },
+      "defaultCopy": "This address sits at roughly 910 feet elevation. The midday sun reaches about 74° above the horizon in late June and 28° in late December — the low winter angle means south-side fences and hedges cast long midday shadows across a garden.",
+      "fallbackAction": null,
+      "id": "microclimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS elevation",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "USDA Plant Hardiness Zone Map",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "iNaturalist",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Xerces Society (state range)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Firefly range (state)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS elevation",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildGardenContract — per-address snapshots contract snapshot — jeffersonville-in 1`] = `
+{
+  "chapterId": "garden",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "growing_season_days",
+          "value": 187,
+        },
+        "subject": "Plant hardiness zone",
+      },
+      "defaultCopy": "USDA hardiness zone 6b. Last spring frost lands around April 18 and first fall frost around October 22 — a growing season of roughly 187 days.",
+      "fallbackAction": null,
+      "id": "hardiness-zone",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USDA Plant Hardiness Zone Map",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 1,
+        },
+        "subject": "Native plant species documented nearby",
+      },
+      "defaultCopy": "Native species observed nearby include Wild Columbine.",
+      "fallbackAction": null,
+      "id": "native-plants",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 1,
+        },
+        "subject": "Bird species documented nearby",
+      },
+      "defaultCopy": "Birds observed nearby include Blue Jay.",
+      "fallbackAction": null,
+      "id": "local-birds",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "species",
+          "value": 1,
+        },
+        "subject": "Butterfly species documented nearby",
+      },
+      "defaultCopy": "Butterflies and pollinators observed nearby include Monarch.",
+      "fallbackAction": null,
+      "id": "butterflies",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "iNaturalist",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "On the monarch migration corridor",
+      },
+      "defaultCopy": "This address sits within the monarch butterfly migration corridor. Milkweed species that support them here: Swamp Milkweed.",
+      "fallbackAction": null,
+      "id": "monarch-corridor",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Xerces Society (state range)",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Firefly habitat range",
+      },
+      "defaultCopy": "This region is within firefly habitat range — leaving leaf litter and limiting outdoor lighting helps them thrive.",
+      "fallbackAction": null,
+      "id": "firefly-habitat",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "Firefly range (state)",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "feet",
+          "value": 455,
+        },
+        "subject": "Site elevation & sun exposure",
+      },
+      "defaultCopy": "This address sits at roughly 460 feet elevation. The midday sun reaches about 75° above the horizon in late June and 28° in late December — the low winter angle means south-side fences and hedges cast long midday shadows across a garden.",
+      "fallbackAction": null,
+      "id": "microclimate",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "USGS elevation",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "USDA Plant Hardiness Zone Map",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "iNaturalist",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Xerces Society (state range)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Firefly range (state)",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "USGS elevation",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
