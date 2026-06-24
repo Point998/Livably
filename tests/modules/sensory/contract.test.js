@@ -16,6 +16,10 @@ const full = {
   waterQuality: { systemName: 'Georgetown Municipal Water', pwsId: 'KY0000123', violations: [] },
   radon: { zone: 2 },
   ejscreen: { superfundPct: 40, rmpPct: 30, tsdfPct: 20, flagged: false },
+  // FR-095 — sensory ambiance (rollout #16)
+  airports: [{ name: 'Bluegrass Airport', distanceMiles: 12.34, lat: 38.04, lng: -84.6 }],
+  rail: { type: 'rail', name: 'CSX Line', distanceMiles: 1.42 },
+  lightPollution: { bortle: 5, label: 'Suburban sky', desc: 'The Milky Way is a faint smudge on a good night.' },
 };
 
 const findById = (c, id) => c.findings.find((f) => f.id === id);
@@ -99,7 +103,9 @@ describe('buildEnvironmentContract', () => {
       expect(f).not.toHaveProperty('rating');
     }
     const json = JSON.stringify(c);
-    for (const key of ['"color"', '"category"', '"primaryPollutant"', '"superfundPct"']) {
+    // FR-095: ambiance must not leak the raw lightPollution structured keys (desc/bortle).
+    // NB: "label" is a legitimate FallbackActionSchema key, so it is intentionally NOT asserted here.
+    for (const key of ['"color"', '"category"', '"primaryPollutant"', '"superfundPct"', '"desc"', '"bortle"']) {
       expect(json).not.toContain(key);
     }
   });
@@ -111,11 +117,96 @@ describe('buildEnvironmentContract', () => {
   });
 });
 
+// FR-095 — sensory ambiance findings (rollout #16). Airports / rail / light pollution.
+describe('buildEnvironmentContract — ambiance findings (FR-095)', () => {
+  test('airport-noise: consider bucket, miles measure, tone by distance band (AC-2)', () => {
+    const f = findById(buildEnvironmentContract(full, ASOF), 'airport-noise');
+    expect(f.bucket).toBe('consider');
+    expect(f.claim.measure).toEqual({ value: 12.3, unit: 'miles' });
+    expect(f.tone).toBe('neutral'); // 12.3 mi -> 5..15 band
+    expect(f.provenance.source).toBe('Google Places');
+    expect(f.provenance.modeled).toBe(false);
+    expect(f.fallbackAction).toBeNull();
+    expect(f.defaultCopy).toContain('Bluegrass Airport');
+
+    const near = findById(buildEnvironmentContract({ ...full, airports: [{ name: 'Muni', distanceMiles: 3.1, lat: 1, lng: 1 }] }, ASOF), 'airport-noise');
+    expect(near.tone).toBe('caution');
+    const far = findById(buildEnvironmentContract({ ...full, airports: [{ name: 'Regional', distanceMiles: 18.2, lat: 1, lng: 1 }] }, ASOF), 'airport-noise');
+    expect(far.tone).toBe('favorable');
+  });
+
+  test('airport-noise: OSM fallback flips provenance source (AC-2, FR-070 parity)', () => {
+    const f = findById(buildEnvironmentContract({ ...full, airports: [{ name: 'Aerodrome', distanceMiles: 9.0, lat: 1, lng: 1, source: 'osm' }] }, ASOF), 'airport-noise');
+    expect(f.provenance.source).toBe('OpenStreetMap');
+  });
+
+  test('airport-noise: none in range -> favorable, null measure, no fallbackAction (AC-2)', () => {
+    const f = findById(buildEnvironmentContract({ ...full, airports: null }, ASOF), 'airport-noise');
+    expect(f.tone).toBe('favorable');
+    expect(f.claim.measure).toBeNull();
+    expect(f.fallbackAction).toBeNull();
+    expect(f.defaultCopy.toLowerCase()).toContain('no airports');
+    // empty array behaves like none
+    expect(findById(buildEnvironmentContract({ ...full, airports: [] }, ASOF), 'airport-noise').tone).toBe('favorable');
+  });
+
+  test('rail-proximity: tone by distance band; none -> favorable; no fallbackAction (AC-3)', () => {
+    const f = findById(buildEnvironmentContract(full, ASOF), 'rail-proximity');
+    expect(f.bucket).toBe('consider');
+    expect(f.claim.measure).toEqual({ value: 1.42, unit: 'miles' });
+    expect(f.tone).toBe('favorable'); // 1.42 mi -> >=0.75
+    expect(f.fallbackAction).toBeNull();
+    expect(f.provenance.source).toBe('OpenStreetMap');
+
+    const close = findById(buildEnvironmentContract({ ...full, rail: { type: 'light_rail', name: 'TARC', distanceMiles: 0.2 } }, ASOF), 'rail-proximity');
+    expect(close.tone).toBe('caution');
+    const mid = findById(buildEnvironmentContract({ ...full, rail: { type: 'rail', name: 'CSX', distanceMiles: 0.5 } }, ASOF), 'rail-proximity');
+    expect(mid.tone).toBe('neutral');
+    const none = findById(buildEnvironmentContract({ ...full, rail: null }, ASOF), 'rail-proximity');
+    expect(none.tone).toBe('favorable');
+    expect(none.claim.measure).toBeNull();
+    expect(none.fallbackAction).toBeNull();
+    expect(none.defaultCopy.toLowerCase()).toContain('no rail');
+  });
+
+  test('light-pollution: cool bucket, bortle measure, tone, modeled true (AC-4)', () => {
+    const f = findById(buildEnvironmentContract(full, ASOF), 'light-pollution');
+    expect(f.bucket).toBe('cool');
+    expect(f.claim.measure).toEqual({ value: 5, unit: 'bortle_class' });
+    expect(f.tone).toBe('neutral'); // bortle 5
+    expect(f.provenance.source).toBe('U.S. Census ACS / OpenStreetMap');
+    expect(f.provenance.modeled).toBe(true);
+    expect(f.fallbackAction).toBeNull();
+    expect(f.defaultCopy).toContain('Suburban sky');
+
+    const dark = findById(buildEnvironmentContract({ ...full, lightPollution: { bortle: 3, label: 'Rural dark sky', desc: 'Milky Way clearly visible.' } }, ASOF), 'light-pollution');
+    expect(dark.tone).toBe('favorable');
+  });
+
+  test('light-pollution: never caution (light level is not a hazard)', () => {
+    const bright = findById(buildEnvironmentContract({ ...full, lightPollution: { bortle: 8, label: 'Urban sky', desc: 'Only the brightest stars.' } }, ASOF), 'light-pollution');
+    expect(bright.tone).toBe('neutral');
+  });
+
+  test('ambiance findings ride along only when chapter already emits (AC-5 guard preserved)', () => {
+    // health/safety absent but ambiance present -> still null (existing FR-090 contract).
+    expect(buildEnvironmentContract({ airports: full.airports, rail: full.rail, lightPollution: full.lightPollution }, ASOF)).toBeNull();
+  });
+});
+
 // Per-address snapshots (deterministic asOf). CONSTRAINT-011: Jeffersonville IN included.
 describe('buildEnvironmentContract — per-address snapshots', () => {
   const cases = {
     'georgetown-ky-clean': full,
-    'harlan-ky-high-radon': { ...full, radon: { zone: 1 }, roadNoise: { dnl: 42, source: 'estimated', category: { label: 'Very Quiet', color: 'green', hint: 'well below threshold' } } },
+    'harlan-ky-high-radon': {
+      ...full,
+      radon: { zone: 1 },
+      roadNoise: { dnl: 42, source: 'estimated', category: { label: 'Very Quiet', color: 'green', hint: 'well below threshold' } },
+      // rural Appalachian: no airport, no rail in range, dark sky
+      airports: null,
+      rail: null,
+      lightPollution: { bortle: 3, label: 'Rural dark sky', desc: 'The Milky Way is clearly visible with obvious structure.' },
+    },
     'jeffersonville-in-flood-and-hazard': {
       airQuality: { aqi: 72, category: { label: 'Moderate', color: 'gold', description: 'Acceptable for most.' }, primaryPollutant: 'Ozone' },
       floodRisk: { zone: 'AE', risk: 'High', insuranceRequired: true, description: '1% annual flood chance with base flood elevation.' },
@@ -123,6 +214,10 @@ describe('buildEnvironmentContract — per-address snapshots', () => {
       waterQuality: { systemName: 'Jeffersonville Water', violations: [{ code: 'TT' }] },
       radon: { zone: 2 },
       ejscreen: { superfundPct: 82, rmpPct: 78, tsdfPct: 55, flagged: true },
+      // border city: nearby airport (Louisville is across the river) + rail within town
+      airports: [{ name: 'Louisville Muhammad Ali International', distanceMiles: 6.8, lat: 38.17, lng: -85.74 }],
+      rail: { type: 'rail', name: 'CSX', distanceMiles: 0.31 },
+      lightPollution: { bortle: 6, label: 'Bright suburban sky', desc: 'The Milky Way is at or below the threshold of visibility.' },
     },
   };
   for (const [name, input] of Object.entries(cases)) {
