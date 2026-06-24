@@ -124,6 +124,66 @@ exports[`buildEnvironmentContract â€” per-address snapshots contract snapshot â€
       },
       "tone": "neutral",
     },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "miles",
+          "value": 12.3,
+        },
+        "subject": "Nearest airport",
+      },
+      "defaultCopy": "Bluegrass Airport is about 12.3 miles away. Some approach or departure traffic may be audible at peak times; worth checking on-site.",
+      "fallbackAction": null,
+      "id": "airport-noise",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "miles",
+          "value": 1.42,
+        },
+        "subject": "Nearest rail line",
+      },
+      "defaultCopy": "A rail line runs about 1.42 miles away. At that distance trains are unlikely to be audible indoors except on quiet nights.",
+      "fallbackAction": null,
+      "id": "rail-proximity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "OpenStreetMap",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "bortle_class",
+          "value": 5,
+        },
+        "subject": "Night sky brightness (Bortle class)",
+      },
+      "defaultCopy": "Suburban sky: The Milky Way is a faint smudge on a good night. Estimated from Census tract density and nearby land use, not satellite-measured.",
+      "fallbackAction": null,
+      "id": "light-pollution",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "U.S. Census ACS / OpenStreetMap",
+      },
+      "tone": "neutral",
+    },
   ],
   "provenanceSummary": [
     {
@@ -149,6 +209,18 @@ exports[`buildEnvironmentContract â€” per-address snapshots contract snapshot â€
     {
       "asOf": "2026-06",
       "source": "EPA EJSCREEN",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "OpenStreetMap",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "U.S. Census ACS / OpenStreetMap",
     },
   ],
   "schemaVersion": "1.0",
@@ -279,6 +351,60 @@ exports[`buildEnvironmentContract â€” per-address snapshots contract snapshot â€
       },
       "tone": "neutral",
     },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Nearest airport",
+      },
+      "defaultCopy": "No airports within 20 miles â€” flight traffic is not a daily factor here.",
+      "fallbackAction": null,
+      "id": "airport-noise",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Nearest rail line",
+      },
+      "defaultCopy": "No rail lines within about 3 miles â€” train noise is not a factor here.",
+      "fallbackAction": null,
+      "id": "rail-proximity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "OpenStreetMap",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "bortle_class",
+          "value": 3,
+        },
+        "subject": "Night sky brightness (Bortle class)",
+      },
+      "defaultCopy": "Rural dark sky: The Milky Way is clearly visible with obvious structure. Estimated from Census tract density and nearby land use, not satellite-measured.",
+      "fallbackAction": null,
+      "id": "light-pollution",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "U.S. Census ACS / OpenStreetMap",
+      },
+      "tone": "favorable",
+    },
   ],
   "provenanceSummary": [
     {
@@ -304,6 +430,18 @@ exports[`buildEnvironmentContract â€” per-address snapshots contract snapshot â€
     {
       "asOf": "2026-06",
       "source": "EPA EJSCREEN",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "OpenStreetMap",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "U.S. Census ACS / OpenStreetMap",
     },
   ],
   "schemaVersion": "1.0",
@@ -438,6 +576,66 @@ exports[`buildEnvironmentContract â€” per-address snapshots contract snapshot â€
       },
       "tone": "caution",
     },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "miles",
+          "value": 6.8,
+        },
+        "subject": "Nearest airport",
+      },
+      "defaultCopy": "Louisville Muhammad Ali International is about 6.8 miles away. Some approach or departure traffic may be audible at peak times; worth checking on-site.",
+      "fallbackAction": null,
+      "id": "airport-noise",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "Google Places",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "miles",
+          "value": 0.31,
+        },
+        "subject": "Nearest rail line",
+      },
+      "defaultCopy": "A rail line runs about 0.31 miles away. Whether trains are audible inside depends on frequency and construction â€” listen for it on a site visit.",
+      "fallbackAction": null,
+      "id": "rail-proximity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "OpenStreetMap",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "cool",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "bortle_class",
+          "value": 6,
+        },
+        "subject": "Night sky brightness (Bortle class)",
+      },
+      "defaultCopy": "Bright suburban sky: The Milky Way is at or below the threshold of visibility. Estimated from Census tract density and nearby land use, not satellite-measured.",
+      "fallbackAction": null,
+      "id": "light-pollution",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "U.S. Census ACS / OpenStreetMap",
+      },
+      "tone": "neutral",
+    },
   ],
   "provenanceSummary": [
     {
@@ -463,6 +661,18 @@ exports[`buildEnvironmentContract â€” per-address snapshots contract snapshot â€
     {
       "asOf": "2026-06",
       "source": "EPA EJSCREEN",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "Google Places",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "OpenStreetMap",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "U.S. Census ACS / OpenStreetMap",
     },
   ],
   "schemaVersion": "1.0",

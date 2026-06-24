@@ -36,10 +36,36 @@ function radonTone(zone) {
   return 'neutral';
 }
 
+// ── FR-095 ambiance tone helpers ─────────────────────────────────────────────
+// Distance bands mirror the SSR template's narrative thresholds. A confirmed
+// "none in range" (null) is a FAVORABLE, COMPLETE answer — not missing data — so
+// it carries no fallbackAction (contrast the health/safety *-missing findings).
+function airportTone(distanceMiles) {
+  if (distanceMiles == null) return 'favorable'; // none within 20 mi
+  if (distanceMiles < 5) return 'caution';
+  if (distanceMiles < 15) return 'neutral';
+  return 'favorable';
+}
+function railTone(distanceMiles) {
+  if (distanceMiles == null) return 'favorable'; // no rail within ~3 mi
+  if (distanceMiles < 0.25) return 'caution';
+  if (distanceMiles < 0.75) return 'neutral';
+  return 'favorable';
+}
+// Bortle is an external standard index (like AQI/DNL), not a Livably composite
+// (CONSTRAINT-001). Light level is never a hazard, so tone is favorable (dark) or neutral.
+function bortleTone(bortle) {
+  return bortle <= 3 ? 'favorable' : 'neutral';
+}
+
 function buildEnvironmentContract(environment, opts = {}) {
   if (!environment) return null;
   const { airQuality, floodRisk, roadNoise, waterQuality, radon, ejscreen } = environment;
+  // Health/safety presence anchors the chapter. Ambiance (airports/rail/light) is additive and
+  // rides along AFTER this guard — light pollution is always present, so gating off it would make
+  // every call emit and break the FR-090 empty -> null contract. (FR-095)
   if (!airQuality && !floodRisk && !roadNoise && !waterQuality && !radon && !ejscreen) return null;
+  const { airports, rail, lightPollution } = environment;
 
   const asOf = opts.asOf || new Date().toISOString().slice(0, 7);
   const findings = [];
@@ -156,6 +182,64 @@ function buildEnvironmentContract(environment, opts = {}) {
     }, ejscreen.flagged
       ? `This location is above the 75th national percentile for ${elevated.join(' and ')} — more nearby industrial or hazardous-site activity than most US residential locations. Review specific permitted facilities on EPA ECHO.`
       : 'Below the 75th national percentile for Superfund, chemical-risk, and hazardous-waste site proximity — no elevated industrial-hazard flags for this location.');
+  }
+
+  // ── FR-095 ambiance: airports / rail / light pollution (rollout #16) ─────────
+
+  // Airport noise — nearest located airport, straight-line miles (never Distance Matrix).
+  // null = confirmed none within 20 mi (a complete answer), not missing data -> no fallbackAction.
+  {
+    const nearest = airports && airports.length ? airports[0] : null;
+    const source = nearest?.source === 'osm' ? 'OpenStreetMap' : 'Google Places';
+    push({
+      id: 'airport-noise',
+      bucket: 'consider',
+      tone: airportTone(nearest?.distanceMiles),
+      claim: {
+        subject: 'Nearest airport',
+        measure: nearest ? { value: Math.round(nearest.distanceMiles * 10) / 10, unit: 'miles' } : null,
+        comparison: null,
+      },
+      provenance: { source, asOf, modeled: false },
+      fallbackAction: null,
+    }, nearest
+      ? `${nearest.name} is about ${(Math.round(nearest.distanceMiles * 10) / 10).toFixed(1)} miles away. ${nearest.distanceMiles < 5 ? 'Close enough that aircraft are frequently audible — visit at 6–9am on a weekday to gauge it.' : nearest.distanceMiles < 15 ? 'Some approach or departure traffic may be audible at peak times; worth checking on-site.' : 'At that distance aircraft are at altitude and not a daily factor.'}`
+      : 'No airports within 20 miles — flight traffic is not a daily factor here.');
+  }
+
+  // Rail proximity — nearest rail/light-rail/tram line, straight-line miles. null = none within ~3 mi.
+  {
+    const typeLabel = rail?.type === 'light_rail' ? 'light rail' : rail?.type === 'tram' ? 'tram' : 'rail';
+    push({
+      id: 'rail-proximity',
+      bucket: 'consider',
+      tone: railTone(rail?.distanceMiles),
+      claim: {
+        subject: 'Nearest rail line',
+        measure: rail ? { value: Math.round(rail.distanceMiles * 100) / 100, unit: 'miles' } : null,
+        comparison: null,
+      },
+      provenance: { source: 'OpenStreetMap', asOf, modeled: false },
+      fallbackAction: null,
+    }, rail
+      ? `A ${typeLabel} line runs about ${(Math.round(rail.distanceMiles * 100) / 100).toFixed(2)} miles away. ${rail.distanceMiles < 0.25 ? 'At that proximity trains will be audible indoors, and freight can pass at any hour.' : rail.distanceMiles < 0.75 ? 'Whether trains are audible inside depends on frequency and construction — listen for it on a site visit.' : 'At that distance trains are unlikely to be audible indoors except on quiet nights.'}`
+      : 'No rail lines within about 3 miles — train noise is not a factor here.');
+  }
+
+  // Light pollution — Bortle class, estimated from Census density + OSM land use (modeled, honest provenance).
+  if (lightPollution && Number.isFinite(lightPollution.bortle)) {
+    push({
+      id: 'light-pollution',
+      bucket: 'cool',
+      tone: bortleTone(lightPollution.bortle),
+      claim: {
+        subject: 'Night sky brightness (Bortle class)',
+        measure: { value: lightPollution.bortle, unit: 'bortle_class' },
+        comparison: null,
+      },
+      provenance: { source: 'U.S. Census ACS / OpenStreetMap', asOf, modeled: true },
+      fallbackAction: null,
+    }, `${lightPollution.label}: ${lightPollution.desc} Estimated from Census tract density and nearby land use, not satellite-measured.`);
   }
 
   const provenanceSummary = [
