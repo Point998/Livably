@@ -25,6 +25,7 @@ const { buildAccessContract } = require('../modules/access/contract');
 const { buildPropertyContract } = require('../modules/property/contract');
 const { buildWalkabilityContract } = require('../modules/walkability/contract');
 const { buildEnvironmentContract } = require('../modules/sensory/contract');
+const { buildGrowthContract } = require('../modules/growth/contract');
 const { QuotaExceededError, RateLimitError, BudgetExceededError } = require('../rateLimit');
 const { getCensusFIPS, fetchCensusACS } = require('../shared/census');
 const { detectRuralMode } = require('../shared/validate');
@@ -249,6 +250,9 @@ async function buildReportInner(address, options = {}) {
         : null,
       environment: chapters?.environment
         ? buildEnvironmentContract(chapters.environment, { degraded: degradation.total > 0 })
+        : null,
+      growth: chapters?.growth
+        ? buildGrowthContract(chapters.growth, { degraded: degradation.total > 0 })
         : null,
     },
   };
