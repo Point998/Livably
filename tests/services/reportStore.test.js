@@ -1,66 +1,56 @@
 'use strict';
 
 const fs = require('fs');
-jest.mock('fs');
+const fsp = require('fs').promises;
+const os = require('os');
+const path = require('path');
 
-let reportStore;
-beforeEach(() => {
-  jest.resetAllMocks();
-  fs.existsSync.mockReturnValue(true);
-  fs.readFileSync.mockReturnValue('{}');
-  fs.writeFileSync.mockImplementation(() => {});
-  fs.mkdirSync.mockImplementation(() => {});
-  jest.isolateModules(() => {
-    reportStore = require('../../src/services/reportStore');
+const { FileReportStore, atomicWrite } = require('../../src/services/reportStore');
+
+function tmpDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'livably-reports-'));
+}
+
+describe('atomicWrite', () => {
+  test('writes data and leaves no .tmp file behind', async () => {
+    const dir = tmpDir();
+    const target = path.join(dir, 'x.json');
+    await atomicWrite(target, '{"a":1}');
+    expect(fs.readFileSync(target, 'utf8')).toBe('{"a":1}');
+    expect(fs.readdirSync(dir).filter((f) => f.includes('.tmp')).length).toBe(0);
   });
 });
 
-describe('saveReport', () => {
-  test('returns an 8-character hex string', () => {
-    const id = reportStore.saveReport('100 Main St, Louisville, KY');
-    expect(typeof id).toBe('string');
-    expect(id).toHaveLength(8);
+describe('FileReportStore core', () => {
+  test('mintId returns a unique 8-char hex and reserves the file', async () => {
+    const store = new FileReportStore(tmpDir());
+    const id = await store.mintId();
+    expect(id).toMatch(/^[0-9a-f]{8}$/);
+    const id2 = await store.mintId();
+    expect(id2).not.toBe(id);
   });
 
-  test('writes the address to the reports file', () => {
-    reportStore.saveReport('100 Main St, Louisville, KY');
-    expect(fs.writeFileSync).toHaveBeenCalled();
-    const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
-    const entry = Object.values(written)[0];
-    expect(entry.address).toBe('100 Main St, Louisville, KY');
-    expect(fs.writeFileSync.mock.calls[0][0]).toContain('reports.json');
-  });
-});
-
-describe('getReport', () => {
-  test('returns null for unknown ID', () => {
-    const result = reportStore.getReport('deadbeef');
-    expect(result).toBeNull();
+  test('put then get round-trips a record', async () => {
+    const store = new FileReportStore(tmpDir());
+    const id = await store.mintId();
+    await store.put(id, { address: '100 Main St', createdAt: 't', lastAccessed: 't' });
+    expect((await store.get(id)).address).toBe('100 Main St');
   });
 
-  test('returns saved report entry', () => {
-    fs.readFileSync.mockReturnValue(JSON.stringify({
-      abc12345: { address: '100 Main St', createdAt: '2026-01-01T00:00:00.000Z', lastAccessed: '2026-01-01T00:00:00.000Z' },
-    }));
-    const result = reportStore.getReport('abc12345');
-    expect(result.address).toBe('100 Main St');
-  });
-});
-
-describe('updateReportAccess', () => {
-  test('updates lastAccessed for known ID', () => {
-    fs.readFileSync.mockReturnValue(JSON.stringify({
-      abc12345: { address: '100 Main St', createdAt: '2026-01-01T00:00:00.000Z', lastAccessed: '2026-01-01T00:00:00.000Z' },
-    }));
-    reportStore.updateReportAccess('abc12345');
-    expect(fs.writeFileSync).toHaveBeenCalled();
-    const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
-    expect(written.abc12345.lastAccessed).not.toBe('2026-01-01T00:00:00.000Z');
+  test('get returns null for unknown id and for corrupt json', async () => {
+    const dir = tmpDir();
+    const store = new FileReportStore(dir);
+    expect(await store.get('deadbeef')).toBeNull();
+    await fsp.writeFile(path.join(dir, 'bad99999.json'), 'not json', 'utf8');
+    expect(await store.get('bad99999')).toBeNull();
   });
 
-  test('does nothing for unknown ID', () => {
-    const result = reportStore.updateReportAccess('unknown');
-    expect(result).toBe(false);
-    expect(fs.writeFileSync).not.toHaveBeenCalled();
+  test('touch updates lastAccessed and returns false for unknown id', async () => {
+    const store = new FileReportStore(tmpDir());
+    const id = await store.mintId();
+    await store.put(id, { address: 'a', createdAt: 't0', lastAccessed: 't0' });
+    expect(await store.touch(id)).toBe(true);
+    expect((await store.get(id)).lastAccessed).not.toBe('t0');
+    expect(await store.touch('unknown00')).toBe(false);
   });
 });
