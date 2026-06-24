@@ -1,0 +1,470 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`buildEnvironmentContract — per-address snapshots contract snapshot — georgetown-ky-clean 1`] = `
+{
+  "chapterId": "environment",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "FEMA flood zone",
+      },
+      "defaultCopy": "Zone X: Outside high-risk flood areas. Flood insurance is not federally required, though optional coverage is still worth pricing.",
+      "fallbackAction": null,
+      "id": "flood-risk",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FEMA NFHL",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "aqi",
+          "value": 38,
+        },
+        "subject": "Air quality index (AQI)",
+      },
+      "defaultCopy": "Air quality is satisfactory. Primary pollutant: Ozone.",
+      "fallbackAction": null,
+      "id": "air-quality",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA AirNow",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "dnl_db",
+          "value": 52,
+        },
+        "subject": "Road noise (day-night level)",
+      },
+      "defaultCopy": "Noise here is within the quiet residential range.",
+      "fallbackAction": null,
+      "id": "road-noise",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "BTS / FHWA model",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "violation_count",
+          "value": 0,
+        },
+        "subject": "Public water system violations",
+      },
+      "defaultCopy": "Georgetown Municipal Water has no recent reported drinking-water violations.",
+      "fallbackAction": null,
+      "id": "water-quality",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA SDWIS",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "EPA radon zone",
+      },
+      "defaultCopy": "This area is EPA Radon Zone 2 (moderate predicted indoor radon) — an address-specific test is recommended.",
+      "fallbackAction": {
+        "label": "Test this specific home for radon",
+        "type": "instruction",
+        "value": "EPA radon zones are county/state-level guidance, not an address measurement. A short-term radon test kit is inexpensive (~$15–$30) — test the actual home before closing, and ask the seller for any prior results.",
+      },
+      "id": "radon",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "EPA Radon Zones",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Industrial / hazardous-site proximity",
+      },
+      "defaultCopy": "Below the 75th national percentile for Superfund, chemical-risk, and hazardous-waste site proximity — no elevated industrial-hazard flags for this location.",
+      "fallbackAction": {
+        "label": "See specific facilities on EPA ECHO",
+        "type": "url",
+        "value": "https://echo.epa.gov/",
+      },
+      "id": "hazard-proximity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA EJSCREEN",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "FEMA NFHL",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA AirNow",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "BTS / FHWA model",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA SDWIS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA Radon Zones",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA EJSCREEN",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildEnvironmentContract — per-address snapshots contract snapshot — harlan-ky-high-radon 1`] = `
+{
+  "chapterId": "environment",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "FEMA flood zone",
+      },
+      "defaultCopy": "Zone X: Outside high-risk flood areas. Flood insurance is not federally required, though optional coverage is still worth pricing.",
+      "fallbackAction": null,
+      "id": "flood-risk",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FEMA NFHL",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "aqi",
+          "value": 38,
+        },
+        "subject": "Air quality index (AQI)",
+      },
+      "defaultCopy": "Air quality is satisfactory. Primary pollutant: Ozone.",
+      "fallbackAction": null,
+      "id": "air-quality",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA AirNow",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "dnl_db",
+          "value": 42,
+        },
+        "subject": "Road noise (day-night level)",
+      },
+      "defaultCopy": "Noise here is well below threshold. This level is modeled from nearby road proximity, not measured at the address — confirm by visiting at rush hour.",
+      "fallbackAction": null,
+      "id": "road-noise",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "BTS / FHWA model",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "violation_count",
+          "value": 0,
+        },
+        "subject": "Public water system violations",
+      },
+      "defaultCopy": "Georgetown Municipal Water has no recent reported drinking-water violations.",
+      "fallbackAction": null,
+      "id": "water-quality",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA SDWIS",
+      },
+      "tone": "favorable",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "EPA radon zone",
+      },
+      "defaultCopy": "This area is EPA Radon Zone 1 (highest predicted indoor radon) — an address-specific test is strongly recommended.",
+      "fallbackAction": {
+        "label": "Test this specific home for radon",
+        "type": "instruction",
+        "value": "EPA radon zones are county/state-level guidance, not an address measurement. A short-term radon test kit is inexpensive (~$15–$30) — test the actual home before closing, and ask the seller for any prior results.",
+      },
+      "id": "radon",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "EPA Radon Zones",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Industrial / hazardous-site proximity",
+      },
+      "defaultCopy": "Below the 75th national percentile for Superfund, chemical-risk, and hazardous-waste site proximity — no elevated industrial-hazard flags for this location.",
+      "fallbackAction": {
+        "label": "See specific facilities on EPA ECHO",
+        "type": "url",
+        "value": "https://echo.epa.gov/",
+      },
+      "id": "hazard-proximity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA EJSCREEN",
+      },
+      "tone": "neutral",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "FEMA NFHL",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA AirNow",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "BTS / FHWA model",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA SDWIS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA Radon Zones",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA EJSCREEN",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
+
+exports[`buildEnvironmentContract — per-address snapshots contract snapshot — jeffersonville-in-flood-and-hazard 1`] = `
+{
+  "chapterId": "environment",
+  "degraded": false,
+  "findings": [
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "FEMA flood zone",
+      },
+      "defaultCopy": "Zone AE: 1% annual flood chance with base flood elevation. Flood insurance is federally required for a mortgage here.",
+      "fallbackAction": null,
+      "id": "flood-risk",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "FEMA NFHL",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "aqi",
+          "value": 72,
+        },
+        "subject": "Air quality index (AQI)",
+      },
+      "defaultCopy": "Acceptable for most. Primary pollutant: Ozone.",
+      "fallbackAction": null,
+      "id": "air-quality",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA AirNow",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "consider",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "dnl_db",
+          "value": 66,
+        },
+        "subject": "Road noise (day-night level)",
+      },
+      "defaultCopy": "Noise here is above FHWA standard.",
+      "fallbackAction": null,
+      "id": "road-noise",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "BTS / FHWA model",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": {
+          "unit": "violation_count",
+          "value": 1,
+        },
+        "subject": "Public water system violations",
+      },
+      "defaultCopy": "Jeffersonville Water has 1 recent reported violation — review the specifics and any resolution.",
+      "fallbackAction": {
+        "label": "Review violations on EPA ECHO",
+        "type": "url",
+        "value": "https://echo.epa.gov/",
+      },
+      "id": "water-quality",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA SDWIS",
+      },
+      "tone": "caution",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "EPA radon zone",
+      },
+      "defaultCopy": "This area is EPA Radon Zone 2 (moderate predicted indoor radon) — an address-specific test is recommended.",
+      "fallbackAction": {
+        "label": "Test this specific home for radon",
+        "type": "instruction",
+        "value": "EPA radon zones are county/state-level guidance, not an address measurement. A short-term radon test kit is inexpensive (~$15–$30) — test the actual home before closing, and ask the seller for any prior results.",
+      },
+      "id": "radon",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": true,
+        "source": "EPA Radon Zones",
+      },
+      "tone": "neutral",
+    },
+    {
+      "bucket": "check",
+      "claim": {
+        "comparison": null,
+        "measure": null,
+        "subject": "Industrial / hazardous-site proximity",
+      },
+      "defaultCopy": "This location is above the 75th national percentile for Superfund-site proximity and chemical-risk (RMP) facility proximity — more nearby industrial or hazardous-site activity than most US residential locations. Review specific permitted facilities on EPA ECHO.",
+      "fallbackAction": {
+        "label": "See specific facilities on EPA ECHO",
+        "type": "url",
+        "value": "https://echo.epa.gov/",
+      },
+      "id": "hazard-proximity",
+      "provenance": {
+        "asOf": "2026-06",
+        "modeled": false,
+        "source": "EPA EJSCREEN",
+      },
+      "tone": "caution",
+    },
+  ],
+  "provenanceSummary": [
+    {
+      "asOf": "2026-06",
+      "source": "FEMA NFHL",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA AirNow",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "BTS / FHWA model",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA SDWIS",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA Radon Zones",
+    },
+    {
+      "asOf": "2026-06",
+      "source": "EPA EJSCREEN",
+    },
+  ],
+  "schemaVersion": "1.0",
+}
+`;
