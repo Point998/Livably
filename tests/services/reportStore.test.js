@@ -121,6 +121,15 @@ describe('public wrappers (singleton, temp dir via env)', () => {
     expect(rec.contract.schemaVersion).toBe('1.0');
   });
 
+  test('resolveSharedReport touches lastAccessed on a hit', async () => {
+    const id = await mod.saveReport('a');
+    const before = (await mod.getReport(id)).lastAccessed;
+    await new Promise((r) => setTimeout(r, 5));
+    await mod.resolveSharedReport(id);
+    await new Promise((r) => setTimeout(r, 5)); // allow fire-and-forget touch to settle
+    expect((await mod.getReport(id)).lastAccessed).not.toBe(before);
+  });
+
   test('resolveSharedReport: html hit, redirect fallback, not found', async () => {
     const withHtml = await mod.saveReport('a');
     await mod.putArtifact(withHtml, { html: '<h1>x</h1>', contract: {}, generatedAt: 't', schemaVersion: '1.0', degraded: false });
