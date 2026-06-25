@@ -106,7 +106,87 @@ class FileReportStore {
   }
 }
 
-const store = new FileReportStore();
+/**
+ * The behavioral contract every report-store backend implements. Any conforming
+ * backend is a drop-in for the singleton below (see createReportStore). Conformance
+ * is enforced by the shared suite in tests/services/reportStoreContract.js.
+ *
+ * @typedef {Object} ReportStore
+ * @property {() => Promise<string>} mintId        Fresh, unused 8-hex id, reserved so a
+ *   concurrent mintId can't collide.
+ * @property {(id: string, record: object) => Promise<void>} put   Persist the whole
+ *   record; atomic last-writer-wins for a single id.
+ * @property {(id: string) => Promise<object|null>} get   The stored record (a copy —
+ *   callers mutating it must not affect storage), or null for an unknown id, corrupt
+ *   data, or an empty reservation stub.
+ * @property {(id: string) => Promise<boolean>} touch   Update lastAccessed; false if
+ *   the id is absent.
+ * @property {() => Promise<void>} ensureMigrated   Idempotent; safe to call before
+ *   every op; a no-op for backends with nothing to migrate.
+ */
+
+// A Map-backed store mirroring FileReportStore's OBSERVABLE behavior. Its jobs:
+// (1) prove the ReportStore contract is portable (a contract test with one impl can't),
+// (2) a fast, isolated test fixture, (3) the template a real network backend copies.
+// shortcut: intentionally NOT durable (state is lost on process restart) — it is a
+// test/rehearsal backend, not production. Revisit only if a real in-memory production
+// store is ever needed (it is not the host backend this seam exists for).
+class InMemoryReportStore {
+  constructor() {
+    this.map = new Map();
+  }
+
+  // Deep copy via JSON, matching FileReportStore's serialize/deserialize boundary:
+  // stored and returned records share no references with the caller's objects, and
+  // functions/undefined are dropped identically to the file backend.
+  _clone(rec) { return JSON.parse(JSON.stringify(rec)); }
+
+  async ensureMigrated() { /* nothing to migrate for an in-memory backend */ }
+
+  async mintId() {
+    for (;;) {
+      const id = crypto.randomBytes(4).toString('hex'); // 8 hex chars
+      if (!this.map.has(id)) {
+        this.map.set(id, {}); // empty reservation stub, same as FileReportStore
+        return id;
+      }
+    }
+  }
+
+  async put(id, record) {
+    this.map.set(id, this._clone(record));
+  }
+
+  async get(id) {
+    const rec = this.map.get(id);
+    // Missing, or an empty reservation stub ('{}'), is not yet a usable record.
+    return rec && Object.keys(rec).length ? this._clone(rec) : null;
+  }
+
+  async touch(id) {
+    const rec = await this.get(id);
+    if (!rec) return false;
+    rec.lastAccessed = new Date().toISOString();
+    await this.put(id, rec);
+    return true;
+  }
+}
+
+// Selects the report-store backend from config. Unset/`file` keeps today's behavior
+// (the default); `memory` is the in-memory rehearsal/test backend. Unknown values fail
+// fast rather than silently running a different store than asked for. This one switch
+// is where a future external backend (Postgres/object storage) is registered.
+function createReportStore(env = process.env) {
+  const backend = env.LIVABLY_REPORT_STORE || 'file';
+  switch (backend) {
+    case 'file': return new FileReportStore();
+    case 'memory': return new InMemoryReportStore();
+    default:
+      throw new Error(`Unknown LIVABLY_REPORT_STORE: "${backend}" (expected "file" or "memory")`);
+  }
+}
+
+const store = createReportStore(process.env);
 
 async function saveReport(address) {
   const id = await store.mintId();
@@ -139,6 +219,6 @@ async function resolveSharedReport(id) {
 }
 
 module.exports = {
-  atomicWrite, FileReportStore, store,
+  atomicWrite, FileReportStore, InMemoryReportStore, createReportStore, store,
   saveReport, getReport, updateReportAccess, putArtifact, resolveSharedReport,
 };
