@@ -197,8 +197,11 @@ async function buildReportInner(address, options = {}) {
     lifeCalc = { profile: DEFAULT_PROFILE, rates, bounds: PROFILE_BOUNDS };
   } catch (_) { /* calculator omitted on total failure */ }
 
+  const persist = options.persist !== false;
   let reportId = null;
-  try { reportId = await saveReport(address); } catch {}
+  if (persist) {
+    try { reportId = await saveReport(address); } catch {}
+  }
   logRequest(address, 'success', Date.now() - _reqStart);
   // FR-068 — emit one degradation summary line only when this report ran on at
   // least one fallback (signal, not noise; clean reports stay quiet).
@@ -271,7 +274,7 @@ async function buildReportInner(address, options = {}) {
 
   // FR-096 — persist the rendered artifact so /r/:reportId serves it directly instead of
   // re-rendering. Non-fatal (CONSTRAINT-015): a storage hiccup must never break delivery.
-  if (reportId) {
+  if (persist && reportId) {
     try {
       await putArtifact(reportId, {
         html,

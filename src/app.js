@@ -111,7 +111,7 @@ app.get('/api/report.json', async (req, res) => {
 
   const _reqStart = Date.now();
   try {
-    const { contract } = await buildReport(address, {});
+    const { contract } = await buildReport(address, { persist: false });
     return res.json(contract);
   } catch (error) {
     const { type, message, retryAfter } = classifyError(error);

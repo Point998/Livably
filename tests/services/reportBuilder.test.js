@@ -257,4 +257,22 @@ describe('buildReport artifact persistence', () => {
     expect(artifact.html).toBe('<html>report</html>');
     expect(artifact.contract.schemaVersion).toBe('1.0');
   });
+
+  test('skips saveReport and putArtifact when persist is false (I-1)', async () => {
+    const result = await buildReport('123 Main St, Louisville, KY 40202', { persist: false });
+    expect(mockSaveReport).not.toHaveBeenCalled();
+    expect(mockPutArtifact).not.toHaveBeenCalled();
+    expect(result.reportId).toBeNull();
+    expect(result.contract).toEqual(expect.objectContaining({ schemaVersion: '1.0' }));
+  });
+
+  test('CONSTRAINT-015: putArtifact rejection does not break buildReport', async () => {
+    mockPutArtifact.mockRejectedValueOnce(new Error('disk full'));
+    const result = await buildReport('123 Main St, Louisville, KY 40202', {});
+    expect(result).toMatchObject({
+      html: expect.any(String),
+      contract: expect.objectContaining({ schemaVersion: '1.0' }),
+      reportId: 'abcd1234',
+    });
+  });
 });
