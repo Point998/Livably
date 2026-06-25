@@ -61,6 +61,32 @@ docs/
 
 ---
 
+## Documentation Map
+
+Docs come in two kinds. Do not confuse them — confusing them is what makes a repo feel
+buried in documentation.
+
+**Canonical (living) — read every session, keep current. Keep this list tiny:**
+- `CLAUDE.md` — constraints, 4-phase workflow, architecture rules (this file)
+- `docs/IMPLEMENTATION_ROADMAP.md` — state, roadmap, backlog (single source of truth; read first)
+- `README.md` — what it is, how to run (external-facing)
+
+**Reference (append-only) — written once, frozen when written, read only when relevant:**
+- `docs/postmortems/` (PM-NNN) · `docs/nathan-reports/` (NR-NNN) · `docs/denny-reports/` (DR-NNN)
+- `feature-requests/FR-NNN/` — the spec/plan/summary trail for one feature
+- `docs/design/` (FE-phase design system) · `docs/plans/` · `docs/archive/` (historical)
+- `docs/NARRATIVE-QUALITY-AUDIT.md` — its **"The Standard" (30-minute-Google test) is the
+  durable quality bar every finding must pass**; its per-chapter audit is a dated snapshot.
+
+**The rule that keeps the canonical set small:**
+- A durable decision or rule → update a **canonical** doc.
+- Point-in-time analysis (a review, an audit, a feature's spec, a bug writeup) → a **reference**
+  doc. Never retro-edit it; supersede it with a new numbered one instead.
+- Reference docs are *meant* to accumulate — that's institutional memory, not clutter. Never
+  consolidate them; just don't read them all every session.
+
+---
+
 ## Feature Request Workflow
 
 **Every build task follows this 4-phase workflow. No exceptions. No skipping phases.**

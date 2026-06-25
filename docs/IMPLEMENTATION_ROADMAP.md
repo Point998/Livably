@@ -380,14 +380,17 @@ src/cache.js       File-backed caches (geocode, places, drivetime, drivetime_cel
 ```
 
 ## Key Documents
+*See CLAUDE.md → "Documentation Map" for the canonical-vs-reference rule. Canonical docs are kept current; reference docs are append-only and frozen when written.*
+
+**Canonical (read every session):**
 - **CLAUDE.md** — constraints, 4-phase workflow, architecture rules (read before changing any file)
 - **This file** — project state, roadmap, backlog (single source of truth)
-- **docs/archive/RESTRUCTURE-PLAN-2026-05.md** — full restructure plan (historical; executed)
-- **docs/design/DESIGN-BRIEF.md** — complete design system (FE-phase source; what Claude Design imports)
-- **docs/design/SKETCH-SPEC.md** — hand-drawn house animation spec (FE-phase, deferred)
+- **README.md** — what it is, how to run (external-facing)
+
+**Reference (on demand):**
+- **docs/NARRATIVE-QUALITY-AUDIT.md** — "The Standard" (30-min-Google test) is the durable quality bar; per-chapter audit is a May 2026 snapshot
+- **docs/design/DESIGN-BRIEF.md** + **SKETCH-SPEC.md** — FE-phase design system (what Claude Design imports)
 - **docs/plans/module-restructure.md** — module structure reference
-- **docs/NARRATIVE-QUALITY-AUDIT.md** — 14-chapter quality audit (30-minute-Google test)
-- **docs/nathan-reports/** — NR-XXX owner strategic reviews
-- **docs/denny-reports/** — DR-XXX architectural briefs for Denny
-- **docs/postmortems/** — PM-XXX, one per production bug
-- **feature-requests/** — FR-NNN discovery / spec / plan / summary
+- **docs/nathan-reports/** (NR-XXX) · **docs/denny-reports/** (DR-XXX) · **docs/postmortems/** (PM-XXX)
+- **feature-requests/** — FR-NNN discovery / spec / plan / summary (one trail per feature)
+- **docs/archive/RESTRUCTURE-PLAN-2026-05.md** — full restructure plan (historical; executed)

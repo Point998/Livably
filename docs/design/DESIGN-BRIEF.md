@@ -487,5 +487,5 @@ If any answer is no — keep going.
 
 ---
 
-*This is the sole design reference for all Livably work. All previous design patterns are deprecated.*
+*This is the design-system source of truth for Livably's visual layer (the frontend, and the interim server-rendered report's CSS). All previous design patterns are deprecated. It is not backend build guidance — see the status note at the top of this file.*
 *Version 2.0 — May 2026*
