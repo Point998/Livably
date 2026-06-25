@@ -19,6 +19,14 @@ describe('atomicWrite', () => {
     expect(fs.readFileSync(target, 'utf8')).toBe('{"a":1}');
     expect(fs.readdirSync(dir).filter((f) => f.includes('.tmp')).length).toBe(0);
   });
+
+  test('removes the temp file when the rename fails (no orphaned .tmp)', async () => {
+    const dir = tmpDir();
+    const target = path.join(dir, 'as-dir');
+    fs.mkdirSync(target); // renaming a file onto an existing directory fails on every platform
+    await expect(atomicWrite(target, '{"a":1}')).rejects.toThrow();
+    expect(fs.readdirSync(dir).filter((f) => f.includes('.tmp')).length).toBe(0);
+  });
 });
 
 describe('FileReportStore core', () => {
@@ -87,6 +95,27 @@ describe('FileReportStore legacy migration', () => {
     await store.ensureMigrated();
     expect(await store.get('whatever0')).toBeNull();
   });
+
+  test('a failed migration is not cached permanently — a later call retries', async () => {
+    const store = new FileReportStore(tmpDir());
+    const real = store._migrate.bind(store);
+    let calls = 0;
+    jest.spyOn(store, '_migrate').mockImplementation(() => {
+      calls += 1;
+      return calls === 1 ? Promise.reject(new Error('transient FS error')) : real();
+    });
+    await expect(store.ensureMigrated()).rejects.toThrow('transient FS error');
+    await expect(store.ensureMigrated()).resolves.toBeUndefined(); // retried, not the cached rejection
+    expect(calls).toBe(2);
+  });
+
+  test('a successful migration runs once and stays memoized', async () => {
+    const store = new FileReportStore(tmpDir());
+    const spy = jest.spyOn(store, '_migrate');
+    await store.ensureMigrated();
+    await store.ensureMigrated();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('public wrappers (singleton, temp dir via env)', () => {
@@ -119,6 +148,16 @@ describe('public wrappers (singleton, temp dir via env)', () => {
     expect(rec.address).toBe('a');
     expect(rec.html).toBe('<h1>hi</h1>');
     expect(rec.contract.schemaVersion).toBe('1.0');
+  });
+
+  test('putArtifact ignores stray address/createdAt in the artifact; canonical identity survives', async () => {
+    const id = await mod.saveReport('canonical address');
+    const created = (await mod.getReport(id)).createdAt;
+    await mod.putArtifact(id, { address: 'EVIL', createdAt: 'EVIL', html: '<h1>x</h1>' });
+    const rec = await mod.getReport(id);
+    expect(rec.address).toBe('canonical address');
+    expect(rec.createdAt).toBe(created);
+    expect(rec.html).toBe('<h1>x</h1>');
   });
 
   test('resolveSharedReport touches lastAccessed on a hit', async () => {
