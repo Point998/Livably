@@ -2,6 +2,14 @@
 *Updated May 2026 — Full redesign with eclectic living color system*
 *For Claude Code execution with frontend-design, ui-design, interaction-design plugins*
 
+> **Status: FE-phase design-system source of truth — not current backend guidance.**
+> The Livably backend is headless: it emits a versioned report contract
+> (`GET /api/report.json`; see `src/contract/` and `docs/IMPLEMENTATION_ROADMAP.md`).
+> This brief defines the visual identity for the **standalone frontend**, built in a
+> later, dedicated design phase (SSG-per-report) that consumes the contract. It is also
+> the design-system source Claude Design imports from this repo. Relocated from repo
+> root to `docs/design/` June 2026. See `SKETCH-SPEC.md` for the companion animation spec.
+
 ---
 
 ## The Core Creative Idea
