@@ -1,48 +1,125 @@
 'use strict';
 
-const fs = require('fs');
+const fsp = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 
-const DATA_DIR = path.join(__dirname, '../../data');
-const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
-
-function ensureReportsFile() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(REPORTS_FILE)) fs.writeFileSync(REPORTS_FILE, '{}', 'utf8');
+// Atomic write: write a temp sibling then rename over the target. rename(2) is
+// atomic on the same filesystem, so a reader never sees a torn file and a crash
+// mid-write leaves the previous version intact.
+async function atomicWrite(filePath, data) {
+  const tmp = `${filePath}.tmp.${crypto.randomBytes(4).toString('hex')}`;
+  await fsp.writeFile(tmp, data, 'utf8');
+  await fsp.rename(tmp, filePath);
 }
 
-function loadReports() {
-  try {
-    return JSON.parse(fs.readFileSync(REPORTS_FILE, 'utf8'));
-  } catch (err) {
-    if (err.code === 'ENOENT') return {};
-    throw err;
+// One file per report (data/reports/<id>.json). No shared map => no read-modify-write
+// race / lost updates, and a `get` reads one small file instead of parsing every
+// report (incl. its HTML) on every access. The class shape is the seam a future
+// network backend (PostgresReportStore) implements unchanged.
+class FileReportStore {
+  constructor(baseDir = process.env.LIVABLY_REPORTS_DIR || path.join(__dirname, '../../data/reports')) {
+    this.baseDir = baseDir;
+    this.legacyFile = path.join(baseDir, '..', 'reports.json');
+    this._migrated = null; // set in Task 2
+  }
+
+  _file(id) { return path.join(this.baseDir, `${id}.json`); }
+
+  // Lazy, idempotent, memoized once per instance: split a legacy single-map
+  // data/reports.json into per-file records, then retire it to .bak.
+  async ensureMigrated() {
+    if (!this._migrated) this._migrated = this._migrate();
+    return this._migrated;
+  }
+
+  async _migrate() {
+    await fsp.mkdir(this.baseDir, { recursive: true });
+    let raw;
+    try {
+      raw = await fsp.readFile(this.legacyFile, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') return; // nothing to migrate
+      throw err;
+    }
+    let map;
+    try { map = JSON.parse(raw); } catch { map = {}; }
+    for (const [id, rec] of Object.entries(map)) {
+      const file = this._file(id);
+      try { await fsp.access(file); continue; } catch { /* not present -> write it */ }
+      await atomicWrite(file, JSON.stringify(rec, null, 2));
+    }
+    await fsp.rename(this.legacyFile, `${this.legacyFile}.bak`);
+  }
+
+  async mintId() {
+    await this.ensureMigrated();
+    for (;;) {
+      const id = crypto.randomBytes(4).toString('hex'); // 8 hex chars
+      try {
+        await fsp.writeFile(this._file(id), '{}', { flag: 'wx' }); // exclusive create = atomic reservation
+        return id;
+      } catch (err) {
+        if (err.code === 'EEXIST') continue;
+        throw err;
+      }
+    }
+  }
+
+  async put(id, record) {
+    await this.ensureMigrated();
+    await atomicWrite(this._file(id), JSON.stringify(record, null, 2));
+  }
+
+  async get(id) {
+    await this.ensureMigrated();
+    try {
+      const rec = JSON.parse(await fsp.readFile(this._file(id), 'utf8'));
+      // An empty reservation stub ('{}') is not yet a usable record.
+      return rec && Object.keys(rec).length ? rec : null;
+    } catch {
+      return null; // ENOENT or parse error -> self-heal to null (never throw into a request)
+    }
+  }
+
+  async touch(id) {
+    const rec = await this.get(id);
+    if (!rec) return false;
+    rec.lastAccessed = new Date().toISOString();
+    await this.put(id, rec);
+    return true;
   }
 }
 
-function saveReport(address) {
-  ensureReportsFile();
-  const reports = loadReports();
-  let id;
-  do { id = crypto.randomBytes(4).toString('hex'); } while (reports[id]);
+const store = new FileReportStore();
+
+async function saveReport(address) {
+  const id = await store.mintId();
   const now = new Date().toISOString();
-  reports[id] = { address, createdAt: now, lastAccessed: now };
-  fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
+  await store.put(id, { address, createdAt: now, lastAccessed: now });
   return id;
 }
 
-function getReport(reportId) {
-  return loadReports()[reportId] || null;
+function getReport(id) { return store.get(id); }
+
+function updateReportAccess(id) { return store.touch(id); }
+
+async function putArtifact(id, artifact) {
+  const now = new Date().toISOString();
+  const rec = (await store.get(id)) || { createdAt: now, lastAccessed: now };
+  await store.put(id, { ...rec, ...artifact });
 }
 
-function updateReportAccess(reportId) {
-  ensureReportsFile();
-  const reports = loadReports();
-  if (!reports[reportId]) return false;
-  reports[reportId].lastAccessed = new Date().toISOString();
-  fs.writeFileSync(REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
-  return true;
+async function resolveSharedReport(id) {
+  const rec = await store.get(id);
+  if (!rec) return { kind: 'notFound' };
+  store.touch(id).catch(() => {}); // fire-and-forget; access bookkeeping must never block serving
+  if (rec.html) return { kind: 'html', html: rec.html };
+  if (rec.address) return { kind: 'redirect', address: rec.address };
+  return { kind: 'notFound' };
 }
 
-module.exports = { ensureReportsFile, loadReports, saveReport, getReport, updateReportAccess };
+module.exports = {
+  atomicWrite, FileReportStore, store,
+  saveReport, getReport, updateReportAccess, putArtifact, resolveSharedReport,
+};

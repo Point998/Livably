@@ -16,7 +16,7 @@ const { logError, logRequest, logAnalysis, readRecentLogs } = require('./logger'
 const { loadMitigations } = require('./errorMemory');
 
 const { buildReport, classifyError } = require('./services/reportBuilder');
-const { getReport, updateReportAccess } = require('./services/reportStore');
+const { resolveSharedReport } = require('./services/reportStore');
 const { generateComparisonData } = require('./services/compareBuilder');
 const { buildErrorHTML, buildLoadingHTML } = require('./templates/pages/errorPage');
 const { buildCompareFormHTML, buildCompareLoadingHTML, buildCompareResultsHTML } = require('./templates/pages/comparePage');
@@ -111,7 +111,7 @@ app.get('/api/report.json', async (req, res) => {
 
   const _reqStart = Date.now();
   try {
-    const { contract } = await buildReport(address, {});
+    const { contract } = await buildReport(address, { persist: false });
     return res.json(contract);
   } catch (error) {
     const { type, message, retryAfter } = classifyError(error);
@@ -125,11 +125,19 @@ app.get('/api/report.json', async (req, res) => {
 
 // ── Shared report link ────────────────────────────────────────────────────────
 
-app.get('/r/:reportId', (req, res) => {
-  const report = getReport(req.params.reportId);
-  if (!report) return res.status(404).send(buildErrorHTML('SERVER_ERROR', 'Report not found', 'This link may have expired or is invalid.', null, null));
-  try { updateReportAccess(req.params.reportId); } catch {}
-  return res.redirect(`/report?address=${encodeURIComponent(report.address)}`);
+app.get('/r/:reportId', async (req, res) => {
+  let resolved;
+  try {
+    resolved = await resolveSharedReport(req.params.reportId);
+  } catch (err) {
+    logError('shared-report', req.params.reportId, err);
+    resolved = { kind: 'notFound' };
+  }
+  if (resolved.kind === 'html') return res.send(resolved.html);
+  if (resolved.kind === 'redirect') {
+    return res.redirect(`/report?address=${encodeURIComponent(resolved.address)}`);
+  }
+  return res.status(404).send(buildErrorHTML('SERVER_ERROR', 'Report not found', 'This link may have expired or is invalid.', null, null));
 });
 
 // ── Compare ───────────────────────────────────────────────────────────────────

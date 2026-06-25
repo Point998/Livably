@@ -19,6 +19,7 @@ const mockFindNearestRecreationCenter = jest.fn();
 const mockFindNearestPostOffice = jest.fn();
 const mockGetChapterData = jest.fn();
 const mockSaveReport = jest.fn();
+const mockPutArtifact = jest.fn();
 const mockLogRequest = jest.fn();
 const mockLogError = jest.fn();
 const mockLogDegradation = jest.fn();
@@ -38,7 +39,7 @@ jest.mock('../../src/modules/health/data', () => ({ findNearestHospital: mockFin
 jest.mock('../../src/modules/schools/data', () => ({ findNearestSchool: mockFindNearestSchool, findNearestElementarySchool: mockFindNearestElementarySchool }));
 jest.mock('../../src/modules/recreation/data', () => ({ findNearestPark: mockFindNearestPark, findNearestCoffeeShop: mockFindNearestCoffeeShop, findNearestLibrary: mockFindNearestLibrary, findNearestRecreationCenter: mockFindNearestRecreationCenter, findNearestPostOffice: mockFindNearestPostOffice }));
 jest.mock('../../src/chapters', () => ({ getChapterData: mockGetChapterData, buildChaptersHTML: mockBuildChaptersHTML }));
-jest.mock('../../src/services/reportStore', () => ({ saveReport: mockSaveReport }));
+jest.mock('../../src/services/reportStore', () => ({ saveReport: mockSaveReport, putArtifact: mockPutArtifact }));
 jest.mock('../../src/logger', () => ({ logRequest: mockLogRequest, logError: mockLogError, logDegradation: mockLogDegradation, logAnalysis: mockLogAnalysis }));
 jest.mock('../../src/templates/pages/reportPage', () => ({ buildReportHTML: mockBuildReportHTML }));
 jest.mock('../../src/shared/census', () => ({
@@ -70,7 +71,8 @@ beforeEach(() => {
   mockFindNearestPostOffice.mockResolvedValue(null);
   mockGetChapterData.mockResolvedValue(null);
   mockGetTrafficVariations.mockResolvedValue(null);
-  mockSaveReport.mockReturnValue('abc12345');
+  mockSaveReport.mockResolvedValue('abcd1234');
+  mockPutArtifact.mockResolvedValue(undefined);
   mockBuildReportHTML.mockReturnValue('<html>report</html>');
   mockBuildChaptersHTML.mockReturnValue('');
   mockGetCensusFIPS.mockResolvedValue({ state: '21', county: '077', tract: '010101' });
@@ -241,5 +243,36 @@ describe('classifyError', () => {
     err.response = { status: 429 };
     const result = classifyError(err);
     expect(result.type).toBe('RATE_LIMIT');
+  });
+});
+
+describe('buildReport artifact persistence', () => {
+  test('persists html + contract for the minted reportId', async () => {
+    mockBuildReportHTML.mockReturnValue('<html>report</html>');
+    await buildReport('123 Main St, Louisville, KY 40202', {});
+    expect(mockSaveReport).toHaveBeenCalledWith('123 Main St, Louisville, KY 40202');
+    expect(mockPutArtifact).toHaveBeenCalledTimes(1);
+    const [id, artifact] = mockPutArtifact.mock.calls[0];
+    expect(id).toBe('abcd1234');
+    expect(artifact.html).toBe('<html>report</html>');
+    expect(artifact.contract.schemaVersion).toBe('1.0');
+  });
+
+  test('skips saveReport and putArtifact when persist is false (I-1)', async () => {
+    const result = await buildReport('123 Main St, Louisville, KY 40202', { persist: false });
+    expect(mockSaveReport).not.toHaveBeenCalled();
+    expect(mockPutArtifact).not.toHaveBeenCalled();
+    expect(result.reportId).toBeNull();
+    expect(result.contract).toEqual(expect.objectContaining({ schemaVersion: '1.0' }));
+  });
+
+  test('CONSTRAINT-015: putArtifact rejection does not break buildReport', async () => {
+    mockPutArtifact.mockRejectedValueOnce(new Error('disk full'));
+    const result = await buildReport('123 Main St, Louisville, KY 40202', {});
+    expect(result).toMatchObject({
+      html: expect.any(String),
+      contract: expect.objectContaining({ schemaVersion: '1.0' }),
+      reportId: 'abcd1234',
+    });
   });
 });
