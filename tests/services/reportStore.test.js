@@ -6,10 +6,13 @@ const os = require('os');
 const path = require('path');
 
 const { FileReportStore, atomicWrite } = require('../../src/services/reportStore');
+const { runReportStoreContract } = require('./reportStoreContract');
 
 function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'livably-reports-'));
 }
+
+runReportStoreContract(() => new FileReportStore(tmpDir()), 'FileReportStore');
 
 describe('atomicWrite', () => {
   test('writes data and leaves no .tmp file behind', async () => {
