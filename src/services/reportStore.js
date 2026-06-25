@@ -9,8 +9,15 @@ const crypto = require('crypto');
 // mid-write leaves the previous version intact.
 async function atomicWrite(filePath, data) {
   const tmp = `${filePath}.tmp.${crypto.randomBytes(4).toString('hex')}`;
-  await fsp.writeFile(tmp, data, 'utf8');
-  await fsp.rename(tmp, filePath);
+  try {
+    await fsp.writeFile(tmp, data, 'utf8');
+    await fsp.rename(tmp, filePath);
+  } catch (err) {
+    // The temp name is random, so a failed write/rename would otherwise orphan it
+    // forever. Best-effort cleanup; swallow its error so the original failure propagates.
+    await fsp.unlink(tmp).catch(() => {});
+    throw err;
+  }
 }
 
 // One file per report (data/reports/<id>.json). No shared map => no read-modify-write
@@ -29,7 +36,15 @@ class FileReportStore {
   // Lazy, idempotent, memoized once per instance: split a legacy single-map
   // data/reports.json into per-file records, then retire it to .bak.
   async ensureMigrated() {
-    if (!this._migrated) this._migrated = this._migrate();
+    if (!this._migrated) {
+      // Memoize the in-flight/successful migration so it runs once. But a *rejected*
+      // promise must not be cached forever — that would brick the store for the whole
+      // process after a transient failure. Reset on rejection so a later call retries.
+      this._migrated = this._migrate().catch((err) => {
+        this._migrated = null;
+        throw err;
+      });
+    }
     return this._migrated;
   }
 
@@ -107,7 +122,11 @@ function updateReportAccess(id) { return store.touch(id); }
 async function putArtifact(id, artifact) {
   const now = new Date().toISOString();
   const rec = (await store.get(id)) || { createdAt: now, lastAccessed: now };
-  await store.put(id, { ...rec, ...artifact });
+  // An artifact carries rendered/derived output only (html/contract/generatedAt/...).
+  // Strip identity (address) and creation lifecycle (createdAt) so a stray key in the
+  // artifact can't silently clobber the record's canonical values.
+  const { address, createdAt, ...safe } = artifact || {};
+  await store.put(id, { ...rec, ...safe });
 }
 
 async function resolveSharedReport(id) {
