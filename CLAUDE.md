@@ -211,6 +211,7 @@ Cause: NOAA CDO station passed the datatype filter but had no actual TMAX/TMIN r
 - **School:** Nearest by distance with disclaimer. Must be same state as origin address.
 - **Flood zone:** Parcel-level from FEMA MSC — never neighborhood-level
 - **Every finding:** Named source + research date
+- **Honest provenance:** When data is modeled, regional, or a fallback rather than measured at the address, say so in plain language (modeled vs measured). Surface the best available signal *with* the caveat — never manufacture precision, never apologize for it. Trust posture, not silence. (See CONSTRAINT-015.)
 - **Highway:** Geocoding strategy only. 59 interstates in constants.js.
 
 ---

@@ -3668,12 +3668,12 @@ body.report-page {
 
 /* ══════════════════════════════════════════════════════════════════
    UTILITY CLASSES — replace all inline design decisions in JS files
-   Every class here corresponds to something removed from app.js or
-   premium.js. Values reference design tokens from design-tokens.css.
+   Every class here corresponds to inline styling removed from the chapter
+   template.js generators. Values reference design tokens from design-tokens.css.
    ══════════════════════════════════════════════════════════════════ */
 
 /* ── Badge Color System ─────────────────────────────────────────── */
-/* Replaces badgeColor() inline style strings in premium.js         */
+/* Replaces badgeColor() inline style strings in the template.js layer */
 
 .badge-green      { background: var(--badge-green-bg);      color: var(--badge-green-color);      }
 .badge-lightgreen { background: var(--badge-lightgreen-bg); color: var(--badge-lightgreen-color); }
