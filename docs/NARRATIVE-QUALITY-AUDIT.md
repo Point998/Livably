@@ -2,6 +2,13 @@
 *Does every chapter pass the 30-minute Google test?*
 *May 2026*
 
+> **Status:** Two parts, two lifespans. **"The Standard" below is durable** — the
+> 30-minute-Google test is the quality bar every finding must pass, indefinitely (it's
+> referenced from `CLAUDE.md`'s Documentation Map). **The per-chapter audit is a May 2026
+> snapshot** — point-in-time and now partly stale (chapters changed via FR-034 and later).
+> Treat the per-chapter findings as history, not a live checklist; re-audit against current
+> chapters before acting on them.
+
 ---
 
 ## The Standard
