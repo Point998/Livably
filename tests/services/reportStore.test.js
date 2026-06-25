@@ -5,7 +5,7 @@ const fsp = require('fs').promises;
 const os = require('os');
 const path = require('path');
 
-const { FileReportStore, atomicWrite } = require('../../src/services/reportStore');
+const { FileReportStore, InMemoryReportStore, atomicWrite } = require('../../src/services/reportStore');
 const { runReportStoreContract } = require('./reportStoreContract');
 
 function tmpDir() {
@@ -13,6 +13,7 @@ function tmpDir() {
 }
 
 runReportStoreContract(() => new FileReportStore(tmpDir()), 'FileReportStore');
+runReportStoreContract(() => new InMemoryReportStore(), 'InMemoryReportStore');
 
 describe('atomicWrite', () => {
   test('writes data and leaves no .tmp file behind', async () => {
