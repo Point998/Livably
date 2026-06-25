@@ -1,6 +1,10 @@
 # The Livably Sketch — Technical & Creative Spec
 *The address coming to life as you discover it*
-*Addendum to LIVABLY-DESIGN-BRIEF.md*
+*Addendum to DESIGN-BRIEF.md (same folder)*
+
+> **Status: FE-phase design idea — deferred.** Companion to `DESIGN-BRIEF.md`. Belongs
+> to the standalone frontend's dedicated design phase, not the headless backend.
+> Relocated from repo root to `docs/design/` June 2026.
 
 ---
 

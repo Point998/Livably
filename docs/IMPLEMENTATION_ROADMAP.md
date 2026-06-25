@@ -173,7 +173,7 @@ A residential address intelligence report for US homebuyers. Delivered as a web 
 - **FR-061 (Internet as a utility): ✅ MERGED to `main` (PR #23, squash)** — relocated the FCC National Broadband Map integration from the Property chapter into Utilities & Power and reframed it as the lightweight "felt" treatment (who · typical band · what it means · brand-neutral satellite floor), no new data source. Property's internet tab/table/section removed cleanly. Full suite green (1,384 / 73). **Finding:** the old FCC `listAvailability` endpoint is retired (HTTP 405 across the whole `/api/public/map/*` surface) — pre-existing, a verbatim relocation of Property's fetcher — so live verify hit the graceful fallback for all 5 addresses. Repair tracked in **FR-062**.
 - **FR-062 (FCC broadband repair): 📋 BACKLOG — design complete, build deferred** — restore live internet data via the official FCC Broadband Data Collection (BDC) API after the old keyless map API was retired (HTTP 405 across the whole surface). Design done: block-aggregate the published BDC availability files (which carry `block_geoid` + `brand_name`, so providers are retained — **no CostQuest Fabric license needed**); `bdc.fcc.gov` verified reachable (401 without auth). **Deferred** because the only blocker is a human-in-the-loop FCC BDC token (CORES/FRN registration asks for SSN/EIN — not worth the friction for a low-stakes "felt" tidbit right now). No production gap: chapter degrades gracefully via FR-061. Remaining-work checklist in `feature-requests/FR-062-fcc-broadband-repair/spec.md`.
 - **FR-060 (Resilient Utilities fallback): ✅ MERGED to `main` (PR #21, squash)** — adds a data fallback behind FR-032's NREL dependency: NREL → HIFLD (electric provider/ownership, keyless ArcGIS) + OpenChargeMap (EV) → existing OpenEI/AFDC link fallback. Template gains a "provider known, rate unknown" state (state-average rate context) + HIFLD/OCM provenance notes. **Closes FR-032's NREL provider-verification gap** — HIFLD live-verified across all 5 addresses (Georgetown/Harlan→Kentucky Utilities, Louisville→Louisville Gas & Electric, Bozeman→NorthWestern Energy, Jeffersonville→Duke Energy Indiana). New optional `OPENCHARGEMAP_API_KEY`. Full suite green at 1,371 / 73. See `feature-requests/FR-060-resilient-utilities-fallback/`.
-- **Phase 6 (The Livably Sketch): DEFERRED** — excluded for now (it prematurely sets the visual identity; design-setting work is deferred to a dedicated design phase). See LIVABLY-SKETCH-SPEC.md.
+- **Phase 6 (The Livably Sketch): DEFERRED** — excluded for now (it prematurely sets the visual identity; design-setting work is deferred to a dedicated design phase). See docs/design/SKETCH-SPEC.md.
 - **Direction:** new data goes into the chapter where it fits (e.g. seismic → Climate), not new similar chapters. Most clean free data is already consumed by Climate/Sensory/Property/Utilities.
 
 ---
@@ -296,7 +296,7 @@ Utilities Intelligence (FR-032), Life at This Address Calculator (FR-033), Chapt
 - **FR-033 Life-at-Address — ✅ merging** (EIA gas + IRS rate verified live). See `feature-requests/FR-033-life-at-address/`.
 
 ### Phase 6 — The Livably Sketch
-Hand-drawn house that comes to life as the buyer scrolls. See LIVABLY-SKETCH-SPEC.md.
+Hand-drawn house that comes to life as the buyer scrolls. See docs/design/SKETCH-SPEC.md.
 
 ### Phase 7 — Monetization & Launch
 Agent subscriptions, API licensing, white label. Deferred until product is solid (FR-022).
@@ -327,7 +327,7 @@ Electric provider name + type (municipal/co-op/IOU); avg residential rate vs sta
 - **What Will Grow Here (enh 7) — ✅ shipped:** microclimate (USGS elevation + Dec vs June solar angle + shadow-length reference) in the Garden Overview. *Plan: `docs/superpowers/plans/2026-06-03-fr034-enhancement7-microclimate.md`.*
 
 ### Design ideas captured
-- **The Livably Sketch** — hand-drawn house that builds as you scroll; each chapter adds elements; color wash tints by chapter at the end. Spec: LIVABLY-SKETCH-SPEC.md.
+- **The Livably Sketch** — hand-drawn house that builds as you scroll; each chapter adds elements; color wash tints by chapter at the end. Spec: docs/design/SKETCH-SPEC.md.
 - **Claude Design exploration** — editorial/almanac direction; eclectic per-chapter visual personality; departure-board layout for Daily Reachability worth keeping. Ongoing in Claude Design.
 - **Report as discovery experience** — dark portal → warm cream body; chapters animate in; drive-time counters count up; one "wow moment" per chapter; no map.
 
@@ -382,9 +382,9 @@ src/cache.js       File-backed caches (geocode, places, drivetime, drivetime_cel
 ## Key Documents
 - **CLAUDE.md** — constraints, 4-phase workflow, architecture rules (read before changing any file)
 - **This file** — project state, roadmap, backlog (single source of truth)
-- **LIVABLY-ARCHITECTURE.md** — full restructure plan
-- **LIVABLY-DESIGN-BRIEF.md** — complete design system (the only design reference)
-- **LIVABLY-SKETCH-SPEC.md** — hand-drawn house animation spec
+- **docs/archive/RESTRUCTURE-PLAN-2026-05.md** — full restructure plan (historical; executed)
+- **docs/design/DESIGN-BRIEF.md** — complete design system (FE-phase source; what Claude Design imports)
+- **docs/design/SKETCH-SPEC.md** — hand-drawn house animation spec (FE-phase, deferred)
 - **docs/plans/module-restructure.md** — module structure reference
 - **docs/NARRATIVE-QUALITY-AUDIT.md** — 14-chapter quality audit (30-minute-Google test)
 - **docs/nathan-reports/** — NR-XXX owner strategic reviews

@@ -11,7 +11,7 @@ Livably is a residential address intelligence report for US homebuyers. Delivere
 **The product promise:** The things you'd only learn after living there for two years, handed to you before you sign.
 
 **GitHub:** https://github.com/Point998/Livably
-**Design reference:** LIVABLY-DESIGN-BRIEF.md
+**Frontend design (FE phase, not backend guidance):** docs/design/DESIGN-BRIEF.md
 **Architecture reference:** docs/plans/module-restructure.md
 **Project state, roadmap & backlog (single source of truth):** docs/IMPLEMENTATION_ROADMAP.md
 *(This one doc replaces the former SESSION-STATE.md and BACKLOG.md — read it first when starting a session.)*
@@ -48,6 +48,8 @@ docs/
   postmortems/     ← PM-XXX: every bug documented
   nathan-reports/  ← NR-XXX: owner strategic reviews
   plans/           ← Architecture and workflow plans
+  design/          ← FE-phase design system (brief + sketch) — not backend guidance
+  archive/         ← Historical docs (e.g. the completed restructure plan)
 ```
 
 **The three-layer rule:**
@@ -199,14 +201,18 @@ Cause: NOAA CDO station passed the datatype filter but had no actual TMAX/TMIN r
 
 ## Design
 
-The only design reference is LIVABLY-DESIGN-BRIEF.md. All previous design patterns are deprecated.
+**Design is a separate concern from this backend.** Livably is headless: the backend's job
+is to produce a correct, versioned report contract (`GET /api/report.json`). Visual identity —
+fonts, color, layout — belongs to the **standalone frontend**, built in a dedicated design phase
+that consumes the contract (SSG-per-report). The full visual direction lives in
+`docs/design/DESIGN-BRIEF.md` (the source Claude Design imports); do not re-prescribe it here.
 
-- Fonts: Fraunces (headings) + DM Sans (body)
-- Design tokens: public/design-tokens.css
-- Styles: public/report.css
-- No inline styles anywhere
-- No scoring UI of any kind
-- Eclectic chapter color system — each chapter has its own color identity
+The current server-rendered report (`template.js` + `public/report.css`) is the interim renderer.
+Whether SSR or the future FE, two backend guardrails are non-negotiable and protect the boundary:
+
+- **No design decisions in `data.js` / `logic.js`** — CONSTRAINT-009.
+- **No inline styles in HTML generators** — CONSTRAINT-008. All appearance lives in CSS/tokens.
+- **No scoring UI of any kind** — CONSTRAINT-001 applies to the FE as much as the data.
 
 ---
 

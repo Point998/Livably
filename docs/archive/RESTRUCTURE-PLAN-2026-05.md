@@ -2,6 +2,12 @@
 *From "shooting from the hip" to production-grade*
 *May 2026*
 
+> **Status: HISTORICAL — restructure complete.** This plan has been executed: the
+> `app.js` / `premium.js` monolith described below was extracted into the per-module
+> `data.js` / `logic.js` / `template.js` structure now in `src/modules/`. Kept as a
+> record of the original restructure reasoning. For current architecture, see
+> `CLAUDE.md` and `docs/IMPLEMENTATION_ROADMAP.md`. Relocated from repo root June 2026.
+
 ---
 
 ## Executive Summary
