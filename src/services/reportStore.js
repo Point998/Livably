@@ -172,7 +172,21 @@ class InMemoryReportStore {
   }
 }
 
-const store = new FileReportStore();
+// Selects the report-store backend from config. Unset/`file` keeps today's behavior
+// (the default); `memory` is the in-memory rehearsal/test backend. Unknown values fail
+// fast rather than silently running a different store than asked for. This one switch
+// is where a future external backend (Postgres/object storage) is registered.
+function createReportStore(env = process.env) {
+  const backend = env.LIVABLY_REPORT_STORE || 'file';
+  switch (backend) {
+    case 'file': return new FileReportStore();
+    case 'memory': return new InMemoryReportStore();
+    default:
+      throw new Error(`Unknown LIVABLY_REPORT_STORE: "${backend}" (expected "file" or "memory")`);
+  }
+}
+
+const store = createReportStore(process.env);
 
 async function saveReport(address) {
   const id = await store.mintId();
@@ -205,6 +219,6 @@ async function resolveSharedReport(id) {
 }
 
 module.exports = {
-  atomicWrite, FileReportStore, InMemoryReportStore, store,
+  atomicWrite, FileReportStore, InMemoryReportStore, createReportStore, store,
   saveReport, getReport, updateReportAccess, putArtifact, resolveSharedReport,
 };

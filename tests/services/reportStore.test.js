@@ -5,7 +5,7 @@ const fsp = require('fs').promises;
 const os = require('os');
 const path = require('path');
 
-const { FileReportStore, InMemoryReportStore, atomicWrite } = require('../../src/services/reportStore');
+const { FileReportStore, InMemoryReportStore, createReportStore, atomicWrite } = require('../../src/services/reportStore');
 const { runReportStoreContract } = require('./reportStoreContract');
 
 function tmpDir() {
@@ -182,5 +182,23 @@ describe('public wrappers (singleton, temp dir via env)', () => {
     expect(await mod.resolveSharedReport(addressOnly)).toEqual({ kind: 'redirect', address: '456 Rural Route 1, Harlan, KY' });
 
     expect(await mod.resolveSharedReport('missing00')).toEqual({ kind: 'notFound' });
+  });
+});
+
+describe('createReportStore selector', () => {
+  test('defaults to FileReportStore when LIVABLY_REPORT_STORE is unset', () => {
+    expect(createReportStore({})).toBeInstanceOf(FileReportStore);
+  });
+
+  test("returns FileReportStore for 'file'", () => {
+    expect(createReportStore({ LIVABLY_REPORT_STORE: 'file' })).toBeInstanceOf(FileReportStore);
+  });
+
+  test("returns InMemoryReportStore for 'memory'", () => {
+    expect(createReportStore({ LIVABLY_REPORT_STORE: 'memory' })).toBeInstanceOf(InMemoryReportStore);
+  });
+
+  test('throws on an unknown backend name (fail fast, no silent fallback)', () => {
+    expect(() => createReportStore({ LIVABLY_REPORT_STORE: 'postgres' })).toThrow(/postgres/);
   });
 });
