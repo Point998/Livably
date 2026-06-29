@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { atomicWriteFileSync } = require('./shared/atomicFile');
 
 const DATA_DIR = path.join(__dirname, '../data');
 const PATTERNS_FILE = path.join(DATA_DIR, 'error-patterns.json');
@@ -25,7 +26,7 @@ function loadMitigations() {
 function saveMitigations(data) {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(MITIGATIONS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    atomicWriteFileSync(MITIGATIONS_FILE, JSON.stringify(data, null, 2));
   } catch { /* best-effort */ }
 }
 
@@ -85,7 +86,7 @@ function analyzeAndMitigate(entries) {
 
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(PATTERNS_FILE, JSON.stringify(patterns, null, 2), 'utf8');
+    atomicWriteFileSync(PATTERNS_FILE, JSON.stringify(patterns, null, 2));
   } catch { /* best-effort */ }
 
   // Apply mitigations for rules that support auto-apply (non-flagOnly)
